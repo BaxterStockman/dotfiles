@@ -35,7 +35,7 @@ function dotfiles() {
 
 # Check whether a program exists and
 exists() {
-    command -v $1 >/dev/null 2>&1
+    command -v $1 >/dev/null 3>&1
 }
 
 # Check whether a program exists and
