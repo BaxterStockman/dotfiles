@@ -1,0 +1,78 @@
+# Volume keys
+
+## Multimedia keys
+## Raise volume
+#"amixer set Master playback 3%+"
+#    m:0x0 + c:123
+#    XF86AudioRaiseVolume
+#
+## Lower volume
+#"amixer set Master playback 3%-"
+#    m:0x0 + c:122
+#    XF86AudioLowerVolume
+#
+## Mute/unmute
+#"amixer set Master toggle"
+#    m:0x0 + c:121
+#    XF86AudioMute
+
+# Raise volume
+"amixer set Master playback 3%+"
+    m:0x40 + c:86
+    XF86AudioRaiseVolume
+
+# Lower volume
+"amixer set Master playback 3%-"
+    m:0x40 + c:82
+    XF86AudioLowerVolume
+
+# Mute/unmute
+"amixer set Master toggle"
+    m:0x40 + c:90
+    XF86AudioMute
+
+# Open terminal (Super + T)
+"urxvt -e fish"
+    m:0x40 + c:133 + c:28
+    Mod4 + Super_L + t
+
+# Open terminal (Ctrl + Alt + T)
+"urxvt fish"
+    m:0xc + c:28
+    Control+Alt + t
+
+# Open web browser (Super + W)
+"firefox -vimperator"
+    m:0x40 + c:133 + c:25
+    Mod4 + Super_L + w
+
+# Open web browser (Ctrl + Alt + W)
+"firefox -vimperator"
+    m:0xc + c:25
+    Control+Alt + w
+
+# Open mail client (Super + M)
+"thunderbird"
+    m:0x40 + c:133 + c:58
+    Mod4 + Super_L + m
+
+# Open web browser (Ctrl + Alt + M)
+"thunderbird"
+    m:0xc + c:58
+    Control+Alt + m
+
+# Open .pdf reader (Ctrl + Alt + P)
+"zathura"
+    m:0xc + c:33
+    Control+Alt + p
+
+# Open .pdf reader (Super + P)
+"zathura"
+    m:0x40 + c:33
+    Mod4 + Super_L + p
+
+# Take screenshot (PrtScn)
+"scrot -e 'loliclip -bi image/png < $f'"
+    m:0x0 + c:107
+    Print
+
