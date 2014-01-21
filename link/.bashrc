@@ -6,8 +6,8 @@
 [[ $- != *i* ]] && return
 
 ## Environmental variables
-export DOTFILES_ROOT=$HOME/.dotfiles/
-export BASH_CONFIG=$HOME/$DOTFILES_ROOT/source
+export DOTFILES_ROOT=$HOME/.dotfiles
+export CONFIG_PATH=$DOTFILES_ROOT/source
 export PATH=$HOME/bin/:$PATH:$DOTFILES_ROOT/bin
 
 # Source file if it exists
@@ -30,7 +30,7 @@ function src_dir() {
 
 # Run dotfiles script, then source.
 function dotfiles() {
-    ~/.dotfiles/bin/dotfiles "$@" && src
+    ~/.dotfiles/bin/dotfiles "$@" && src_dir $CONFIG_PATH
 }
 
 # Check whether a program exists and
@@ -45,4 +45,4 @@ alias_if() {
     exists $2 && alias $1="$2"
 }
 
-src_dir $BASH_CONFIG
+src_dir $CONFIG_PATH
