@@ -64,6 +64,10 @@ function skip() {
 # Initialize.
 function init_do() {
   source "$2"
+  e_header "Sourcing \$2 = $2"
+  echo "\$1 = $1"
+  echo "\$2 = $2"
+  echo "\$3 = $3"
 }
 
 # Copy files.
@@ -76,7 +80,10 @@ function copy_test() {
   fi
 }
 function copy_do() {
-  e_success "Copying ~/$1."
+  e_success "Copying $2 to ~/$1."
+  echo "\$1 = $1"
+  echo "\$2 = $2"
+  echo "\$3 = $3"
   cp "$2" ~/
 }
 
@@ -86,7 +93,10 @@ function link_test() {
   [[ "$1" -ef "$2" ]] && echo "same file"
 }
 function link_do() {
-  e_success "Linking ~/$1."
+  e_success "Linking $@ to ~/$1."
+  echo "\$1 = $1"
+  echo "\$2 = $2"
+  echo "\$3 = $3"
   ln -sf ${2#$HOME/} ~/
 }
 
