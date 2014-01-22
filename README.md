@@ -8,9 +8,23 @@ I've made a few small changes to better fit my preferred distributions and envir
 * The default editor is set to Vim, and the installer pulls in spf13-vim.
 * The [init][init] files now include scripts for Arch Linux.
 
+I'm also working on implementing recursion in the [dotfiles][dotfiles] script so that it's
+possible to link and/or copy configuration files that don't exist directly in the $HOME directory.
+For instance, my [dwb][dwb] configuration files live at $HOME/.config/dwb, so I want the ability
+to create the whole .config/dwb directory structure -- and to do so without clobbering whatever
+other files might live somewhere in that tree on a given machine.  Right now, the recursion only
+sort of works, but I'm sprucing it up day by day.
+
 [dotfiles]: bin/dotfiles
 [bin]: https://github.com/cowboy/dotfiles/tree/master/bin
 [init]: https://github.com/cowboy/dotfiles/tree/master/bin
+[dwb]: https://portix.bitbucket.org/
+
+To install, paste the following into your shell and execute:
+
+```sh
+bash -c "$(curl -fsSL https://raw.github.com/BaxterStockman/dotfiles/master/bin/dotfiles)" && source ~/.bashrc
+```
 
 ## Original README:
 
