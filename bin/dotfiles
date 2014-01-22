@@ -124,10 +124,11 @@ function do_stuff() {
     # Get pathname relative to
     base=$(basename "$file")
     relpath=$(relpath "$1")
-    filepath="$relpath/$file"
+    filepath="$relpath/$base"
     # base = filename relative to parent dir
     #base="$(basename $relpath)"
     dest="$HOME/$filepath"
+    echo "\$1 = $1"
     echo "base = $base"
     echo "basedir = $basedir"
     echo "relpath = $relpath"
