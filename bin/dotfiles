@@ -15,6 +15,9 @@ http://benalman.com/about/license/
 HELP
 exit; fi
 
+DOTFILES_ROOT=$HOME/.dotfiles
+DOTFILES_GIT=git://github.com/BaxterStockman/dotfiles.git
+
 # Logging stuff.
 function e_header()   { echo -e "\n\033[1m$@\033[0m"; }
 function e_success()  { echo -e " \033[1;32m✔\033[0m  $@"; }
@@ -90,7 +93,7 @@ function link_do() {
 # Copy, link, init, etc.
 function do_stuff() {
   local base dest skip
-  local files=(~/.dotfiles/$1/*)
+  local files=($DOTFILES_ROOT/$1/*)
   # No files? abort.
   if (( ${#files[@]} == 0 )); then return; fi
   # Run _header function only if declared.
@@ -148,25 +151,25 @@ fi
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
 # Initialize.
-if [[ ! -d ~/.dotfiles ]]; then
+if [[ ! -d $DOTFILES_ROOT ]]; then
   new_dotfiles_install=1
   # ~/.dotfiles doesn't exist? Clone it!
   e_header "Downloading dotfiles"
-  git clone --recursive git://github.com/BaxterStockman/dotfiles.git ~/.dotfiles
-  cd ~/.dotfiles
+  git clone --recursive $DOTFILES_GIT $DOTFILES_ROOT
+  cd $DOTFILES_ROOT
 else
   # Make sure we have the latest files.
   e_header "Updating dotfiles"
-  cd ~/.dotfiles
+  cd $DOTFILES_ROOT
   git pull
   git submodule update --init --recursive --quiet
 fi
 
 # Utilities, helpers.
-source ~/.dotfiles/source/10_misc.sh
+source $DOTFILES_ROOT/source/10_misc.sh
 
 # Add binaries into the path
-PATH=~/.dotfiles/bin:$PATH
+PATH=$DOTFILES_ROOT/bin:$PATH
 export PATH
 
 # Tweak file globbing.
@@ -174,10 +177,10 @@ shopt -s dotglob
 shopt -s nullglob
 
 # Create caches directory, if it doesn't already exist.
-mkdir -p "$HOME/.dotfiles/caches"
+mkdir -p "$DOTFILES_ROOT/caches"
 
 # If backups are needed, this is where they'll go.
-backup_dir="$HOME/.dotfiles/backups/$(date "+%Y_%m_%d-%H_%M_%S")/"
+backup_dir="$DOTFILES_ROOT/backups/$(date "+%Y_%m_%d-%H_%M_%S")/"
 backup=
 
 # Execute code for each file in these subdirectories.
