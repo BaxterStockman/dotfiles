@@ -155,7 +155,7 @@ function do_stuff() {
       # If _test function returns a string, skip file and print that message.
       skip="$("$basedir_test" "$file" "$dest")"
       if [[ "$skip" ]]; then
-        e_error "Skipping ~/$base, $skip."
+        e_error "Skipping ~/$filepath, $skip."
         continue
       fi
       # Destination file already exists in ~/. Back it up!
