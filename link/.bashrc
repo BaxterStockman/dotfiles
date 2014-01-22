@@ -42,7 +42,10 @@ exists() {
 # if so alias it to the string passed
 # as the second argument
 alias_if() {
-    exists $2 && alias $1="$2"
+    OIFS="$IFS"
+    IFS='=' read -a args <<< "$1"
+    exists ${args[1]} && alias ${args[0]}="${args[1]}"
+    IFS="$OIFS"
 }
 
 src_all $CONFIG_PATH

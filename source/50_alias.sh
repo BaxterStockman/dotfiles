@@ -13,10 +13,10 @@ if [ $UID -ne 0 ]; then
     alias scat='sudo cat'
     alias svim='sudoedit'
     alias root='sudo -s'
-    alias_if reboot 'sudo systemctl reboot'
-    alias_if poweroff 'sudo systemctl poweroff'
-    alias_if update 'sudo pacman -Su'
-    alias_if netctl 'sudo netctl'
+    alias_if reboot='sudo systemctl reboot'
+    alias_if poweroff='sudo systemctl poweroff'
+    alias_if update='sudo pacman -Su'
+    alias_if netctl='sudo netctl'
 fi
 
 ## ls ## {{{
@@ -37,9 +37,6 @@ alias rm='echo "Try trash-put instead."; false'
 # safer alternative w/ timeout, not stored in history
 #alias rm=' timeout 3 rm -Iv --one-file-system'
 alias ln='ln -i'
-alias chown='chown --preserve-root'
-alias chmod='chmod --preserve-root'
-alias chgrp='chgrp --preserve-root'
 alias cls=' echo -ne "\033c"'       # clear screen for real (it does not work in Terminology)
 
 ## Make Bash error tolerant
