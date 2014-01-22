@@ -8,7 +8,7 @@
 ## Environmental variables
 export DOTFILES_ROOT=$HOME/.dotfiles
 export CONFIG_PATH=$DOTFILES_ROOT/source
-export PATH=$HOME/bin/:$DOTFILES_ROOT/bin:$PATH
+export PATH=$HOME/bin:$DOTFILES_ROOT/bin:$PATH
 
 # Source file if it exists
 # First argument = directory
