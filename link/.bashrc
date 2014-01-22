@@ -8,7 +8,7 @@
 ## Environmental variables
 export DOTFILES_ROOT=$HOME/.dotfiles
 export CONFIG_PATH=$DOTFILES_ROOT/source
-export PATH=$HOME/bin/:$PATH:$DOTFILES_ROOT/bin
+export PATH=$HOME/bin/:$DOTFILES_ROOT/bin:$PATH
 
 # Source file if it exists
 # First argument = directory
@@ -20,18 +20,16 @@ function src_file() {
 }
 
 # Source all files in a directory
-function src_dir() {
+function src_all() {
     local file
-    files=($(ls -A $1/ | sort))
-    for file in ${files[@]}; do
-        echo "$1/$file"
-        source "$1/$file"
+    for file in $1/*; do
+        source "$file"
     done
 }
 
 # Run dotfiles script, then source.
 function dotfiles() {
-    ~/.dotfiles/bin/dotfiles "$@" && src_dir $CONFIG_PATH
+    ~/.dotfiles/bin/dotfiles "$@" && src_all $CONFIG_PATH
 }
 
 # Check whether a program exists and
@@ -46,4 +44,4 @@ alias_if() {
     exists $2 && alias $1="$2"
 }
 
-src_dir $CONFIG_PATH
+src_all $CONFIG_PATH
