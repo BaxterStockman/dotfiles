@@ -29,7 +29,7 @@ function src_all() {
 
 # Run dotfiles script, then source.
 function dotfiles() {
-    ~/.dotfiles/bin/dotfiles "$@" && src_all $CONFIG_PATH
+    $DOTFILES_ROOT/bin/dotfiles "$@" && src_all $CONFIG_PATH
 }
 
 # Check whether a program exists and
