@@ -1,6 +1,1 @@
-author:     Matthew P. Schreiber
-email:      schreibah@gmail.com
-builder:    Module::Build
-plugins:    Module::Starter::AddModule
-license:    perl
-verbose:    1
+.dotfiles/link/.module-starter/config
