@@ -124,10 +124,16 @@ function do_stuff() {
     # Get pathname relative to
     base=$(basename "$file")
     relpath=$(relpath "$1")
-    filepath="$relpath/$file"
+    if [[ "$relpath" ]]; then
+        filepath="$relpath/$base"
+    else
+        filepath="$base"
+    fi
     # base = filename relative to parent dir
     #base="$(basename $relpath)"
+    fullpath="$1/$base"
     dest="$HOME/$filepath"
+    echo "\$1 = $1"
     echo "base = $base"
     echo "basedir = $basedir"
     echo "relpath = $relpath"
@@ -159,7 +165,11 @@ function do_stuff() {
       fi
     fi
     # Do stuff.
-    "$basedir_do" "$base" "$file"
+    # Do it.
+    _do="_do"
+    basedir_do="$basedir$_do"
+    echo "basedir_do = $basedir_do"
+    "$basedir_do" "$filepath" "$file"
   done
 }
 
