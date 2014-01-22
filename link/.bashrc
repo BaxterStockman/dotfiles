@@ -45,6 +45,7 @@ alias_if() {
     OIFS="$IFS"
     IFS='=' read -a args <<< "$1"
     exists ${args[1]} && alias ${args[0]}="${args[1]}"
+    echo "${args[0]} -> ${args[1]}" &>> ~/alias.txt
     IFS="$OIFS"
 }
 

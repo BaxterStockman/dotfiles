@@ -64,8 +64,6 @@ function skip() {
 # Initialize.
 function init_do() {
   e_header "Sourcing $2"
-  echo "\$1 = $1"
-  echo "\$2 = $2"
   source "$2"
 }
 
@@ -80,8 +78,6 @@ function copy_test() {
 }
 function copy_do() {
   e_success "Copying $2 to $HOME/$1."
-  echo "\$1 = $1"
-  echo "\$2 = $2"
   cp "$2" "$HOME/$1"
 }
 
@@ -92,8 +88,6 @@ function link_test() {
 }
 function link_do() {
   e_success "Linking $2 to $HOME/$1."
-  echo "\$1 = $1"
-  echo "\$2 = $2"
   ln -sf ${2#$HOME/} "$HOME/$1"
 }
 
@@ -128,28 +122,30 @@ function do_stuff() {
   [[ $(declare -f "$basedir_header") ]] && "$basedir_header"
   # Iterate over files.
   for file in "${files[@]}"; do
-    # Get pathname relative to
     base=$(basename "$file")
+    # relpath() returns the pathname relative
+    # to an immediate subdirectory of .dotfiles
+    # (i.e. init, copy, link)
     relpath=$(relpath "$1")
+    # If 'relpath' is not empty, append
+    # filepath = relpath + base.
+    # Otherwise filepath = base.
     if [[ "$relpath" ]]; then
         filepath="$relpath/$base"
     else
         filepath="$base"
     fi
-    # base = filename relative to parent dir
-    #base="$(basename $relpath)"
+    # fullpath = full path to file relative to .dotfiles
     fullpath="$1/$base"
     dest="$HOME/$filepath"
-    echo "\$1 = $1"
-    echo "base = $base"
-    echo "basedir = $basedir"
-    echo "relpath = $relpath"
-    echo "filepath = $filepath"
-    echo "dest = $dest"
-    # if '$file' is a directory,
-    if [[ -d "$DOTFILES_ROOT/$fullpath" ]]; then
+    # if '$file' is a directory, create it in the
+    # $HOME directory unless it already exists
+    if [[ -d "$file" ]]; then
         [[ -e "$dest" ]] || mkdir -p "$dest"
+        # recurse on the directory so that
+        # all files in subfolders get processed
         do_stuff $fullpath
+        # skip to next iteration
         continue
     fi
     # Run _test function only if declared.
@@ -175,7 +171,6 @@ function do_stuff() {
     # Do it.
     _do="_do"
     basedir_do="$basedir$_do"
-    echo "basedir_do = $basedir_do"
     "$basedir_do" "$filepath" "$file"
   done
 }
