@@ -166,6 +166,8 @@ function do_stuff() {
     fi
     # Do stuff.
     # Do it.
+    _do="_do"
+    basedir_do="$basedir$do"
     echo "basedir_do = $basedir_do"
     "$basedir_do" "$filepath" "$file"
   done
