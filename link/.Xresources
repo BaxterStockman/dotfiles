@@ -98,7 +98,7 @@ URxvt*.foreground:  #ffffff
 
 ! Fonts
 /*URxvt.font:   -*-terminus-medium-r-normal-*-12-120-72-72-c-60-iso8859-1*/
-URxvt*font: xft:Inconsolata:pixelsize=16:antialias=true:hinting=true
+URxvt*font: xft:Inconsolata:pixelsize=14:antialias=true:hinting=true
 URxvt*.BD:  White
 URxvt*.colorUL: #00D1FF
 
@@ -151,9 +151,17 @@ URxvt*.saveLines:       10000
 URxvt*.keysym.Shift-Control-V: perl:clipboard:paste
 URxvt*.iso14755: False
 
-!------ xautolock settings ------
-Xautolock.locker:   slimlock
-Xautolock.time:     5
-Xautolock.killer:   sleeper
+!------ Xautolock settings ------!
+! Moving mouse to lower left corner activates locker
+! Order of corners: UL UR LL LR
+! 0 = ignore, + = start after specified seconds,
+! - = do not start locker at all
+Xautolock.corners: --+-
+! Set cornersize to 5 pixels
+Xautolock.cornersize: 6
+Xautolock.cornerdelay: 5
+Xautolock.cornerredelay: 15
+Xautolock.locker: slimlock
+Xautolock.time: 5
+Xautolock.killer: sleeper
 Xautolock.killtime: 10
-
