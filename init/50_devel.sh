@@ -11,4 +11,4 @@ update_spf13-vim() {
 
 # If Vim exists, try to update spf13-vim.
 # Otherwise, install spf13-vim
-exists vim && update_spf13-vim || curl http://j.mp/spf13-vim -L -o - | sh
+exists vim && curl http://j.mp/spf13-vim -L -o - | sh
