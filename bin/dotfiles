@@ -106,6 +106,7 @@ function do_stuff() {
     base="$(basename $file)"
     dest="$HOME/$base"
     echo "\$1 = $1"
+    echo "file = $file"
     echo "base = $base"
     echo "dest = $dest"
     # Run _test function only if declared.
