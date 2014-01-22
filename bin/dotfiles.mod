@@ -108,6 +108,7 @@ function basedir() {
     IFS="$OIFS"
 }
 
+
 # Copy, link, init, etc.
 function do_stuff() {
   local base dest skip
@@ -120,11 +121,17 @@ function do_stuff() {
   [[ $(declare -f "$basedir_header") ]] && "$basedir_header"
   # Iterate over files.
   for file in "${files[@]}"; do
-    base=$(basename $file)
-    dest="$HOME/$base"
-    echo "basedir = $basedir"
-    echo "fullpath = $fullpath"
+    # Get pathname relative to
+    base=$(basename "$file")
+    relpath=$(relpath "$1")
+    filepath="$relpath/$file"
+    # base = filename relative to parent dir
+    #base="$(basename $relpath)"
+    dest="$HOME/$filepath"
     echo "base = $base"
+    echo "basedir = $basedir"
+    echo "relpath = $relpath"
+    echo "filepath = $filepath"
     echo "dest = $dest"
     # if '$file' is a directory,
     if [[ -d "$DOTFILES_ROOT/$fullpath" ]]; then
