@@ -127,6 +127,10 @@ function do_stuff() {
     # base = filename relative to parent dir
     #base="$(basename $relpath)"
     dest="$HOME/$base"
+    echo "basedir = $basedir"
+    echo "fullpath = $fullpath"
+    echo "base = $base"
+    echo "dest = $dest"
     # if '$file' is a directory,
     if [[ -d "$DOTFILES_ROOT/$fullpath" ]]; then
         [[ -e "$dest" ]] || mkdir -p "$dest"
