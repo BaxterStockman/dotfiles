@@ -105,6 +105,9 @@ function do_stuff() {
     # base = filename relative to parent dir
     base="$(basename $file)"
     dest="$HOME/$base"
+    echo "\$1 = $1"
+    echo "base = $base"
+    echo "dest = $dest"
     # Run _test function only if declared.
     if [[ $(declare -f "$1_test") ]]; then
       # If _test function returns a string, skip file and print that message.

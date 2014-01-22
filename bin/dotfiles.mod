@@ -90,28 +90,57 @@ function link_do() {
   ln -sf ${2#$HOME/} ~/
 }
 
+function relpath() {
+    local fullpath="$1"
+    OIFS="$IFS"
+    IFS="/"
+    dir_arr=($fullpath)
+    echo "${dir_arr[*]:1}"
+    IFS="$OIFS"
+}
+
+function basedir() {
+    local fullpath="$1"
+    OIFS="$IFS"
+    IFS="/"
+    dir_arr=($fullpath)
+    echo "${dir_arr[0]}"
+    IFS="$OIFS"
+}
+
+
 # Copy, link, init, etc.
 function do_stuff() {
   local base dest skip
   # '$1' holds the name of a subdirectory of .dotfiles
   local files=($DOTFILES_ROOT/$1/*)
+  basedir=$(basedir $1)
   # No files? abort.
   if (( ${#files[@]} == 0 )); then return; fi
   # Run _header function only if declared.
-  [[ $(declare -f "$1_header") ]] && "$1_header"
+  [[ $(declare -f "$basedir_header") ]] && "$basedir_header"
   # Iterate over files.
   for file in "${files[@]}"; do
-    echo $file >> $HOME/df_test.txt
+    # Get pathname relative to
+    fullpath="$1$file"
+    base=$(relpath "$fullpath")
     # base = filename relative to parent dir
-    base="$(basename $file)"
+    #base="$(basename $relpath)"
     dest="$HOME/$base"
-    echo "\$1 = $1"
+    echo "basedir = $basedir"
+    echo "fullpath = $fullpath"
     echo "base = $base"
     echo "dest = $dest"
+    # if '$file' is a directory,
+    if [[ -d "$DOTFILES_ROOT/$fullpath" ]]; then
+        [[ -e "$dest" ]] || mkdir -p "$dest"
+        do_stuff $fullpath
+        continue
+    fi
     # Run _test function only if declared.
-    if [[ $(declare -f "$1_test") ]]; then
+    if [[ $(declare -f "$basedir_test") ]]; then
       # If _test function returns a string, skip file and print that message.
-      skip="$("$1_test" "$file" "$dest")"
+      skip="$("$basedir_test" "$file" "$dest")"
       if [[ "$skip" ]]; then
         e_error "Skipping ~/$base, $skip."
         continue
@@ -128,7 +157,7 @@ function do_stuff() {
       fi
     fi
     # Do stuff.
-    "$1_do" "$base" "$file"
+    "$basedir_do" "$base" "$file"
   done
 }
 
