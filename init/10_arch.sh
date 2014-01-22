@@ -2,7 +2,7 @@
 [[ "$(cat /etc/issue 2> /dev/null)" =~ Arch ]] || return 1
 
 e_header "Updating Pacman"
-sudo pacman -Syyu
+sudo pacman -Syy
 
 # Install packages
 packages=(
