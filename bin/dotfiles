@@ -149,6 +149,8 @@ function do_stuff() {
         continue
     fi
     # Run _test function only if declared.
+    _test="_test"
+    basedir_test="$basedir$_test"
     if [[ $(declare -f "$basedir_test") ]]; then
       # If _test function returns a string, skip file and print that message.
       skip="$("$basedir_test" "$file" "$dest")"
@@ -168,7 +170,6 @@ function do_stuff() {
       fi
     fi
     # Do stuff.
-    # Do it.
     _do="_do"
     basedir_do="$basedir$_do"
     "$basedir_do" "$filepath" "$file"
