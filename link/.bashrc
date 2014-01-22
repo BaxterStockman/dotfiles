@@ -24,6 +24,7 @@ function src_dir() {
     local file
     files=($(ls -A $1/ | sort))
     for file in ${files[@]}; do
+        echo "$1/$file"
         source "$1/$file"
     done
 }
