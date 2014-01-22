@@ -167,7 +167,7 @@ function do_stuff() {
     # Do stuff.
     # Do it.
     _do="_do"
-    basedir_do="$basedir$do"
+    basedir_do="$basedir$_do"
     echo "basedir_do = $basedir_do"
     "$basedir_do" "$filepath" "$file"
   done
