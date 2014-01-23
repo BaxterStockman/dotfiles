@@ -165,7 +165,7 @@ function do_stuff() {
   relpath=$(relpath "$1")
   # Run _header function only if declared.
   local _header="_header"
-  if [[ "$print_header" -ne "0" ]]; then
+  if [[ "$print_header" -ne "0" ]] || ! [[ "$print_header" ]]; then
     [[ $(declare -f "$basedir$_header") ]] && "$basedir$_header"
     print_header="0"
   fi
