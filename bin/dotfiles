@@ -226,8 +226,8 @@ function process_opt_dirs() {
   local dir_type
   local opt_dirs=($DOTFILES_ROOT/opt/*)
   if (( ${#opt_dirs[@]} == 0 )); then return; fi
-  # Iterate over files.
   e_header "Processing optional directories"
+  # Iterate over files.
   for dir in "${opt_dirs[@]}"; do
     opt_dir_base=$(basename "$dir")
     read -N 1 -t 15 -p "Process $opt_dir_base? [y/N] " process_dir; echo
