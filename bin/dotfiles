@@ -15,8 +15,13 @@ http://benalman.com/about/license/
 HELP
 exit; fi
 
+# Globals
 DOTFILES_ROOT=$HOME/.dotfiles
 DOTFILES_GIT=git://github.com/BaxterStockman/dotfiles.git
+
+# Flags for whether to print link/copy operations
+print_copy_header="1"
+print_link_header="1"
 
 # Logging stuff.
 function e_header()   { echo -e "\n\033[1m$@\033[0m"; }
@@ -117,7 +122,13 @@ function init_do() {
 }
 
 # Copy files.
-function copy_header() { e_header "Copying files into home directory"; }
+function copy_header() {
+  if [[ "$print_copy_header" -eq "1" ]]; then
+    e_header "Copying files into home directory";
+    print_copy_header="0"
+  fi
+}
+
 function copy_test() {
   if [[ -e "$2" && ! "$(cmp "$1" "$2" 2> /dev/null)" ]]; then
     echo "same file"
@@ -133,7 +144,13 @@ function copy_do() {
 }
 
 # Link files.
-function link_header() { e_header "Linking files into home directory"; }
+function link_header() {
+  if [[ "$print_link_header" -eq "1" ]]; then
+    e_header "Linking files into home directory";
+    print_link_header="0"
+  fi
+}
+
 function link_test() {
   [[ "$1" -ef "$2" ]] && echo "same file"
 }
@@ -164,11 +181,8 @@ function do_stuff() {
   # would be madeupdir/fakedir)
   relpath=$(relpath "$1")
   # Run _header function only if declared.
-  if [[ "$print_header" != "0" ]]; then
-    local _header="_header"
-    [[ $(declare -f "$basedir$_header") ]] && "$basedir$_header"
-    print_header="0"
-  fi
+  local _header="_header"
+  [[ $(declare -f "$basedir$_header") ]] && "$basedir$_header"
   # Iterate over files.
   for file in "${files[@]}"; do
     base=$(basename "$file")
@@ -199,12 +213,12 @@ function do_stuff() {
       # If _test function returns a string, skip file and print that message.
       skip="$("$basedir_test" "$file" "$dest")"
       if [[ "$skip" ]]; then
-        e_error "Skipping ~/$file, $skip."
+        e_error "Skipping $file, $skip."
         continue
       fi
       # Destination file already exists in ~/. Back it up!
       if [[ -e "$dest" ]]; then
-        e_arrow "Backing up ~/$dest."
+        e_arrow "Backing up $dest."
         # Set backup flag, so a nice message can be shown at the end.
         backup=1
         # Create backup dir if it doesn't already exist.
@@ -232,6 +246,8 @@ function process_opt_dirs() {
     opt_dir_base=$(basename "$dir")
     read -N 1 -t 15 -p "Process $opt_dir_base? [y/N] " process_dir; echo
     if [[ "$process_dir" =~ [Yy] ]]; then
+      print_copy_header="0"
+      print_link_header="0"
       local subdirs=($DOTFILES_ROOT/opt/$opt_dir_base/*)
       for subdir in "${subdirs[@]}"; do
           do_stuff "$(basename $subdir)" "opt/$opt_dir_base"
