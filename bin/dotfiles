@@ -165,7 +165,10 @@ function do_stuff() {
   relpath=$(relpath "$1")
   # Run _header function only if declared.
   local _header="_header"
-  [[ $(declare -f "$basedir$_header") ]] && "$basedir$_header"
+  if [[ "$print_header" -ne "0" ]]; then
+    [[ $(declare -f "$basedir$_header") ]] && "$basedir$_header"
+    print_header="0"
+  fi
   # Iterate over files.
   for file in "${files[@]}"; do
     base=$(basename "$file")
@@ -224,6 +227,7 @@ function process_opt_dirs() {
   local opt_dirs=($DOTFILES_ROOT/opt/*)
   if (( ${#opt_dirs[@]} == 0 )); then return; fi
   # Iterate over files.
+  e_header "Processing optional directories"
   for dir in "${opt_dirs[@]}"; do
     opt_dir_base=$(basename "$dir")
     read -N 1 -t 15 -p "Process $opt_dir_base? [y/N] " process_dir; echo
