@@ -288,20 +288,21 @@ function init_dotfiles() {
 
 # Initial stuff; do only if we haven't updated to the newest version
 if [[ "$SKIP_INIT" -ne "1" ]]; then
-  echo 'Dotfiles - "Cowboy" Ben Alman - http://benalman.com/'
 
-  if [[ "$1" == "-h" || "$1" == "--help" ]]; then cat <<HELP
+echo 'Dotfiles - "Cowboy" Ben Alman - http://benalman.com/'
 
-  Usage: $(basename "$0")
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then cat <<HELP
 
-  See the README for documentation.
-  https://github.com/cowboy/dotfiles
+Usage: $(basename "$0")
 
-  Copyright (c) 2012 "Cowboy" Ben Alman
-  Licensed under the MIT license.
-  http://benalman.com/about/license/
-  HELP
-  exit; fi
+See the README for documentation.
+https://github.com/cowboy/dotfiles
+
+Copyright (c) 2012 "Cowboy" Ben Alman
+Licensed under the MIT license.
+http://benalman.com/about/license/
+HELP
+exit; fi
 
   e_header "Performing initial configuration"
   # Ensure that we can actually, like, compile anything.
