@@ -19,7 +19,7 @@ else
 fi
 if [[ "$3" ]]; then
   skip_init="$3"
-  [[ "$new_dotfiles_install" -eq "1" ]] && echo "Skipping initialization"
+  [[ "$skip_init" -eq "1" ]] && echo "Skipping initialization"
 else
   skip_init="0"
 fi
