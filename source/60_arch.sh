@@ -7,6 +7,6 @@ alias packauto='packer -Syu --noedit --noconfirm'
 alias packquery='pacman -Q |grep'
 
 # Odds and ends
-if [[ `pgrep rxvt | wc -l` == 1 ]]; then
+if [[ `pgrep rxvt | wc -l` == 1 ]] && exists archey3; then
     archey3
 fi
