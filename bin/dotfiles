@@ -23,11 +23,13 @@ SCRIPT_NAME="$0"
 # Set up global control flow variables.
 if [[ "$1" ]]; then
   new_dotfiles_install="$1"
+  [[ "$new_dotfiles_install" -eq "1" ]] && echo "This is a new installation"
 else
   new_dotfiles_install="0"
 fi
 if [[ "$2" ]]; then
   SKIP_INIT="$2"
+  [[ "$new_dotfiles_install" -eq "1" ]] && echo "Skipping initialization"
 else
   SKIP_INIT="0"
 fi
