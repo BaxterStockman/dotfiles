@@ -164,8 +164,8 @@ function do_stuff() {
   # would be madeupdir/fakedir)
   relpath=$(relpath "$1")
   # Run _header function only if declared.
-  local _header="_header"
-  if [[ "$print_header" -ne "0" ]] || ! [[ "$print_header" ]]; then
+  if [[ "$print_header" != "0" ]]; then
+    local _header="_header"
     [[ $(declare -f "$basedir$_header") ]] && "$basedir$_header"
     print_header="0"
   fi
