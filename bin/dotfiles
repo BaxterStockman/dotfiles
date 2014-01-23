@@ -24,6 +24,48 @@ function e_success()  { echo -e " \033[1;32m✔\033[0m  $@"; }
 function e_error()    { echo -e " \033[1;31m✖\033[0m  $@"; }
 function e_arrow()    { echo -e " \033[1;33m➜\033[0m  $@"; }
 
+# Echoes a string representing a directory
+# specification minus the root directory.
+#
+# E.g., the relpath of 'foo/bar/baz'
+# is 'bar/baz'
+function relpath() {
+    local fullpath="$1"
+    OIFS="$IFS"
+    IFS="/"
+    dir_arr=($fullpath)
+    echo "${dir_arr[@]:1}"
+    IFS="$OIFS"
+}
+
+# Echoes a string representing a directory
+# specification minus the last directory/file.
+#
+# E.g., the relpath of 'foo/bar/baz'
+# is 'foo/bar'
+function pathname() {
+    local fullpath="$1"
+    OIFS="$IFS"
+    IFS="/"
+    dir_arr=($fullpath)
+    echo "${dir_arr[@]::(${#dir_arr[@]}-1)}"
+    IFS="$OIFS"
+}
+
+# Echoes a string representing the root
+# directory of a directory specification.
+#
+# E.g., the basedir of 'foo/bar/baz'
+# is 'foo'
+function basedir() {
+    local fullpath="$1"
+    OIFS="$IFS"
+    IFS="/"
+    dir_arr=($fullpath)
+    echo "${dir_arr[@]::1}"
+    IFS="$OIFS"
+}
+
 # Given a list of desired items and installed items, return a list
 # of uninstalled items. Arrays in bash are insane (not in a good way).
 function to_install() {
@@ -77,8 +119,10 @@ function copy_test() {
   fi
 }
 function copy_do() {
-  e_success "Copying $2 to $HOME/$1."
-  cp "$2" "$HOME/$1"
+  e_success "Copying $2 to $1."
+  dest_dir=$(pathname $1)
+  [[ -e $dest_dir ]] || mkdir -p $dest_dir
+  cp "$2" "$1"
 }
 
 # Link files.
@@ -87,26 +131,10 @@ function link_test() {
   [[ "$1" -ef "$2" ]] && echo "same file"
 }
 function link_do() {
-  e_success "Linking $2 to $HOME/$1."
-  ln -sf ${2#$HOME/} "$HOME/$1"
-}
-
-function relpath() {
-    local fullpath="$1"
-    OIFS="$IFS"
-    IFS="/"
-    dir_arr=($fullpath)
-    echo "${dir_arr[*]:1}"
-    IFS="$OIFS"
-}
-
-function basedir() {
-    local fullpath="$1"
-    OIFS="$IFS"
-    IFS="/"
-    dir_arr=($fullpath)
-    echo "${dir_arr[0]}"
-    IFS="$OIFS"
+  e_success "Linking $2 to $1."
+  dest_dir=$(pathname $1)
+  [[ -e $dest_dir ]] || mkdir -p $dest_dir
+  ln -sf ${2#$HOME/} "$1"
 }
 
 
@@ -125,11 +153,12 @@ function do_stuff() {
     base=$(basename "$file")
     # relpath() returns the pathname relative
     # to an immediate subdirectory of .dotfiles
-    # (i.e. init, copy, link)
+    # (e.g. the relpath of source/madeupdir/fakedir
+    # would be madeupdir/fakedir)
     relpath=$(relpath "$1")
-    # If 'relpath' is not empty, append
-    # filepath = relpath + base.
-    # Otherwise filepath = base.
+    # If 'relpath' is not empty, filepath = relpath + base.
+    # Otherwise filepath = base. (e.g., the filepath of
+    # source/madeupdir/fakedir/dummy is madeupdir/fakedir/dummy)
     if [[ "$relpath" ]]; then
         filepath="$relpath/$base"
     else
@@ -141,7 +170,7 @@ function do_stuff() {
     # if '$file' is a directory, create it in the
     # $HOME directory unless it already exists
     if [[ -d "$file" ]]; then
-        [[ -e "$dest" ]] || mkdir -p "$dest"
+        #[[ -e "$dest" ]] || mkdir -p "$dest"
         # recurse on the directory so that
         # all files in subfolders get processed
         do_stuff $fullpath
@@ -172,7 +201,7 @@ function do_stuff() {
     # Do stuff.
     _do="_do"
     basedir_do="$basedir$_do"
-    "$basedir_do" "$filepath" "$file"
+    "$basedir_do" "$dest" "$file"
   done
 }
 
