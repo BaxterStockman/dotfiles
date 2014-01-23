@@ -16,8 +16,14 @@ HELP
 exit; fi
 
 # Globals
-DOTFILES_ROOT=$HOME/.dotfiles
+DOTFILES_ROOT="$HOME/.dotfiles"
 DOTFILES_GIT=git://github.com/BaxterStockman/dotfiles.git
+SCRIPT_NAME="$0"
+if [[ "$1" ]]; then
+  SKIP_INIT="$!"
+else
+  SKIP_INIT="0"
+fi
 
 # Flags for whether to print link/copy operations
 print_copy_header="1"
@@ -255,44 +261,57 @@ function process_opt_dirs() {
     fi
   done
 }
+
+function init_dotfiles() {
+  if [[ ! -d $DOTFILES_ROOT ]]; then
+    new_dotfiles_install=1
+    # ~/.dotfiles doesn't exist? Clone it!
+    e_header "Downloading dotfiles"
+    git clone --recursive $DOTFILES_GIT $DOTFILES_ROOT
+    cd $DOTFILES_ROOT
+  else
+    # Make sure we have the latest files.
+    e_header "Updating dotfiles"
+    cd $DOTFILES_ROOT
+    git pull
+    git submodule update --init --recursive --quiet
+  fi
+  # Pass '1' as argument so that we skip
+  # initialization on re-execution
+  $SCRIPT_NAME 1
+  exit 0
+}
+
 # Enough with the functions, let's do stuff.
 
-# Ensure that we can actually, like, compile anything.
-if [[ ! "$(type -P gcc)" && "$OSTYPE" =~ ^darwin ]]; then
-  e_error "XCode or the Command Line Tools for XCode must be installed first."
-  exit 1
+# Initial stuff; do only if we haven't updated to the newest version
+if [[ "$SKIP_INIT" -ne "1" ]]; then
+  # Ensure that we can actually, like, compile anything.
+  if [[ ! "$(type -P gcc)" && "$OSTYPE" =~ ^darwin ]]; then
+    e_error "XCode or the Command Line Tools for XCode must be installed first."
+    exit 1
+  fi
+
+  # If Git is not installed, install it (Ubuntu only, since Git comes standard
+  # with recent XCode or CLT)
+  if [[ ! "$(type -P git)" && "$(cat /etc/issue 2> /dev/null)" =~ Ubuntu ]]; then
+    e_header "Installing Git"
+    sudo apt-get -qq install git-core
+  fi
+
+  # If Git isn't installed by now, something exploded. We gots to quit!
+  if [[ ! "$(type -P git)" ]]; then
+    e_error "Git should be installed. It isn't. Aborting."
+    exit 1
+  fi
+
+  # Update existing sudo time stamp if set, otherwise do nothing.
+  while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
+  # Initialize.
+  init_dotfiles
 fi
 
-# If Git is not installed, install it (Ubuntu only, since Git comes standard
-# with recent XCode or CLT)
-if [[ ! "$(type -P git)" && "$(cat /etc/issue 2> /dev/null)" =~ Ubuntu ]]; then
-  e_header "Installing Git"
-  sudo apt-get -qq install git-core
-fi
-
-# If Git isn't installed by now, something exploded. We gots to quit!
-if [[ ! "$(type -P git)" ]]; then
-  e_error "Git should be installed. It isn't. Aborting."
-  exit 1
-fi
-
-# Update existing sudo time stamp if set, otherwise do nothing.
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
-
-# Initialize.
-if [[ ! -d $DOTFILES_ROOT ]]; then
-  new_dotfiles_install=1
-  # ~/.dotfiles doesn't exist? Clone it!
-  e_header "Downloading dotfiles"
-  git clone --recursive $DOTFILES_GIT $DOTFILES_ROOT
-  cd $DOTFILES_ROOT
-else
-  # Make sure we have the latest files.
-  e_header "Updating dotfiles"
-  cd $DOTFILES_ROOT
-  git pull
-  git submodule update --init --recursive --quiet
-fi
 
 # Utilities, helpers.
 source $DOTFILES_ROOT/source/10_misc.sh
