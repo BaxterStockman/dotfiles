@@ -19,8 +19,15 @@ exit; fi
 DOTFILES_ROOT="$HOME/.dotfiles"
 DOTFILES_GIT=git://github.com/BaxterStockman/dotfiles.git
 SCRIPT_NAME="$0"
+
+# Set up global control flow variables.
 if [[ "$1" ]]; then
-  SKIP_INIT="$1"
+  new_dotfiles_install="$1"
+else
+  new_dotfiles_install="0"
+fi
+if [[ "$2" ]]; then
+  SKIP_INIT="$2"
 else
   SKIP_INIT="0"
 fi
@@ -160,6 +167,7 @@ function link_header() {
 function link_test() {
   [[ "$1" -ef "$2" ]] && echo "same file"
 }
+
 function link_do() {
   dest_dir=$(pathname $1)
   [[ -e $dest_dir ]] || e_arrow "Creating $dest_dir." && mkdir -p $dest_dir
@@ -276,9 +284,9 @@ function init_dotfiles() {
     git pull
     git submodule update --init --recursive --quiet
   fi
-  # Pass '1' as argument so that we skip
+  # Pass two '1's as arguments so that we skip
   # initialization on re-execution
-  $SCRIPT_NAME 1
+  $SCRIPT_NAME 1 1
   exit 0
 }
 
