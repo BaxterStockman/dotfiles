@@ -304,7 +304,7 @@ HELP
 # Enough with the functions, let's do stuff.
 
 # Initial stuff; do only if we haven't updated to the newest version
-if [[ "$SKIP_INIT" -ne "1" ]]; then
+if [[ "$skip_init" -ne "1" ]]; then
   intro $1
 
   e_header "Performing initial configuration"
