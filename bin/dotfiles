@@ -296,6 +296,7 @@ function init_dotfiles() {
 
 # Initial stuff; do only if we haven't updated to the newest version
 if [[ "$SKIP_INIT" -ne "1" ]]; then
+  e_header "Performing initial configuration"
   # Ensure that we can actually, like, compile anything.
   if [[ ! "$(type -P gcc)" && "$OSTYPE" =~ ^darwin ]]; then
     e_error "XCode or the Command Line Tools for XCode must be installed first."
@@ -319,6 +320,7 @@ if [[ "$SKIP_INIT" -ne "1" ]]; then
   while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
   # Initialize.
+  e_header "Pulling in updated dotfiles repo"
   init_dotfiles
 fi
 
@@ -353,7 +355,7 @@ if [[ "$backup" ]]; then
 fi
 
 # Lest I forget to do a few additional things...
-if [[ "$new_dotfiles_install" && -e "conf/firsttime_reminder.sh" ]]; then
+if [[ "$new_dotfiles_install" -eq "1" && -e "conf/firsttime_reminder.sh" ]]; then
   e_header "First-Time Reminders"
   source "conf/firsttime_reminder.sh"
 fi
