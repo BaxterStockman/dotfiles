@@ -288,8 +288,8 @@ function init_dotfiles() {
   fi
   # Pass two '1's as arguments so that we skip
   # initialization on re-execution
-  e_header "Executing updated dotfiles script"
-  $SCRIPT_NAME 1 1
+  e_header "Executing updated $SCRIPT_NAME script"
+  $DOTFILES_ROOT/bin/$SCRIPT_NAME 1 1
   exit 0
 }
 
