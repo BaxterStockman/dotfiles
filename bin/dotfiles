@@ -11,14 +11,14 @@ SCRIPT_NAME="dotfiles"
 SCRIPT="$DOTFILES_ROOT/bin/$SCRIPT_NAME"
 
 # Set up global control flow variables.
-if [[ "$1" ]]; then
-  new_dotfiles_install="$1"
+if [[ "$2" ]]; then
+  new_dotfiles_install="$2"
   [[ "$new_dotfiles_install" -eq "1" ]] && echo "This is a new installation"
 else
   new_dotfiles_install="0"
 fi
-if [[ "$2" ]]; then
-  skip_init="$2"
+if [[ "$3" ]]; then
+  skip_init="$3"
   [[ "$new_dotfiles_install" -eq "1" ]] && echo "Skipping initialization"
 else
   skip_init="0"
@@ -280,7 +280,7 @@ function init_dotfiles() {
   # Pass '1's as arguments so that we skip
   # initialization on re-execution
   e_header "Executing updated $SCRIPT_NAME script"
-  $SCRIPT $new_dotfiles_install $skip_init
+  $SCRIPT 0 $new_dotfiles_install $skip_init
   exit 0
 }
 
@@ -305,7 +305,7 @@ HELP
 
 # Initial stuff; do only if we haven't updated to the newest version
 if [[ "$SKIP_INIT" -ne "1" ]]; then
-  intro
+  intro $1
 
   e_header "Performing initial configuration"
   # Ensure that we can actually, like, compile anything.
