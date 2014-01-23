@@ -34,7 +34,7 @@ function relpath() {
     OIFS="$IFS"
     IFS="/"
     dir_arr=($fullpath)
-    echo "${dir_arr[@]:1}"
+    echo "${dir_arr[*]:1}"
     IFS="$OIFS"
 }
 
@@ -48,7 +48,7 @@ function pathname() {
     OIFS="$IFS"
     IFS="/"
     dir_arr=($fullpath)
-    echo "${dir_arr[@]::(${#dir_arr[@]}-1)}"
+    echo "${dir_arr[*]::(${#dir_arr[@]}-1)}"
     IFS="$OIFS"
 }
 
@@ -62,7 +62,7 @@ function basedir() {
     OIFS="$IFS"
     IFS="/"
     dir_arr=($fullpath)
-    echo "${dir_arr[@]::1}"
+    echo "${dir_arr[*]::1}"
     IFS="$OIFS"
 }
 
