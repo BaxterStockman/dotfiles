@@ -246,8 +246,8 @@ function process_opt_dirs() {
     opt_dir_base=$(basename "$dir")
     read -N 1 -t 15 -p "Process $opt_dir_base? [y/N] " process_dir; echo
     if [[ "$process_dir" =~ [Yy] ]]; then
-      print_copy_header="0"
-      print_link_header="0"
+      print_copy_header="1"
+      print_link_header="1"
       local subdirs=($DOTFILES_ROOT/opt/$opt_dir_base/*)
       for subdir in "${subdirs[@]}"; do
           do_stuff "$(basename $subdir)" "opt/$opt_dir_base"
