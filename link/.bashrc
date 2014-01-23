@@ -10,6 +10,7 @@ export DOTFILES_ROOT=$HOME/.dotfiles
 export CONFIG_PATH=$DOTFILES_ROOT/source
 export PATH=$DOTFILES_ROOT/bin:$PATH
 [[ -e $HOME/bin ]] && export PATH=$HOME/bin:$PATH
+[[ -e $HOME/lib ]] && export LD_LIBRARY_PATH=$HOME/lib
 
 # Source file if it exists
 # First argument = directory

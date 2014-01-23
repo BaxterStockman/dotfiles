@@ -54,8 +54,11 @@ if [[ -z "$TMUX" ]] && exists tmux &> /dev/null; then
         tmux new-session -s $base_session \; detach
     fi
 
+    # If irssi is installed and not already running under
+    # the current user's uid, create a new window with the
+    # value of $irc_win as its name and execute irssi
     if [[ -z "$T3" ]] && exists irssi &> /dev/null; then
-        tmux new-window -t $base_session $irc_win $irc_win;
+        tmux new-window -t $base_session -n $irc_win irssi;
         irssi_nickpane $irc_win ;
     fi
 
