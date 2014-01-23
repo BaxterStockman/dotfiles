@@ -20,7 +20,7 @@ DOTFILES_ROOT="$HOME/.dotfiles"
 DOTFILES_GIT=git://github.com/BaxterStockman/dotfiles.git
 SCRIPT_NAME="$0"
 if [[ "$1" ]]; then
-  SKIP_INIT="$!"
+  SKIP_INIT="$1"
 else
   SKIP_INIT="0"
 fi
