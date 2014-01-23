@@ -121,7 +121,7 @@ function copy_test() {
 function copy_do() {
   e_success "Copying $2 to $1."
   dest_dir=$(pathname $1)
-  [[ -e $dest_dir ]] || mkdir -p $dest_dir
+  [[ -e $dest_dir ]] || e_success "Creating $dest_dir" && mkdir -p $dest_dir
   cp "$2" "$1"
 }
 
@@ -132,8 +132,8 @@ function link_test() {
 }
 function link_do() {
   e_success "Linking $2 to $1."
-  dest_dir=$(pathname $1)
-  [[ -e $dest_dir ]] || mkdir -p $dest_dir
+  dest_dir=$(pathname $2)
+  [[ -e $dest_dir ]] || e_success "Creating $dest_dir" && mkdir -p $dest_dir
   ln -sf ${2#$HOME/} "$1"
 }
 
