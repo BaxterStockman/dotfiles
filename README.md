@@ -4,21 +4,28 @@ Cloned from [Ben Alman's](https://github.com/cowboy/dotfiles) dotfiles repo.
 
 I've made a few small changes to better fit my preferred distributions and environment.
 
-* The [dotfiles][dotfiles] command no longer installs Nave, rbenv, or gems.
-* The default editor is set to Vim, and the installer pulls in spf13-vim.
+* The [dotfiles][dotfiles] command no longer installs `Nave`, `rbenv`, or `gems`.
+* The default editor is set to `Vim`, and the installer pulls in `spf13-vim.`
+* The installer prompts you whether to install [Perlbrew][perlbrew].
 * The [init][init] files now include scripts for Arch Linux.
 
-I'm also working on implementing recursion in the [dotfiles][dotfiles] script so that it's
-possible to link and/or copy configuration files that don't exist directly in the $HOME directory.
-For instance, my [dwb][dwb] configuration files live at $HOME/.config/dwb, so I want the ability
-to create the whole .config/dwb directory structure -- and to do so without clobbering whatever
-other files might live somewhere in that tree on a given machine.  Right now, the recursion only
-sort of works, but I'm sprucing it up day by day.
+I have also implemented recursive processing of directories in the [dotfiles][dotfiles] script so
+that it's possible to link and/or copy configuration files that don't exist directly in the `$HOME` directory.
+For instance, my [dwb][dwb] configuration files live at `$HOME/.config/dwb`, so I want the ability
+to create the whole `.config/dwb` directory structure, if need be, together with whatever files I
+want to copy or link -- and to do so without clobbering whatever other files might live somewhere in that
+tree on a given machine.
+
+Finally, I have beefed up the script's ability to handle optional initialization, linking, and
+copying.  Under the .dotfiles/opt directory, you can create subdirectories containing their own
+`init`, `link`, and `copy` directories (for instance, I have `opt/dwb/copy`) with files that will
+only be installed if you answer yes when prompted by `dotfiles`.
 
 [dotfiles]: bin/dotfiles
 [bin]: https://github.com/cowboy/dotfiles/tree/master/bin
 [init]: https://github.com/cowboy/dotfiles/tree/master/bin
 [dwb]: https://portix.bitbucket.org/
+[perlbrew]: http://perlbrew.pl/
 
 To install, paste the following into your shell and execute:
 

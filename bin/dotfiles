@@ -1,19 +1,8 @@
 #!/usr/bin/env bash
 
-echo 'Dotfiles - "Cowboy" Ben Alman - http://benalman.com/'
-
-if [[ "$1" == "-h" || "$1" == "--help" ]]; then cat <<HELP
-
-Usage: $(basename "$0")
-
-See the README for documentation.
-https://github.com/cowboy/dotfiles
-
-Copyright (c) 2012 "Cowboy" Ben Alman
-Licensed under the MIT license.
-http://benalman.com/about/license/
-HELP
-exit; fi
+# Copyright (c) 2012 "Cowboy" Ben Alman
+# Licensed under the MIT license.
+# http://benalman.com/about/license/
 
 # Globals
 DOTFILES_ROOT="$HOME/.dotfiles"
@@ -22,17 +11,17 @@ SCRIPT_NAME="dotfiles"
 SCRIPT="$DOTFILES_ROOT/bin/$SCRIPT_NAME"
 
 # Set up global control flow variables.
-if [[ "$1" ]]; then
-  new_dotfiles_install="$1"
+if [[ "$2" ]]; then
+  new_dotfiles_install="$2"
   [[ "$new_dotfiles_install" -eq "1" ]] && echo "This is a new installation"
 else
   new_dotfiles_install="0"
 fi
-if [[ "$2" ]]; then
-  SKIP_INIT="$2"
-  [[ "$new_dotfiles_install" -eq "1" ]] && echo "Skipping initialization"
+if [[ "$3" ]]; then
+  skip_init="$3"
+  [[ "$skip_init" -eq "1" ]] && echo "Skipping initialization"
 else
-  SKIP_INIT="0"
+  skip_init="0"
 fi
 
 # Flags for whether to print link/copy operations
@@ -274,6 +263,7 @@ function process_opt_dirs() {
 }
 
 function init_dotfiles() {
+  skip_init=1
   if [[ ! -d $DOTFILES_ROOT ]]; then
     new_dotfiles_install=1
     # ~/.dotfiles doesn't exist? Clone it!
@@ -287,17 +277,36 @@ function init_dotfiles() {
     git pull
     git submodule update --init --recursive --quiet
   fi
-  # Pass two '1's as arguments so that we skip
+  # Pass '1's as arguments so that we skip
   # initialization on re-execution
   e_header "Executing updated $SCRIPT_NAME script"
-  $SCRIPT 1 1
+  $SCRIPT 0 $new_dotfiles_install $skip_init
   exit 0
+}
+
+function intro() {
+  echo 'Dotfiles - "Cowboy" Ben Alman - http://benalman.com/'
+
+  if [[ "$1" == "-h" || "$1" == "--help" ]]; then cat <<HELP
+
+Usage: $(basename "$0")
+
+See the README for documentation.
+https://github.com/cowboy/dotfiles
+
+Copyright (c) 2012 "Cowboy" Ben Alman
+Licensed under the MIT license.
+http://benalman.com/about/license/
+HELP
+  exit; fi
 }
 
 # Enough with the functions, let's do stuff.
 
 # Initial stuff; do only if we haven't updated to the newest version
-if [[ "$SKIP_INIT" -ne "1" ]]; then
+if [[ "$skip_init" -ne "1" ]]; then
+  intro $1
+
   e_header "Performing initial configuration"
   # Ensure that we can actually, like, compile anything.
   if [[ ! "$(type -P gcc)" && "$OSTYPE" =~ ^darwin ]]; then
