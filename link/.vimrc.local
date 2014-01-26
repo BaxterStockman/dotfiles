@@ -136,6 +136,11 @@ set notimeout ttimeout ttimeoutlen=200  " Quickly time out on keycodes; never
 
 set pastetoggle=<F11>   " Use F11 to toggle between 'paste' and 'nopaste'
 
+set tw=79           " Limit all lines to 79 characters
+
+set formatoptions+=t    " Wraps text as close as possible to 79 characters
+                        " without splitting words
+
 map Y y$
                     " Map Y to work like D and C, i.e. to yank until EOL,
                     " rather than to act as yy, which is the default.

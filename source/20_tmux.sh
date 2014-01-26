@@ -41,6 +41,7 @@ irssi_repair() {
 }
 
 if [[ -z "$TMUX" ]] && exists tmux &> /dev/null; then
+    export TERM="screen-256color"
     if [[ -n "$SSH_CONNECTION" ]]; then
         prefix="ssh"
     else
