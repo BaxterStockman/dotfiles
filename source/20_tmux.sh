@@ -6,6 +6,8 @@
 # sessions. See https://github.com/spencertipping/bashrc-tmux for usage
 # information.
 
+[[ $EUID -eq 0 ]] && return
+
 T3=$(pgrep -u $USER -x irssi)
 logfile="$HOME/.log/bash_tmux.log"
 prefix=""
