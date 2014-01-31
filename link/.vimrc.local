@@ -169,5 +169,7 @@ let g:autoclose_vim_commentmode = 1     " try to stop autoclose from closing  co
 
 let g:C_SourceCodeExtensions = 'c cc cp cxx cpp CPP c++ C i ii hxx h'
 
+let g:Perl_MapLeader = ';'
+
 " Maybe fixes BundleSearch errors?
 set shell=/bin/bash
