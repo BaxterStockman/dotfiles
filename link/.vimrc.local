@@ -155,16 +155,6 @@ autocmd BufRead,BufWrite * if ! &bin | silent! %s/\s\+$//ge | endif
 " Automatically detect filetype upon :w
 autocmd BufRead,BufWrite,BufWritePost * :filetype detect
 
-" This is totally awesome - remap jj to escape in insert mode.  You'll never type jj anyway, so it's
-" great!
-inoremap jj <Esc>
-
-nnoremap JJJJ <Nop>
-
-" Enter and exit 'hex mode' (streaming buffer through xxd)
-noremap <F7> :%!xxd <CR>
-noremap <F8> :%!xxd -r <CR>
-
 let g:autoclose_vim_commentmode = 1     " try to stop autoclose from closing  comment characters in Vim files
 
 let g:C_SourceCodeExtensions = 'c cc cp cxx cpp CPP c++ C i ii hxx h'
@@ -173,3 +163,27 @@ let g:Perl_MapLeader = ';'
 
 " Maybe fixes BundleSearch errors?
 set shell=/bin/bash
+
+
+""""""""""""""""""""""
+""" Key remappings """
+""""""""""""""""""""""
+
+" Tab handling mappings
+nnoremap th :tabfirst<CR>
+nnoremap tj :tabnext<CR>
+nnoremap tk :tabprev<CR>
+nnoremap tl :tablast<CR>
+nnoremap tt :tabedit<Space>
+nnoremap tn :tabnext<Space>
+nnoremap tm :tabm<Space>
+nnoremap td :tabclose<CR>
+
+" Enter normal mode
+inoremap jjj <Esc>
+nnoremap JJJJ <Nop>
+
+" Enter and exit 'hex mode' (streaming buffer through xxd)
+noremap <F7> :%!xxd <CR>
+noremap <F8> :%!xxd -r <CR>
+

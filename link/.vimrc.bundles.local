@@ -2,3 +2,6 @@ Bundle 'vitalk/vim-shebang'
 Bundle 'vim-scripts/c.vim'
 Bundle 'vim-scripts/perl-support.vim'
 Bundle 'vim-scripts/LaTeX-Box'
+Bundle 'vim-scripts/jQuery'
+Bundle 'pangloss/vim-javascript'
+
