@@ -15,17 +15,9 @@ if has("multi_byte")
     set fileencodings=ucs-bom,utf-8,latin1
 endif
 
-"set backup          " automatically create backup files
-"set backupdir=~/.vim/backup
-"set directory=~/.vim/tmp
-
 set t_kb= t_kD=[3~  " Meant to deal with errors related to Xterm's
                         " key configuration
                         "
-"source $VIMRUNTIME/mswin.vim    " Simulate Windows cut/copy/paste
-
-"set clipboard=unnamed  " allows copying and pasting between instances
-
 set nocompatible    " Meant to deal with errors related to strong Vi
                     " compatibility
 
@@ -54,9 +46,6 @@ set showmatch       " When a bracket is inserted, briefly jump to the matching
                     " screen. The time to show the match can be set with
                     " 'matchtime'.
 
-"set hlsearch        " When there is a previous search pattern, highlight all
-                    " its matches.
-
 set incsearch       " While typing a search command, show immediately where the
                     " so far typed pattern matches.
 
@@ -65,11 +54,6 @@ set ignorecase      " Ignore case in search patterns.
 set smartcase       " Override the 'ignorecase' option if the search pattern
                     " contains upper case characters.
 
-"set backspace=2     " Influences the working of <BS>, <Del>, CTRL-W
-                    " and CTRL-U in Insert mode. This is a list of items,
-                    " separated by commas. Each item allows a way to backspace
-                    " over something.
-
 set autoindent      " Copy indent from current line when starting a new line
                     " (typing <CR> in Insert mode or when using the "o" or "O"
                     " command).
@@ -77,18 +61,18 @@ set autoindent      " Copy indent from current line when starting a new line
 set textwidth=100   " Maximum width of text that is being inserted. A longer
                     " line will be broken after white space to get this width.
 
-set formatoptions=c,q,r,t " This is a sequence of letters which describes how
-                    " automatic formatting is to be done.
-                    "
-                    " letter    meaning when present in 'formatoptions'
-                    " ------    ---------------------------------------
-                    " c         Auto-wrap comments using textwidth, inserting
-                    "           the current comment leader automatically.
-                    " q         Allow formatting of comments with "gq".
-                    " r         Automatically insert the current comment leader
-                    "           after hitting <Enter> in Insert mode.
-                    " t         Auto-wrap text using textwidth (does not apply
-                    "           to comments)
+set formatoptions=c,q,r,t   " This is a sequence of letters which describes how
+                            " automatic formatting is to be done.
+                            "
+                            " letter    meaning when present in 'formatoptions'
+                            " ------    ---------------------------------------
+                            " c         Auto-wrap comments using textwidth, inserting
+                            "           the current comment leader automatically.
+                            " q         Allow formatting of comments with "gq".
+                            " r         Automatically insert the current comment leader
+                            "           after hitting <Enter> in Insert mode.
+                            " t         Auto-wrap text using textwidth (does not apply
+                            "           to comments)
 
 set ruler           " Show the line and column number of the cursor position,
                     " separated by a comma.
@@ -187,3 +171,47 @@ nnoremap JJJJ <Nop>
 noremap <F7> :%!xxd <CR>
 noremap <F8> :%!xxd -r <CR>
 
+" Map Y to work like D and C, i.e. to yank until EOL,
+" rather than to act as yy, which is the default.
+map Y y$
+
+" Map <C-L> (redraw screen) to also turn off
+" search highlighting until the next search.
+nnoremap <C-L> :nohl<CR><C-L>
+
+
+""""""""""""""""""""""""""
+""" Functions/Commands """
+""""""""""""""""""""""""""
+
+" Syntax: [:Etabs | :Ewindows | :Evwindows] file1 [, file2, ... , fileN]
+" Opens a list of files in different tabs/windows/vertical windows
+command! -complete=file -nargs=+ Etabs call s:ETW('tabnew', <f-args>)
+command! -complete=file -nargs=+ Ewindows call s:ETW('new', <f-args>)
+command! -complete=file -nargs=+ Evwindows call s:ETW('vnew', <f-args>)
+
+function! s:ETW(what, ...)
+  for f1 in a:000
+    let files = glob(f1)
+    if files == ''
+      execute a:what . ' ' . fnameescape(f1)
+    else
+      for f2 in split(files, "\n")
+        execute a:what . ' ' . fnameescape(f2)
+      endfor
+    endif
+  endfor
+endfunction
+
+command! -nargs=+ TabPos call s:TabPos(<f-args>)
+command! -nargs=? FirstTab call s:TabPos(0, <f-args>)
+
+function! s:TabPos(posi, ...)
+    let file = fnameescape(a:1)
+    if file == '0'
+        execute "tabnew"
+    else
+        execute "tabnew " . file
+    endif
+    execute a:posi . "tabmove"
+endfunction
