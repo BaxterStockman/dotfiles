@@ -22,7 +22,6 @@ log() {
 
 irssi_nickpane() {
     [[ -n $2 ]] && end_target=$2 || end_target=$1
-    log $logfile "end target is window $end_target"
     tmux selectw -t $1
     tmux setw main-pane-width $(( $(tput cols) - 21));
     tmux splitw -v "cat ~/.irssi/nicklistfifo";
@@ -37,7 +36,6 @@ irssi_nickpane() {
 
 irssi_repair() {
     currentw="$(tmux display-message -p '#W')"
-    log $logfile "will return to $currentw after repairing irssi"
     (( $(tmux lsp -t $1 | wc -l) > 1 )) && tmux killp -a -t 0
     irssi_nickpane $1 $currentw
 }
