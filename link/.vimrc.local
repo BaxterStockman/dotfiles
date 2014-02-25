@@ -139,6 +139,9 @@ autocmd BufRead,BufWrite * if ! &bin | silent! %s/\s\+$//ge | endif
 " Automatically detect filetype upon :w
 autocmd BufRead,BufWrite,BufWritePost * :filetype detect
 
+" Don't automatically fold
+set foldmethod=manual
+
 let g:autoclose_vim_commentmode = 1     " try to stop autoclose from closing  comment characters in Vim files
 
 let g:C_SourceCodeExtensions = 'c cc cp cxx cpp CPP c++ C i ii hxx h'
