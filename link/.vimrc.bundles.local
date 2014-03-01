@@ -4,4 +4,5 @@ Bundle 'vim-scripts/perl-support.vim'
 Bundle 'vim-scripts/LaTeX-Box'
 Bundle 'vim-scripts/jQuery'
 Bundle 'pangloss/vim-javascript'
+Bundle 'Floobits'
 
