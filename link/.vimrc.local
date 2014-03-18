@@ -139,6 +139,9 @@ autocmd BufRead,BufWrite * if ! &bin | silent! %s/\s\+$//ge | endif
 " Automatically detect filetype upon :w
 autocmd BufRead,BufWrite,BufWritePost * :filetype detect
 
+" Don't automatically fold
+set foldmethod=manual
+
 let g:autoclose_vim_commentmode = 1     " try to stop autoclose from closing  comment characters in Vim files
 
 let g:C_SourceCodeExtensions = 'c cc cp cxx cpp CPP c++ C i ii hxx h'
@@ -199,7 +202,7 @@ command! -complete=file -nargs=+ Evwindows call s:ETW('vnew', <f-args>)
 
 function! s:ETW(what, ...)
   for f1 in a:000
-    let files = glob(f1)
+    let files = glob(fnamemodify(f1, ":p"))
     if files == ''
       execute a:what . ' ' . fnameescape(f1)
     else
@@ -210,10 +213,10 @@ function! s:ETW(what, ...)
   endfor
 endfunction
 
-command! -nargs=+ TabPos call s:TabPos(<f-args>)
-command! -nargs=? FirstTab call s:TabPos(0, <f-args>)
+command! -nargs=+ Tabposition call s:Tabposition(<f-args>)
+command! -nargs=? Tabfirst call s:Tabposition(0, <f-args>)
 
-function! s:TabPos(posi, ...)
+function! s:Tabposition(posi, ...)
     let file = fnameescape(a:1)
     if file == '0'
         execute "tabnew"

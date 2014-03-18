@@ -1,3 +1,6 @@
+# Enable extended globbing
+shopt -s extglob
+
 # Case-insensitive globbing (used in pathname expansion)
 shopt -s nocaseglob
 
