@@ -4,4 +4,6 @@ Bundle 'vim-scripts/perl-support.vim'
 Bundle 'vim-scripts/LaTeX-Box'
 Bundle 'vim-scripts/jQuery'
 Bundle 'pangloss/vim-javascript'
-
+Bundle 'lukerandall/haskellmode-vim'
+Bundle 'eagletmt/ghcmod-vim'
+Bundle 'bitc/vim-hdevtools'

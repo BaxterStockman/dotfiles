@@ -2,19 +2,19 @@
 
 ## Multimedia keys
 ## Raise volume
-#"amixer set Master playback 3%+"
-#    m:0x0 + c:123
-#    XF86AudioRaiseVolume
-#
-## Lower volume
-#"amixer set Master playback 3%-"
-#    m:0x0 + c:122
-#    XF86AudioLowerVolume
-#
-## Mute/unmute
-#"amixer set Master toggle"
-#    m:0x0 + c:121
-#    XF86AudioMute
+"amixer set Master playback 3%+"
+    m:0x0 + c:123
+    XF86AudioRaiseVolume
+
+# Lower volume
+"amixer set Master playback 3%-"
+    m:0x0 + c:122
+    XF86AudioLowerVolume
+
+# Mute/unmute
+"amixer set Master toggle"
+    m:0x0 + c:121
+    XF86AudioMute
 
 # Raise volume
 "amixer set Master playback 3%+"

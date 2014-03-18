@@ -148,6 +148,13 @@ let g:Perl_MapLeader = ';'
 " Maybe fixes BundleSearch errors?
 set shell=/bin/bash
 
+" Stop it with the stupid automatic folding
+set foldlevelstart=20
+
+" Haskellmode settings
+au BufEnter *.hs compiler ghc
+let g:haddock_browser="/usr/bin/dwb"
+
 
 """"""""""""""""""""""
 """ Key remappings """
