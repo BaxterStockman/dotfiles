@@ -93,7 +93,6 @@ URxvt*.foreground:  #ffffff
 
 ! Fonts
 /*URxvt.font:   -*-terminus-medium-r-normal-*-12-120-72-72-c-60-iso8859-1*/
-URxvt*font: xft:Inconsolata:pixelsize=14:antialias=true:hinting=true
 URxvt*.BD:  White
 URxvt*.colorUL: #00D1FF
 

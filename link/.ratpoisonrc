@@ -1,0 +1,165 @@
+################################################################################
+# Initial setup stuff
+################################################################################
+
+# Set prefix to ctrl-z
+escape C-z
+
+# Load .Xresources and .Xresources local
+# For some reason, merging them in .xinitrc
+# doesn't work with ratpoison...
+exec xrdb -merge ~/.Xresources
+exec xrdb -merge ~/.Xresources.local
+
+# Create six windows
+exec /path/to/rpws init 6 -k
+
+# There are three different ways ratpoison can "name" frames.
+# By title, name, or class. Title gets you gunk like "emacs@localhost.localdomain";
+# but name and class give you the sensible "emacs" or "Emacs".
+set winname class
+
+# Graphics tweaks
+# Not quite sure what these do, copied from Reactor Core.
+# Supposedly make borders take up less space.
+defborder       0
+defpadding      0 0 0 0
+defbarpadding   0 0
+
+# Disable startup message
+startup_message off
+
+#rudeness is a bitwise or of the following values:
+# 1    Transient windows may raise.
+# 2    Normal windows may raise.
+# 4    New transient windows end up in the foreground.
+# 8    New normal windows end up in the foreground.
+rudeness 13
+
+################################################################################
+# Mouse-related settings
+################################################################################
+
+# Banish the mouse with each screenchange
+addhook switchwin banish
+
+# Run unclutter so the mouse hangs around no longer than needed.
+exec unclutter -idle 1 -jitter 2 -root
+
+# Change the mouse icon
+exec xsetroot -cursor_name left_ptr
+
+# Set the mouse warping option.
+warp on
+
+################################################################################
+# Navigation-related settings
+################################################################################
+
+# Vim-style movements
+bind h focusleft
+bind j focusdown
+bind k focusup
+bind l focusright
+
+bind space focuslast
+
+# Vim-style movements
+bind H exchangeleft
+bind J exchangedown
+bind K exchangeup
+bind L exchangeright
+
+# Move between screens
+bind C-l nextscreen
+bind C-h prevscreen
+
+# Window-splitting
+bind minus split
+bind bar hsplit
+
+################################################################################
+# Workspace-related settings
+################################################################################
+
+# This should set up rpws and groups
+# http://ratpoison.elektrubadur.se/rpws
+#exec rpws -i
+#exec rpws -b
+
+# What does this do?
+#bind F1 exec ~/bin/rpws 1
+#bind F2 exec ~/bin/rpws 2
+#bind F3 exec ~/bin/rpws 3
+#bind F4 exec ~/bin/rpws 4
+#bind F5 exec ~/bin/rpws 5
+#bind F6 exec ~/bin/rpws 6
+#bind F7 exec ~/bin/rpws 7
+#bind F8 exec ~/bin/rpws 8
+#bind F9 exec ~/bin/rpws 9
+#bind F10 exec ~/bin/rpws 10
+#bind F11 exec ~/bin/rpws 11
+#bind F12 exec ~/bin/rpws 12
+
+################################################################################
+# Command-related settings
+################################################################################
+
+# aliasing keys within ratpoison
+alias reload exec ratpoison -c "source ~/.ratpoisonrc"
+
+# make semicolon invoke ratpoison command, and colon shell command.
+bind semicolon colon
+bind colon exec
+
+# Close current window
+bind q kill
+
+# Kill focused application
+bind Q kill
+
+# Reload configuration file
+bind e exec ratpoison -c "source ~/.ratpoisonrc"
+
+################################################################################
+# Application-related settings
+################################################################################
+
+# alias 'term' urxvt
+alias term exec urxvt
+
+# Bind keys to applications
+
+# Change the date from 24-hour to 12-hour
+bind a time
+
+# Web browsers
+bind b exec dwb
+bind S-b elinks http://www.google.com/
+
+# Terminals
+bind enter exec urxvt -tr
+bind c exec urxvt -tr
+
+# Dmenu
+bind d exec dmenu_run
+
+# Open link in dwb
+bind f exec dwb `$RATPOISON -c getsel`
+
+# Open i3wm temporarily
+bind i tmpwm i3
+
+# Open Thunderbird email client
+bind t thunderbird
+
+# Runs a perl script which emulates the Mac's expose feature.
+bind w exec ~/bin/expose
+
+# Runs a shell script which creates an alt-tab menu analog
+#bind W exec ~/bin/windows
+
+# Zathura pdf viewer
+bind z exec zathura
+
+

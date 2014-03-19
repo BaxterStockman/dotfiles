@@ -11,9 +11,7 @@ if [ -d /etc/X11/xinit/xinitrc.d ]; then
   unset f
 fi
 
-for f in ~/.Xresources*; do
-    [[ -f f ]] && xrdb -merge f
-done
-
+[[ -f ~/.Xresources ]] && xrdb -merge ~/.Xresources
+[[ -f ~/.Xresources.local ]] && xrdb -merge ~/.Xresources.local
 [[ -f ~/.xinitrc.local ]] && source ~/.xinitrc.local
 
