@@ -1,6 +1,9 @@
 ################################################################################
 # Initial setup stuff
 ################################################################################
+# Unbind some default keybindings
+source ~/.ratpoisonunbind
+source ~/.ratpoisonrc.local
 
 # Set prefix to ctrl-z
 escape C-z
@@ -12,7 +15,7 @@ exec xrdb -merge ~/.Xresources
 exec xrdb -merge ~/.Xresources.local
 
 # Create six windows
-exec /path/to/rpws init 6 -k
+exec rpws init 6 -k
 
 # There are three different ways ratpoison can "name" frames.
 # By title, name, or class. Title gets you gunk like "emacs@localhost.localdomain";
@@ -24,7 +27,10 @@ set winname class
 # Supposedly make borders take up less space.
 defborder       0
 defpadding      0 0 0 0
-defbarpadding   0 0
+defbarpadding   0 0 0 0
+
+# Cosmetics
+exec xsetroot -bg black
 
 # Disable startup message
 startup_message off
@@ -42,6 +48,8 @@ rudeness 13
 
 # Banish the mouse with each screenchange
 addhook switchwin banish
+addhook switchframe banish
+addhook prefix banish
 
 # Run unclutter so the mouse hangs around no longer than needed.
 exec unclutter -idle 1 -jitter 2 -root
@@ -51,6 +59,14 @@ exec xsetroot -cursor_name left_ptr
 
 # Set the mouse warping option.
 warp on
+
+################################################################################
+# Display-related settings
+################################################################################
+
+# Redisplay - extend focused window to full
+# size of frame and redisplay it
+bind L redisplay
 
 ################################################################################
 # Navigation-related settings
@@ -87,19 +103,19 @@ bind bar hsplit
 #exec rpws -i
 #exec rpws -b
 
-# What does this do?
-#bind F1 exec ~/bin/rpws 1
-#bind F2 exec ~/bin/rpws 2
-#bind F3 exec ~/bin/rpws 3
-#bind F4 exec ~/bin/rpws 4
-#bind F5 exec ~/bin/rpws 5
-#bind F6 exec ~/bin/rpws 6
-#bind F7 exec ~/bin/rpws 7
-#bind F8 exec ~/bin/rpws 8
-#bind F9 exec ~/bin/rpws 9
-#bind F10 exec ~/bin/rpws 10
-#bind F11 exec ~/bin/rpws 11
-#bind F12 exec ~/bin/rpws 12
+# Create workspaces
+bind 1 exec rpws 1
+bind 2 exec rpws 2
+bind 3 exec rpws 3
+bind 4 exec rpws 4
+bind 5 exec rpws 5
+bind 6 exec rpws 6
+bind 7 exec rpws 7
+bind 8 exec rpws 8
+bind 9 exec rpws 9
+bind 10 exec rpws 10
+bind 11 exec rpws 11
+bind 12 exec rpws 12
 
 ################################################################################
 # Command-related settings
@@ -112,14 +128,19 @@ alias reload exec ratpoison -c "source ~/.ratpoisonrc"
 bind semicolon colon
 bind colon exec
 
+# Reload configuration file
+#bind e exec ratpoison -c "source ~/.ratpoisonrc"
+
+# Make focused window the only window
+bind O only
+
 # Close current window
 bind q kill
 
-# Kill focused application
-bind Q kill
+# Delete current window
+bind Q delete
 
-# Reload configuration file
-bind e exec ratpoison -c "source ~/.ratpoisonrc"
+bind Escape abort
 
 ################################################################################
 # Application-related settings
@@ -148,18 +169,17 @@ bind d exec dmenu_run
 bind f exec dwb `$RATPOISON -c getsel`
 
 # Open i3wm temporarily
-bind i tmpwm i3
+bind w tmpwm i3
 
 # Open Thunderbird email client
-bind t thunderbird
+bind t /usr/bin/thunderbird
 
 # Runs a perl script which emulates the Mac's expose feature.
-bind w exec ~/bin/expose
+bind e exec ~/bin/expose
 
 # Runs a shell script which creates an alt-tab menu analog
-#bind W exec ~/bin/windows
+bind E exec ~/bin/windows
 
 # Zathura pdf viewer
 bind z exec zathura
-
 
