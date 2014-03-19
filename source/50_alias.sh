@@ -50,3 +50,6 @@ alias chkrun='top -b | grep'
 alias tp='trash-put'
 alias tl='trash-list'
 alias te='trash-empty'
+
+## WM-related stuff
+alias rp='ratpoison'
