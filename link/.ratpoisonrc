@@ -37,7 +37,9 @@ rudeness 13
 ################################################################################
 
 # Cosmetics
-exec xsetroot -bg black
+#exec xsetroot -bg black
+#exec compton -c -f -D 5
+#exec wallpaper $HOME/.wallpaper
 
 # Graphics tweaks
 # Not quite sure what these do, copied from Reactor Core.
@@ -60,11 +62,17 @@ set inputwidth 100
 unmanage panel
 unmanage conky
 unmanage conky-cli
-alias conky exec conky -c $HOME/.conkyrc.d/conky-rp
-conky
+exec conky -c $HOME/.conkyrc.d/conky-rp
 
-# Restart conky when reloading rp
+# Restart eye candy when restarting rp
 addhook restart killall conky
+addhook restart killall compton
+addhook restart killall feh
+
+# Quit eye candy when quitting rp
+addhook quit killall conky
+addhook quit killall compton
+addhook quit killall feh
 
 ################################################################################
 # Mouse-related settings
