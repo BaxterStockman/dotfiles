@@ -15,3 +15,4 @@ fi
 [[ -f ~/.Xresources.local ]] && xrdb -merge ~/.Xresources.local
 [[ -f ~/.xinitrc.local ]] && source ~/.xinitrc.local
 
+exec $1

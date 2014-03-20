@@ -2,8 +2,8 @@
 # Initial setup stuff
 ################################################################################
 # Unbind some default keybindings
-source ~/.ratpoisonunbind
-source ~/.ratpoisonrc.local
+source $HOME/.ratpoisonunbind
+source $HOME/.ratpoisonrc.local
 
 # Set prefix to ctrl-z
 escape C-z
@@ -11,8 +11,8 @@ escape C-z
 # Load .Xresources and .Xresources local
 # For some reason, merging them in .xinitrc
 # doesn't work with ratpoison...
-exec xrdb -merge ~/.Xresources
-exec xrdb -merge ~/.Xresources.local
+exec xrdb -merge $HOME/.Xresources
+exec xrdb -merge $HOME/.Xresources.local
 
 # Create six windows
 exec rpws init 6 -k
@@ -21,16 +21,6 @@ exec rpws init 6 -k
 # By title, name, or class. Title gets you gunk like "emacs@localhost.localdomain";
 # but name and class give you the sensible "emacs" or "Emacs".
 set winname class
-
-# Graphics tweaks
-# Not quite sure what these do, copied from Reactor Core.
-# Supposedly make borders take up less space.
-defborder       0
-defpadding      0 0 0 0
-defbarpadding   0 0 0 0
-
-# Cosmetics
-exec xsetroot -bg black
 
 # Disable startup message
 startup_message off
@@ -41,6 +31,40 @@ startup_message off
 # 4    New transient windows end up in the foreground.
 # 8    New normal windows end up in the foreground.
 rudeness 13
+
+################################################################################
+# Appearance-related settings
+################################################################################
+
+# Cosmetics
+exec xsetroot -bg black
+
+# Graphics tweaks
+# Not quite sure what these do, copied from Reactor Core.
+# Supposedly make borders take up less space.
+set border       0
+set padding      0 0 0 0
+set barpadding   0 0
+
+# Bar settings
+set wingravity center
+set transgravity center
+set bargravity n
+set border 0 0
+set barborder 1
+set padding 0 16 0 0
+set barpadding 1 1
+set inputwidth 100
+
+# Conky setup
+unmanage panel
+unmanage conky
+unmanage conky-cli
+alias conky exec conky -c $HOME/.conkyrc.d/conky-rp
+conky
+
+# Restart conky when reloading rp
+addhook restart killall conky
 
 ################################################################################
 # Mouse-related settings
@@ -78,7 +102,7 @@ bind j focusdown
 bind k focusup
 bind l focusright
 
-bind space focuslast
+bind space focus
 
 # Vim-style movements
 bind H exchangeleft
@@ -122,64 +146,72 @@ bind 12 exec rpws 12
 ################################################################################
 
 # aliasing keys within ratpoison
-alias reload exec ratpoison -c "source ~/.ratpoisonrc"
+alias dump exec ratpoison -c "setenv fs1 `ratpoison -c 'fdump'`"
+alias get exec ratpoison -c "frestore `ratpoison -c 'getenv fs1'`"
+alias reconfig exec ratpoison -c "source $HOME/.ratpoisonrc"
+alias reload exec rp-reload
 
 # make semicolon invoke ratpoison command, and colon shell command.
 bind semicolon colon
 bind colon exec
 
-# Reload configuration file
-#bind e exec ratpoison -c "source ~/.ratpoisonrc"
-
 # Make focused window the only window
 bind O only
 
 # Close current window
-bind q kill
+bind Q kill
 
 # Delete current window
-bind Q delete
+bind q delete
 
+# 'Nullify' prefix by pressing Escape
 bind Escape abort
 
 ################################################################################
 # Application-related settings
 ################################################################################
 
-# alias 'term' urxvt
+### Aliases
+
+alias dmenu exec dmenu_run -b
 alias term exec urxvt
+alias edit term -e vim $HOME/.ratpoisonrc && ratpoison -c "reload"
+alias elinks term -e elinks
 
-# Bind keys to applications
+## Bindings
 
-# Change the date from 24-hour to 12-hour
+# time
 bind a time
 
 # Web browsers
 bind b exec dwb
-bind S-b elinks http://www.google.com/
+bind B elinks
 
 # Terminals
-bind enter exec urxvt -tr
-bind c exec urxvt -tr
+bind enter exec urxvt
+bind c exec urxvt
 
 # Dmenu
-bind d exec dmenu_run
+bind d dmenu
+
+# Runs a perl script which emulates the Mac's expose feature.
+bind e exec $HOME/bin/expose
+
+# Runs a shell script which creates an alt-tab menu analog
+bind E exec $HOME/bin/windows
 
 # Open link in dwb
 bind f exec dwb `$RATPOISON -c getsel`
 
-# Open i3wm temporarily
-bind w tmpwm i3
+# Package update
+bind s term -e sudo pacman -Syu
+bind S term -e packer -Syu --noedit --noconfirm
 
 # Open Thunderbird email client
-bind t /usr/bin/thunderbird
+bind t exec thunderbird
 
-# Runs a perl script which emulates the Mac's expose feature.
-bind e exec ~/bin/expose
-
-# Runs a shell script which creates an alt-tab menu analog
-bind E exec ~/bin/windows
+# Open Vim
+bind v exec urxvt -e vim
 
 # Zathura pdf viewer
 bind z exec zathura
-
