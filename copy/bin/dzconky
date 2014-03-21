@@ -1,0 +1,3 @@
+#!/bin/sh
+
+conky -d -c $1 | dzen2 -ta r -h '16' -fn 'inconsolata-g' &

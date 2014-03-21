@@ -37,16 +37,8 @@ rudeness 13
 ################################################################################
 
 # Cosmetics
-#exec xsetroot -bg black
-#exec compton -c -f -D 5
-#exec wallpaper $HOME/.wallpaper
-
-# Graphics tweaks
-# Not quite sure what these do, copied from Reactor Core.
-# Supposedly make borders take up less space.
-set border       0
-set padding      0 0 0 0
-set barpadding   0 0
+exec compton -c -f -D 5 &
+exec $HOME/bin/wallpaper $HOME/.wallpaper
 
 # Bar settings
 set wingravity center
@@ -62,16 +54,18 @@ set inputwidth 100
 unmanage panel
 unmanage conky
 unmanage conky-cli
-exec conky -c $HOME/.conkyrc.d/conky-rp
+exec $HOME/bin/dzconky $HOME/.conkyrc.d/conky-rp
 
 # Restart eye candy when restarting rp
 addhook restart killall conky
 addhook restart killall compton
+addhook restart killall dzen2
 addhook restart killall feh
 
 # Quit eye candy when quitting rp
 addhook quit killall conky
 addhook quit killall compton
+addhook quit killall dzen2
 addhook quit killall feh
 
 ################################################################################
@@ -185,6 +179,7 @@ alias dmenu exec dmenu_run -b
 alias term exec urxvt
 alias edit term -e vim $HOME/.ratpoisonrc && ratpoison -c "reload"
 alias elinks term -e elinks
+alias firefox exec firefox
 
 ## Bindings
 
