@@ -11,7 +11,6 @@ export CONFIG_PATH=$DOTFILES_ROOT/source
 export PATH=$DOTFILES_ROOT/bin:$PATH
 [[ -e $HOME/sbin ]] && export PATH=$HOME/sbin:$PATH
 [[ -e $HOME/bin ]] && export PATH=$HOME/bin:$PATH
-[[ -e $HOME/bin/scripts ]] && export PATH=$HOME/bin/scripts:$PATH
 [[ -e $HOME/lib ]] && export LD_LIBRARY_PATH=$HOME/lib
 
 # Source file if it exists
