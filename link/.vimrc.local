@@ -1,6 +1,12 @@
 " .gvimrc
 " See: http://vimdoc.sourceforge.net/htmldoc/options.html for details
 
+" Use.bundles.custom vimrc if available {
+    if filereadable(expand("~/.vimrc.custom"))
+        source ~/.vimrc.custom
+    endif
+" }
+"
 " For multi-byte character support (CJK support, for example):
 "set fileencodings=ucs-bom,utf-8,cp936,big5,euc-jp,euc-kr,gb18030,latin1
 "
@@ -17,7 +23,7 @@ endif
 
 set t_kb= t_kD=[3~  " Meant to deal with errors related to Xterm's
                         " key configuration
-                        "
+
 set nocompatible    " Meant to deal with errors related to strong Vi
                     " compatibility
 

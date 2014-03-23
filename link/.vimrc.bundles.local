@@ -1,11 +1,15 @@
-Bundle 'vitalk/vim-shebang'
+" Use.bundles.custom vimrc if available {
+    if filereadable(expand("~/.vimrc.bundles.custom"))
+        source ~/.vimrc.bundles.custom
+    endif
+" }
+Bundle 'bitc/vim-hdevtools'
+Bundle 'eagletmt/ghcmod-vim'
+Bundle 'lukerandall/haskellmode-vim'
+Bundle 'pangloss/vim-javascript'
+Bundle 'Shougo/neosnippet-snippets'
 Bundle 'vim-scripts/c.vim'
 Bundle 'vim-scripts/perl-support.vim'
 Bundle 'vim-scripts/LaTeX-Box'
 Bundle 'vim-scripts/jQuery'
-Bundle 'pangloss/vim-javascript'
-Bundle 'lukerandall/haskellmode-vim'
-Bundle 'eagletmt/ghcmod-vim'
-Bundle 'bitc/vim-hdevtools'
-Bundle 'Shougo/neosnippet-snippets'
-Bundle 'Floobits/floobits-vim'
+Bundle 'vitalk/vim-shebang'

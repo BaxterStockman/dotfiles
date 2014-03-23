@@ -1,9 +1,17 @@
 ################################################################################
 # Initial setup stuff
 ################################################################################
+
 # Unbind some default keybindings
-source $HOME/.ratpoisonunbind
-source $HOME/.ratpoisonrc.local
+# For some reason, '$HOME' doesn't get
+# replaced by the actual path when calling
+# 'source' directly.  Using 'exec' instead
+# means that '$HOME' gets interpreted by the
+# shell.
+exec ratpoison -c "source $HOME/.ratpoisonrc.unbind"
+
+# Source local configuration
+exec ratpoison -c "source $HOME/.ratpoisonrc.local"
 
 # Set prefix to ctrl-z
 escape C-z
@@ -38,7 +46,7 @@ rudeness 13
 
 # Cosmetics
 exec compton -c -f -D 5 &
-exec $HOME/bin/wallpaper $HOME/.wallpaper
+exec $HOME/bin/scripts/wallpaper $HOME/.wallpaper
 
 # Bar settings
 set wingravity center
@@ -46,7 +54,6 @@ set transgravity center
 set bargravity n
 set border 0 0
 set barborder 1
-set padding 0 16 0 0
 set barpadding 1 1
 set inputwidth 100
 
@@ -54,7 +61,7 @@ set inputwidth 100
 unmanage panel
 unmanage conky
 unmanage conky-cli
-exec $HOME/bin/dzconky $HOME/.conkyrc.d/conky-rp
+exec $HOME/bin/scripts/dzconky $HOME/.conkyrc.d/conky-rp
 
 # Restart eye candy when restarting rp
 addhook restart killall conky
@@ -67,6 +74,11 @@ addhook quit killall conky
 addhook quit killall compton
 addhook quit killall dzen2
 addhook quit killall feh
+
+# Execute 'shrink' when changing window attributes
+addhook switchwin shrink
+addhook newindow shrink
+addhook deletewindow shrink
 
 ################################################################################
 # Mouse-related settings
@@ -121,7 +133,7 @@ bind minus split
 bind bar hsplit
 
 ################################################################################
-# Workspace-related settings
+# Workspace and window-related settings
 ################################################################################
 
 # This should set up rpws and groups
@@ -129,7 +141,7 @@ bind bar hsplit
 #exec rpws -i
 #exec rpws -b
 
-# Create workspaces
+# Move between workspaces
 bind 1 exec rpws 1
 bind 2 exec rpws 2
 bind 3 exec rpws 3
@@ -139,9 +151,33 @@ bind 6 exec rpws 6
 bind 7 exec rpws 7
 bind 8 exec rpws 8
 bind 9 exec rpws 9
-bind 10 exec rpws 10
-bind 11 exec rpws 11
-bind 12 exec rpws 12
+bind 0 exec rpws 10
+
+# Move between workspaces
+bind exclam rpwsm1
+bind at rpwsm2
+bind numbersign rpwsm3
+bind dollar rpwsm4
+bind percent rpwsm5
+bind asciicircum rpwsm6
+bind ampersand rpwsm7
+bind asterisk rpwsm8
+bind parenleft rpwsm9
+bind parenright rpwsm10
+
+# Select windows by number
+bind F1 select 0
+bind F2 select 1
+bind F3 select 2
+bind F4 select 3
+bind F5 select 4
+bind F6 select 5
+bind F7 select 6
+bind F8 select 7
+bind F9 select 8
+bind F1 select 9
+bind F11 select 10
+bind F12 select 11
 
 ################################################################################
 # Command-related settings
@@ -191,20 +227,20 @@ bind b exec dwb
 bind B elinks
 
 # Terminals
-bind enter exec urxvt
-bind c exec urxvt
+bind Return term
+bind c term
 
 # Dmenu
 bind d dmenu
 
 # Runs a perl script which emulates the Mac's expose feature.
-bind e exec $HOME/bin/expose
+bind e exec $HOME/bin/scripts/expose
 
 # Runs a shell script which creates an alt-tab menu analog
-bind E exec $HOME/bin/windows
+bind E exec $HOME/bin/scripts/windows
 
 # Open link in dwb
-bind f exec dwb `$RATPOISON -c getsel`
+bind f exec dwb `ratpoison -c getsel`
 
 # Package update
 bind s term -e sudo pacman -Syu
