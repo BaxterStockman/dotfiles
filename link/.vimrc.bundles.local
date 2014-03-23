@@ -1,4 +1,4 @@
-" Use.bundles.custom vimrc if available {
+" Use .vimrc.bundles.custom if available {
     if filereadable(expand("~/.vimrc.bundles.custom"))
         source ~/.vimrc.bundles.custom
     endif

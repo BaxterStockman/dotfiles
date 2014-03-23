@@ -1,7 +1,7 @@
 " .gvimrc
 " See: http://vimdoc.sourceforge.net/htmldoc/options.html for details
 
-" Use.bundles.custom vimrc if available {
+" Use .vimrc.custom if available {
     if filereadable(expand("~/.vimrc.custom"))
         source ~/.vimrc.custom
     endif
