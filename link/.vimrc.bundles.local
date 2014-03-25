@@ -4,12 +4,16 @@
     endif
 " }
 Bundle 'bitc/vim-hdevtools'
-Bundle 'eagletmt/ghcmod-vim'
-Bundle 'lukerandall/haskellmode-vim'
+Bundle 'dag/vim2hs'
 Bundle 'pangloss/vim-javascript'
-Bundle 'Shougo/neosnippet-snippets'
 Bundle 'vim-scripts/c.vim'
 Bundle 'vim-scripts/perl-support.vim'
 Bundle 'vim-scripts/LaTeX-Box'
 Bundle 'vim-scripts/jQuery'
 Bundle 'vitalk/vim-shebang'
+Bundle 'Shougo/neobundle.vim'
+"NeoBundle 'Shougo/vimproc', {
+"    \'build' : {
+"    \   'unix' : 'make -f make_unix.mak',
+"    \   },
+"    \ }
