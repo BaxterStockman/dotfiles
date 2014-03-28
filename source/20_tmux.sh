@@ -7,6 +7,7 @@
 # information.
 
 [[ $EUID -eq 0 ]] && return
+#[[ $TERM = "linux" ]] && return
 
 T3=$(pgrep -u $USER -x irssi)
 logfile="$HOME/.log/bash_tmux.log"
@@ -100,7 +101,7 @@ if [[ -z "$TMUX" ]] && exists tmux &> /dev/null; then
             exec tmux new-session -s $base_session-$session_index
     fi
 
-    if [[ -n "$T3" ]]; then
+    if [[ -n "$T3" ]] && exists irssi &> /dev/null; then
         irssi_repair $irc_win  ;
     fi
 
