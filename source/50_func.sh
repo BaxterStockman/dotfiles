@@ -12,3 +12,14 @@ cl() {
 calc() {
     echo "scale=3;$@" | bc -l
 }
+
+# Create a new directory and enter it
+function md() {
+  mkdir -p "$@" && cd "$@"
+}
+
+# Set the terminal's title bar.
+function titlebar() {
+  echo -n $'\e]0;'"$*"$'\a'
+}
+

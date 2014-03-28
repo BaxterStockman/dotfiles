@@ -9,8 +9,6 @@
 [[ $EUID -eq 0 ]] && return
 #[[ $TERM = "linux" ]] && return
 
-alias tmux='tmux -2'
-
 T3=$(pgrep -u $USER -x irssi)
 logfile="$HOME/.log/bash_tmux.log"
 #prefix=""

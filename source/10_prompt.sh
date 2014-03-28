@@ -1,5 +1,4 @@
-## Prompt
-PS1='[\u@\h \W]\$ '    # default
+PS1='[\u@\h \W]\$ '
 PS2="> "
 PS3="> "
 PS4="+ "

@@ -9,10 +9,10 @@
 export DOTFILES_ROOT=$HOME/.dotfiles
 export CONFIG_PATH=$DOTFILES_ROOT/source
 export PATH=$DOTFILES_ROOT/bin:$PATH
-[[ -e $HOME/sbin ]] && export PATH=$HOME/sbin:$PATH
-[[ -e $HOME/bin ]] && export PATH=$HOME/bin:$PATH
-[[ -e $HOME/bin/scripts ]] && export PATH=$HOME/bin/scripts:$PATH
-[[ -e $HOME/lib ]] && export LD_LIBRARY_PATH=$HOME/lib
+[[ -d $HOME/sbin ]] && export PATH=$HOME/sbin:$PATH
+[[ -d $HOME/bin ]] && export PATH=$HOME/bin:$PATH
+[[ -d $HOME/bin/scripts ]] && export PATH=$HOME/bin/scripts:$PATH
+[[ -d $HOME/lib ]] && export LD_LIBRARY_PATH=$HOME/lib
 
 # Source file if it exists
 # First argument = directory
@@ -37,14 +37,14 @@ function dotfiles() {
 }
 
 # Check whether a program exists and
-exists() {
+function exists() {
     command -v $1 >/dev/null 2>&1 || test -e $1
 }
 
 # Check whether a program exists and
 # if so alias it to the string passed
 # as the second argument
-alias_if() {
+function alias_if() {
     OIFS="$IFS"
     IFS='=' read -a args <<< "$1"
     exists ${args[1]} && alias ${args[0]}="${args[1]}"
