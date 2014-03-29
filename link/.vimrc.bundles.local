@@ -13,6 +13,7 @@ Bundle 'vim-scripts/perl-support.vim'
 Bundle 'vim-scripts/Superior-Haskell-Interaction-Mode-SHIM'
 Bundle 'vitalk/vim-shebang'
 Bundle 'Shougo/neobundle.vim'
+Bundle 'Shougo/neosnippet-snippets'
 "NeoBundle 'Shougo/vimproc', {
 "    \'build' : {
 "    \   'unix' : 'make -f make_unix.mak',
