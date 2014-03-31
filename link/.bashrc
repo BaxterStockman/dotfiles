@@ -8,10 +8,13 @@
 ## Environmental variables
 export DOTFILES_ROOT=$HOME/.dotfiles
 export CONFIG_PATH=$DOTFILES_ROOT/source
-export PATH=$DOTFILES_ROOT/bin:$PATH
-[[ -d $HOME/sbin ]] && export PATH=$HOME/sbin:$PATH
-[[ -d $HOME/bin ]] && export PATH=$HOME/bin:$PATH
-[[ -d $HOME/bin/scripts ]] && export PATH=$HOME/bin/scripts:$PATH
+PATH=$DOTFILES_ROOT/bin:$PATH
+
+[[ -d $HOME/sbin ]] && PATH=$HOME/sbin:$PATH
+[[ -d $HOME/bin ]] && PATH=$HOME/bin:$PATH
+[[ -d $HOME/bin/scripts ]] && PATH=$HOME/bin/scripts:$PATH
+export PATH
+
 [[ -d $HOME/lib ]] && export LD_LIBRARY_PATH=$HOME/lib
 
 # Source file if it exists
@@ -25,9 +28,9 @@ function src_file() {
 
 # Source all files in a directory
 function src_all() {
-    local file
-    for file in $1/*; do
-        source "$file"
+    local f
+    for f in $1/*; do
+        source "$f"
     done
 }
 
