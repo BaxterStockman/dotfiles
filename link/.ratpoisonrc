@@ -76,9 +76,9 @@ addhook quit killall dzen2
 addhook quit killall feh
 
 # Execute 'shrink' when changing window attributes
-addhook switchwin shrink
-addhook newindow shrink
-addhook deletewindow shrink
+#addhook switchwin shrink
+#addhook newindow shrink
+#addhook deletewindow shrink
 
 ################################################################################
 # Mouse-related settings
