@@ -117,11 +117,13 @@ if [[ $'\n'${match_lhs} == *$'\n'"TERM "${safe_term}* ]] ; then
     set_prompts
     unset set_prompts
 
-    alias ls="ls --color=auto"
-    alias diff='colordiff'
-    alias dir="dir --color=auto"
-    alias grep="grep --color=auto"
-    alias dmesg='dmesg --color'
+    if [[ ! "$OSTYPE" =~ ^(darwin|freebsd) ]]; then
+        alias ls="ls --color=auto"
+        alias diff='colordiff'
+        alias dir="dir --color=auto"
+        alias grep="grep --color=auto"
+        alias dmesg='dmesg --color'
+    fi
 
 else
     # show root@ when we do not have colors
