@@ -35,7 +35,7 @@ else
 fi
 
 alias lr='ls -R'                    # recursive ls
-alias la='ll -A'
+alias la='ll -a'
 alias lx='ll -BX'                   # sort by extension
 alias lz='ll -rS'                   # sort by size
 alias lt='ll -rt'                   # sort by date
@@ -59,7 +59,7 @@ alias eachdir=". eachdir"
 ## Safety features
 alias cp='cp -i'
 alias mv='mv -i'
-alias rm='echo "Try trash-put instead."; false'
+exists trash-put && alias rm='echo "Try trash-put instead."; false'
 #alias rm='rm -I'                    # 'rm -i' prompts for every file
 # safer alternative w/ timeout, not stored in history
 #alias rm=' timeout 3 rm -Iv --one-file-system'
