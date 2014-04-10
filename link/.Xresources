@@ -2,9 +2,7 @@
 !
 ! http://ethanschoonover.com/solarized
 
-
 ! Common
-
 #define S_yellow        #b58900
 #define S_orange        #cb4b16
 #define S_red           #dc322f
@@ -14,9 +12,7 @@
 #define S_cyan          #2aa198
 #define S_green         #859900
 
-
 ! Dark
-
 #define S_base03        #002b36
 #define S_base02        #073642
 #define S_base01        #586e75
@@ -28,7 +24,6 @@
 
 
 ! Light
-
 ! #define S_base03        #fdf6e3
 ! #define S_base02        #eee8d5
 ! #define S_base01        #93a1a1
@@ -46,7 +41,7 @@
 
 !*background:              S_base03
 *foreground:              S_base0
-*fading:                  40
+*fading:                  10
 !*fadeColor:               S_base03
 *cursorColor:             S_base1
 *pointerColorBackground:  S_base01

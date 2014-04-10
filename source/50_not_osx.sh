@@ -3,7 +3,7 @@
 #
 # More stuff is likely to end up in
 # here as I discover it over time.
-[[ "$OSTYPE" =~ ^darwin ]] && return 1
+[[ "$OSTYPE" =~ ^(darwin|freebsd) ]] && return 1
 
 alias chown='chown --preserve-root'
 alias chmod='chmod --preserve-root'
