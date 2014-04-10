@@ -61,7 +61,9 @@ if [[ -z "$TMUX" ]] && exists tmux &> /dev/null; then
     # If irssi is installed and not already running under
     # the current user's uid, create a new window with the
     # value of $irc_win as its name and execute irssi
-    if [[ -z "$T3" ]] && [[ $HOSTNAME =~ "^flip" ]]&& exists irssi &> /dev/null; then
+    #
+    # I've restricted this to running on flip servers only.
+    if [[ -z "$T3" ]] && [[ $HOSTNAME =~ ^flip ]]&& exists irssi &> /dev/null; then
         tmux new-window -t $base_session -n $irc_win irssi;
         irssi_nickpane $irc_win ;
     fi
