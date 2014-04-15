@@ -162,5 +162,5 @@ Xautolock.cornerdelay:      5
 Xautolock.cornerredelay:    15
 Xautolock.locker:           slimlock
 Xautolock.time:             5
-Xautolock.killer:           ~/bin/sleeper
+Xautolock.killer:           ~/bin/scripts/sleeper
 Xautolock.killtime:         10
