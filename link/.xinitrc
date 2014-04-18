@@ -16,6 +16,4 @@ fi
 [[ -f ~/.xinitrc.local ]] && source ~/.xinitrc.local
 exists urxvtc && exec urxvtc
 
-if ! [[ "$CDM" == "true" ]]; then
-    exec $1
-fi
+exec $1
