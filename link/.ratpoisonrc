@@ -58,6 +58,7 @@ set barpadding 1 1
 set inputwidth 100
 
 # Conky setup
+unmanage gimp
 unmanage panel
 unmanage conky
 unmanage conky-cli
@@ -75,6 +76,10 @@ addhook quit killall compton
 addhook quit killall dzen2
 addhook quit killall feh
 
+# I commented out the following because it caused
+# issues when refreshing the ratpoison config, and
+# isn't really necessary when you have your terminal
+# emulator configured to display correctly.
 # Execute 'shrink' when changing window attributes
 #addhook switchwin shrink
 #addhook newindow shrink

@@ -14,5 +14,8 @@ fi
 [[ -f ~/.Xresources ]] && xrdb -merge ~/.Xresources
 [[ -f ~/.Xresources.local ]] && xrdb -merge ~/.Xresources.local
 [[ -f ~/.xinitrc.local ]] && source ~/.xinitrc.local
+exists urxvtc && exec urxvtc
 
-exec $1
+if ! [[ "$CDM" == "true" ]]; then
+    exec $1
+fi
