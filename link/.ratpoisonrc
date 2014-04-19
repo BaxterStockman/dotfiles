@@ -10,9 +10,6 @@
 # shell.
 exec ratpoison -c "source $HOME/.ratpoisonrc.unbind"
 
-# Source local configuration
-exec ratpoison -c "source $HOME/.ratpoisonrc.local"
-
 # Set prefix to ctrl-z
 escape C-z
 
@@ -259,3 +256,10 @@ bind v exec urxvt -e vim
 
 # Zathura pdf viewer
 bind z exec zathura
+
+################################################################################
+# Local setup
+################################################################################
+
+# Source local configuration
+exec ratpoison -c "source $HOME/.ratpoisonrc.local"
