@@ -80,3 +80,7 @@ alias te='trash-empty'
 
 ## WM-related stuff
 alias rp='ratpoison'
+
+## Alias urxvtc to urxvt if the system has
+## urxvtd and urxvtc
+exists urxvtc && exists urxvtd && alias urxvt='urxvtc'

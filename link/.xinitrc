@@ -14,6 +14,6 @@ fi
 [[ -f ~/.Xresources ]] && xrdb -merge ~/.Xresources
 [[ -f ~/.Xresources.local ]] && xrdb -merge ~/.Xresources.local
 [[ -f ~/.xinitrc.local ]] && source ~/.xinitrc.local
-exists urxvtc && exec urxvtc
+exists urxvtd && urxvtd -q -o -f &
 
 exec $1
