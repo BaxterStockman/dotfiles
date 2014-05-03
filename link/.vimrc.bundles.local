@@ -5,7 +5,7 @@
 " }
 Bundle 'bitc/vim-hdevtools'
 Bundle 'dag/vim2hs'
-Bundle 'pangloss/vim-javascript'
+"Bundle 'pangloss/vim-javascript'
 Bundle 'vim-scripts/c.vim'
 Bundle 'vim-scripts/jQuery'
 Bundle 'vim-scripts/LaTeX-Box'
@@ -14,7 +14,7 @@ Bundle 'vim-scripts/SudoEdit.vim'
 Bundle 'vim-scripts/Superior-Haskell-Interaction-Mode-SHIM'
 Bundle 'vitalk/vim-shebang'
 Bundle 'Shougo/neobundle.vim'
-Bundle 'Shougo/neosnippet-snippets'
+"Bundle 'Shougo/neosnippet-snippets'
 "NeoBundle 'Shougo/vimproc', {
 "    \'build' : {
 "    \   'unix' : 'make -f make_unix.mak',
