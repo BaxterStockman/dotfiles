@@ -20,8 +20,9 @@ export HISTTIMEFORMAT="[%F %T] "
 export HISTSIZE=10000
 export HISTFILESIZE=10000
 # Assorted other stuff
-export HISTIGNORE='history*'
+export HISTIGNORE='history*:[ \t]*:ls*:cd*:rm*'
 export PROMPT_COMMAND="history -a"
+# Just to make sure bash history really does ignore leading spaces
 
 # Easily re-execute the last history command.
 alias r="fc -s"
