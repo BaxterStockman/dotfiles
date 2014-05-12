@@ -62,9 +62,12 @@ alias mv='mv -i'
 exists trash-put && alias rm='echo "Try trash-put instead."; false'
 #alias rm='rm -I'                    # 'rm -i' prompts for every file
 # safer alternative w/ timeout, not stored in history
-#alias rm=' timeout 3 rm -Iv --one-file-system'
+alias rm=' timeout 3 rm -Iv --one-file-system'
 alias ln='ln -i'
 alias cls=' echo -ne "\033c"'       # clear screen for real (it does not work in Terminology)
+# Hopefully won't have to use this too often...
+alias shred=' timeout 3 shred -v'
+
 
 ## Make Bash error tolerant
 alias :q=' exit'

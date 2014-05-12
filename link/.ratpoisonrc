@@ -13,9 +13,11 @@ exec ratpoison -c "source $HOME/.ratpoisonrc.unbind"
 # Set prefix to ctrl-z
 escape C-z
 
-# Load .Xresources and .Xresources local
+# Exec .xinitrc local and
+# load .Xresources and .Xresources local
 # For some reason, merging them in .xinitrc
 # doesn't work with ratpoison...
+exec $HOME/.xinitrc.local
 exec xrdb -merge $HOME/.Xresources
 exec xrdb -merge $HOME/.Xresources.local
 

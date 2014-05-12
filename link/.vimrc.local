@@ -154,6 +154,9 @@ let g:C_SourceCodeExtensions = 'c cc cp cxx cpp CPP c++ C i ii hxx h'
 
 let g:Perl_MapLeader = ';'
 
+" Deals with temporary hang when saving python files
+let g:pymode_rope_lookup_project = 0
+
 " Maybe fixes BundleSearch errors?
 set shell=/bin/bash
 
