@@ -81,6 +81,9 @@ alias tp='trash-put'
 alias tl='trash-list'
 alias te='trash-empty'
 
+## VirtualBox Manager
+alias vbm="VBoxManage"
+
 ## WM-related stuff
 alias rp='ratpoison'
 

@@ -5,7 +5,6 @@
 " }
 Bundle 'bitc/vim-hdevtools'
 Bundle 'dag/vim2hs'
-"Bundle 'pangloss/vim-javascript'
 Bundle 'vim-scripts/c.vim'
 Bundle 'vim-scripts/formatvim'
 Bundle 'vim-scripts/jQuery'
