@@ -163,11 +163,12 @@ set shell=/bin/bash
 " Stop it with the stupid automatic folding
 set foldlevelstart=20
 
+" No longer using Haskellmode
 " Haskellmode settings
-au FileType haskell nnoremap <buffer> <F1> :HdevtoolsType<CR>
-au FileType haskell nnoremap <buffer> <silent> <F2> :HdevtoolsClear<CR>
-au BufEnter *.hs compiler ghc
-let g:haddock_browser="/usr/bin/dwb"
+"au FileType haskell nnoremap <buffer> <F1> :HdevtoolsType<CR>
+"au FileType haskell nnoremap <buffer> <silent> <F2> :HdevtoolsClear<CR>
+"au BufEnter *.hs compiler ghc
+"let g:haddock_browser="/usr/bin/dwb"
 
 
 
