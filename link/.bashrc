@@ -19,6 +19,8 @@ export PATH
 [[ -d $HOME/lib64 ]] && LD_LIBRARY_PATH=$HOME/lib64:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH
 
+LOGFILE=$HOME/.log/bash_err.log
+
 # Source file if it exists
 # First argument = directory
 # Second argument = relative path of file
@@ -32,7 +34,7 @@ function src_file() {
 function src_all() {
     local f
     for f in $1/*; do
-        source "$f"
+        [[ -e $f && -r $f ]] && source "$f"
     done
 }
 
@@ -41,14 +43,13 @@ function dotfiles() {
     $DOTFILES_ROOT/bin/dotfiles "$@" && src_all $CONFIG_PATH
 }
 
-# Check whether a program exists and
+# Check whether a program exists
 function exists() {
     command -v $1 >/dev/null 2>&1 || test -e $1
 }
 
-# Check whether a program exists and
-# if so alias it to the string passed
-# as the second argument
+# Check whether a program exists and if so alias it to the string passed as the second argument.
+# Syntax: alias_if <alias name>=<program name>
 function alias_if() {
     OIFS="$IFS"
     IFS='=' read -a args <<< "$1"

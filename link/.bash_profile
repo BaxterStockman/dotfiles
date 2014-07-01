@@ -3,5 +3,5 @@
 #
 
 #[[ $(tty) =~ /dev/tty[1-6] ]] && fbterm
-[[ -f ~/.bashrc ]] && . ~/.bashrc
-[[ -f ~/.bashrc.local ]] && . ~/.bashrc.local
+if [[ -f ~/.bashrc ]]; then . ~/.bashrc; fi
+if [[ -f ~/.bashrc.local ]]; then . ~/.bashrc.local; fi

@@ -9,13 +9,3 @@ stty erase ^H
 stty susp ^Z
 stty intr ^C
 stty kill ^U
-#stty ixoff
-
-#set noglob
-#if [[ "$TERM" = "rxvt-unicode-256color" ]]; then
-#    export TERM=rxvt-unicode-256color
-#else
-#    eval `tset -s -Q -m ":?$TERM"`
-#fi
-#unset noglob
-
