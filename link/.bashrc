@@ -15,7 +15,7 @@ PATH=$DOTFILES_ROOT/bin:$PATH
 [[ -d $HOME/bin/scripts ]] && PATH=$HOME/bin/scripts:$PATH
 export PATH
 
-[[ -d $HOME/lib ]] && LD_LIBRARY_PATH=$HOME/lib
+[[ -d $HOME/lib ]] && LD_LIBRARY_PATH=$HOME/lib:$LD_LIBRARY_PATH
 [[ -d $HOME/lib64 ]] && LD_LIBRARY_PATH=$HOME/lib64:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH
 
