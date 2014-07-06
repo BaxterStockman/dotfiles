@@ -209,6 +209,9 @@ bind q delete
 # 'Nullify' prefix by pressing Escape
 bind Escape abort
 
+# Set double-press of escape sequence to send escape to current window
+bind C-z meta
+
 ################################################################################
 # Application-related settings
 ################################################################################
