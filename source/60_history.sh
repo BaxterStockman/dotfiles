@@ -20,7 +20,8 @@ export HISTTIMEFORMAT="[%F %T] "
 export HISTSIZE=10000
 export HISTFILESIZE=10000
 # Assorted other stuff
-export HISTIGNORE='history*:[ \t]*:rm*'
+#export HISTIGNORE='history*:[ \t]*:rm*'
+export HISTIGNORE='&:[bf]g:exit:pwd:clear:mount:umount:history'
 export PROMPT_COMMAND="history -a"
 # Just to make sure bash history really does ignore leading spaces
 

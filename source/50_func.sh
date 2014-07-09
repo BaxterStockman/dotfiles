@@ -23,3 +23,29 @@ function titlebar() {
   echo -n $'\e]0;'"$*"$'\a'
 }
 
+if [[ -n $TMUX ]]
+then
+    function export () {
+        local argv=$@
+        builtin export "$@"
+
+        local var val
+        for item in "$@"
+        do
+            var=${item%%=*}
+            val=${item#*=}
+            [[ "$val" == "$var" ]] && val=${!var}
+            tmux setenv "$var" "$val"
+        done
+    }
+
+    function unset () {
+        local argv=$@
+        builtin unset "$@"
+
+        for item in "$@"
+        do
+            tmux setenv -u "$item"
+        done
+    }
+fi
