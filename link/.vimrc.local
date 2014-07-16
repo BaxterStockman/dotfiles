@@ -27,9 +27,9 @@ set t_kb= t_kD=[3~  " Meant to deal with errors related to Xterm's
 set nocompatible    " Meant to deal with errors related to strong Vi
                     " compatibility
 
-set tabstop=4       " Number of spaces that a <Tab> in the file counts for.
-
 set shiftwidth=4    " Number of spaces to use for each step of (auto)indent.
+
+set tabstop=4       " Number of spaces that a <Tab> in the file counts for.
 
 set expandtab       " Use the appropriate number of spaces to insert a <Tab>.
                     " Spaces are used in indents with the '>' and '<' commands

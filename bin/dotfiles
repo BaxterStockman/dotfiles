@@ -10,23 +10,66 @@ DOTFILES_GIT=git://github.com/BaxterStockman/dotfiles.git
 SCRIPT_NAME="dotfiles"
 SCRIPT="$DOTFILES_ROOT/bin/$SCRIPT_NAME"
 
-# Set up global control flow variables.
-if [[ "$2" ]]; then
-  new_dotfiles_install="$2"
-  [[ "$new_dotfiles_install" -eq "1" ]] && echo "This is a new installation"
-else
-  new_dotfiles_install="0"
-fi
-if [[ "$3" ]]; then
-  skip_init="$3"
-  [[ "$skip_init" -eq "1" ]] && echo "Skipping initialization"
-else
-  skip_init="0"
-fi
+# Global flow control flags
+new_dotfiles_install="0"
+skip_init="0"
+noclobber="0"
 
 # Flags for whether to print link/copy operations
 print_copy_header="1"
 print_link_header="1"
+
+# Flag for whether to print help doc
+print_help="0"
+
+# RC files to not clobber when linking
+declare -a noclobber_rcs=(bashrc bash_login bash_logout bash_profile muttrc subversion perlbrew ssh)
+
+while getopts ":nspqh" opt
+do
+  case $opt in
+    n)
+      new_dotfiles_install="1"
+      ;;
+    s)
+      skip_init="1"
+      ;;
+    p)
+      noclobber="1"
+      ;;
+    q)
+      print_copy_header="0"
+      print_link_header="0"
+      ;;
+    h)
+      print_help="0"
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
+#exit
+
+[[ "$new_dotfiles_install" -eq "1" ]] && echo "This is a new installation"
+[[ "$skip_init" -eq "1" ]] && echo "Skipping initialization"
+[[ "$noclobber" -eq "1" ]] && echo "Preserving some existing configurations"
+
+# Set up global control flow variables.
+#if [[ "$2" ]]; then
+#  new_dotfiles_install="$2"
+#  [[ "$new_dotfiles_install" -eq "1" ]] && echo "This is a new installation"
+#else
+#  new_dotfiles_install="0"
+#fi
+#if [[ "$3" ]]; then
+#  skip_init="$3"
+#  [[ "$skip_init" -eq "1" ]] && echo "Skipping initialization"
+#else
+#  skip_init="0"
+#fi
 
 # Logging stuff.
 function e_header()   { echo -e "\n\033[1m$@\033[0m"; }
@@ -58,7 +101,7 @@ function relpath() {
 # Echoes a string representing a directory
 # specification minus the last directory/file.
 #
-# E.g., the relpath of 'foo/bar/baz'
+# E.g., the pathname of 'foo/bar/baz'
 # is 'foo/bar'
 function pathname() {
     local fullpath="$1"
@@ -160,11 +203,42 @@ function link_test() {
   [[ "$1" -ef "$2" ]] && echo "same file"
 }
 
+function check_exists () {
+  if [[ $noclobber -eq 1 ]]
+  then
+    local dest_dir=$(pathname $1)
+    local src_file=${2#$HOME/}
+    local dest_file=$1
+
+    for rcname in ${noclobber_rcs[@]}
+    do
+      local rc="$dest_dir/.$rcname"
+      if [[ ${1#$dest_dir/} =~ \.$rcname ]] && [[ `cmp --silent $src_file $rc` -eq 0 ]]
+      then
+        return 0
+      fi
+    done
+  fi
+
+  return 1
+}
+
 function link_do() {
-  dest_dir=$(pathname $1)
+  local dest_dir=$(pathname $1)
+  local src_file=${2#$HOME/}
+  local dest_file=$1
+
   [[ -e $dest_dir ]] || e_arrow "Creating $dest_dir." && mkdir -p $dest_dir
-  e_success "Linking $2 to $1."
-  ln -sf ${2#$HOME/} "$1"
+
+  if check_exists $1 $2
+  then
+    dest_file="${1}.custom"
+    e_arrow "Not clobbering $1; $2 will be appended with '.custom'"
+  fi
+
+  ln -sf "$src_file" "$dest_file"
+
+  e_success "Linking $src_file to $dest_file."
 }
 
 
@@ -230,7 +304,8 @@ function do_stuff() {
         # Create backup dir if it doesn't already exist.
         [[ -e "$backup_dir" ]] || mkdir -p "$backup_dir"
         # Backup file / link / whatever.
-        mv "$dest" "$backup_dir"
+        #mv "$dest" "$backup_dir"
+        cp "$dest" "$backup_dir"
       fi
     fi
     # Do stuff.
@@ -263,9 +338,14 @@ function process_opt_dirs() {
 }
 
 function init_dotfiles() {
+  local flags="-"
   skip_init=1
+  # Add command-line flag for skipping initialization
+  flags="${flags}s"
   if [[ ! -d $DOTFILES_ROOT ]]; then
     new_dotfiles_install=1
+    # Add command-line flag for new install
+    flags="${flags}n"
     # ~/.dotfiles doesn't exist? Clone it!
     e_header "Downloading dotfiles"
     git clone --recursive $DOTFILES_GIT $DOTFILES_ROOT
@@ -277,10 +357,17 @@ function init_dotfiles() {
     git pull
     git submodule update --init --recursive --quiet
   fi
+
+  [[ $noclobber -eq 1 ]] && flags="${flags}p"
+  [[ ! $print_link_header -eq 1 ]] ||  [[ ! $print_copy_header ]] && flags="${flags}q"
+  [[ $print_help -eq 1 ]] && flags="${flags}h"
+
+  e_header "Executing updated $SCRIPT_NAME script"
   # Pass '1's as arguments so that we skip
   # initialization on re-execution
-  e_header "Executing updated $SCRIPT_NAME script"
-  $SCRIPT 0 $new_dotfiles_install $skip_init
+  #$SCRIPT 0 $new_dotfiles_install $skip_init
+  $SCRIPT $flags
+  unset flags
   exit 0
 }
 
@@ -305,7 +392,7 @@ HELP
 
 # Initial stuff; do only if we haven't updated to the newest version
 if [[ "$skip_init" -ne "1" ]]; then
-  intro $1
+  intro $print_help
 
   e_header "Performing initial configuration"
   # Ensure that we can actually, like, compile anything.
@@ -334,7 +421,6 @@ if [[ "$skip_init" -ne "1" ]]; then
   e_header "Pulling in updated dotfiles repo"
   init_dotfiles
 fi
-
 
 # Utilities, helpers.
 source $DOTFILES_ROOT/source/10_misc.sh
