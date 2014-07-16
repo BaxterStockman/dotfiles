@@ -13,7 +13,7 @@ SCRIPT="$DOTFILES_ROOT/bin/$SCRIPT_NAME"
 # Global flow control flags
 new_dotfiles_install="0"
 skip_init="0"
-noclobber="0"
+noclobber="1"
 
 # Flags for whether to print link/copy operations
 print_copy_header="1"
@@ -34,8 +34,8 @@ do
     s)
       skip_init="1"
       ;;
-    p)
-      noclobber="1"
+    c)
+      noclobber="0"
       ;;
     q)
       print_copy_header="0"
@@ -358,7 +358,7 @@ function init_dotfiles() {
     git submodule update --init --recursive --quiet
   fi
 
-  [[ $noclobber -eq 1 ]] && flags="${flags}p"
+  [[ $noclobber -eq 0 ]] && flags="${flags}c"
   [[ ! $print_link_header -eq 1 ]] ||  [[ ! $print_copy_header ]] && flags="${flags}q"
   [[ $print_help -eq 1 ]] && flags="${flags}h"
 
