@@ -25,7 +25,7 @@ print_help="0"
 # RC files to not clobber when linking
 declare -a noclobber_rcs=(bashrc bash_login bash_logout bash_profile muttrc subversion perlbrew ssh)
 
-while getopts ":nspqh" opt
+while getopts ":nscqh" opt
 do
   case $opt in
     n)

@@ -238,3 +238,10 @@ function! s:Tabposition(posi, ...)
     endif
     execute a:posi . "tabmove"
 endfunction
+
+" Use per-host local vimrc if available {
+    if filereadable(expand("~/.vimrc.local.custom"))
+        source ~/.vimrc.local.custom
+    endif
+" }
+

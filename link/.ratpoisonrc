@@ -44,7 +44,8 @@ rudeness 13
 ################################################################################
 
 # Cosmetics
-exec compton -c -f -D 5 &
+# exec compton -c -f -D 5
+exec compton --config $HOME/.compton.conf -b
 exec $HOME/bin/scripts/wallpaper $HOME/.wallpaper
 
 # Bar settings
@@ -59,21 +60,28 @@ set inputwidth 100
 # Conky setup
 unmanage gimp
 unmanage panel
+unmanage nm-applet
 unmanage conky
 unmanage conky-cli
 exec $HOME/bin/scripts/dzconky $HOME/.conkyrc.d/conky-rp
+exec $HOME/bin/scripts/trwrapper
+exec nm-applet
 
 # Restart eye candy when restarting rp
 addhook restart killall conky
 addhook restart killall compton
 addhook restart killall dzen2
 addhook restart killall feh
+addhook restart killall trayer
+addhook restart killall nm-applet
 
 # Quit eye candy when quitting rp
 addhook quit killall conky
 addhook quit killall compton
 addhook quit killall dzen2
 addhook quit killall feh
+addhook quit killall trayer
+addhook quit killall nm-applet
 
 # I commented out the following because it caused
 # issues when refreshing the ratpoison config, and
