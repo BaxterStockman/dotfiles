@@ -1,3 +1,0 @@
-#!/bin/sh
-
-conky -d -c $1 | dzen2 -ta r -h '12' -fn 'inconsolata-g:size=9' &
