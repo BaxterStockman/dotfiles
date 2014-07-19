@@ -36,6 +36,8 @@ elif [[ "$(cat /etc/issue 2> /dev/null)" =~ Ubuntu ]];then
     PKG_INSTALL="sudo apt-get install "
     PKG_CHECK_INSTALLED="dpkg -s "
     PKG_CHECK_AVAIL="apt-cache search "
+else
+    PKG_INSTALL=""
 fi
 
 # RC files to not clobber when linking
@@ -193,6 +195,12 @@ function want_header() {
     e_header "Installing packages";
     print_want_header="0"
   fi
+}
+
+function want_test() {
+    if [[ -z $PKG_INSTALL ]]; then
+      echo "no package manager available"
+    fi
 }
 
 # Initialize.
