@@ -58,30 +58,32 @@ set barpadding 1 1
 set inputwidth 100
 
 # Conky setup
-unmanage gimp
-unmanage panel
-unmanage nm-applet
 unmanage conky
 unmanage conky-cli
-exec $HOME/bin/scripts/dzconky $HOME/.conkyrc.d/conky-rp
-exec $HOME/bin/scripts/trwrapper
-exec nm-applet
+unmanage gimp
+#unmanage nm-applet
+unmanage panel
+
+# Open bars/trays/applets
+exec pgrep dzen2 || $HOME/bin/scripts/dzconky $HOME/.conkyrc.d/conky-rp
+#exec pgrep trayer || $HOME/bin/scripts/trwrapper
+#exec pgrep nm-applet || nm-applet
 
 # Restart eye candy when restarting rp
-addhook restart killall conky
-addhook restart killall compton
-addhook restart killall dzen2
-addhook restart killall feh
-addhook restart killall trayer
-addhook restart killall nm-applet
+#addhook restart exec killall conky
+#addhook restart exec killall compton
+#addhook restart exec killall dzen2
+#addhook restart exec killall feh
+#addhook restart exec killall nm-applet
+#addhook restart exec killall trayer
 
 # Quit eye candy when quitting rp
-addhook quit killall conky
-addhook quit killall compton
-addhook quit killall dzen2
-addhook quit killall feh
-addhook quit killall trayer
-addhook quit killall nm-applet
+#addhook quit exec killall conky
+#addhook quit exec killall compton
+#addhook quit exec killall dzen2
+#addhook quit exec killall feh
+#addhook quit exec killall nm-applet
+#addhook quit exec killall trayer
 
 # I commented out the following because it caused
 # issues when refreshing the ratpoison config, and

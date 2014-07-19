@@ -1,8 +1,7 @@
-# Set colorful PS1 only on colorful terminals.
-# dircolors --print-database uses its own built-in database
-# instead of using /etc/DIR_COLORS. Try to use the external file
-# first to take advantage of user additions. Use internal bash
-# globbing instead of external grep binary.
+# Set colorful PS1 only on colorful terminals. # dircolors --print-database
+# uses its own built-in database # instead of using /etc/DIR_COLORS. Try to use
+# the external file # first to take advantage of user additions. Use internal
+# bash # globbing instead of external grep binary.
 function set_prompts() {
     ## Solarized colors
     local BASE03=""
