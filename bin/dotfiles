@@ -201,7 +201,6 @@ function want_do() {
   to_install=""
 
   for pkg in $pkgs; do
-      echo "PACKAGE: $pkg"
       if ! exists $pkg && [[ -z $($PKG_CHECK_INSTALLED $pkg) ]] && [[ -n $($PKG_CHECK_AVAIL $pkg) ]]; then
       to_install="$to_install $pkg"
     fi

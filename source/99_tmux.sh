@@ -7,8 +7,8 @@
 # information.
 
 [[ $EUID -eq 0 ]] && return
+[[ $TERM = "linux" ]] && return
 exists tmux || return
-#[[ $TERM = "linux" ]] && return
 
 alias tmux='tmux -2'
 

@@ -24,4 +24,6 @@ exists urxvtd && urxvtd -q -o -f &
 
 if [[ -n "$1" ]]; then
     exec $1
+else
+    exec ratpoison
 fi

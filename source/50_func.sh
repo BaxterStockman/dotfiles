@@ -23,6 +23,7 @@ function titlebar() {
   echo -n $'\e]0;'"$*"$'\a'
 }
 
+#read <<COMMENT
 if [[ -n $TMUX ]]
 then
     function export () {
@@ -30,8 +31,12 @@ then
         builtin export "$@"
 
         local var val
-        for item in "$@"
+        for item in "$argv"
         do
+            # Remove the longest substring between the begging of a flag and a
+            # space character.  This should remove all but the positional
+            # parameters that the 'unset' builtin was invoked with.
+            item=${item##-* }
             var=${item%%=*}
             val=${item#*=}
             [[ "$val" == "$var" ]] && val=${!var}
@@ -43,9 +48,14 @@ then
         local argv=$@
         builtin unset "$@"
 
-        for item in "$@"
+        for item in "$argv"
         do
+            # Remove the longest substring between the begging of a flag and a
+            # space character.  This should remove all but the positional
+            # parameters that the 'unset' builtin was invoked with.
+            item=${item##-* }
             tmux setenv -u "$item"
         done
     }
 fi
+#COMMENT

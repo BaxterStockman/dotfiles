@@ -1,13 +1,18 @@
 # Check that we're on Arch
 [[ "$(cat /etc/issue 2> /dev/null)" =~ Arch ]] || return 1
 
+if [[ -z $($PKG_CHECK_INSTALLED "curl") ]]; then
+  e_header "Installing curl"
+  pacman -S curl
+fi
+
 if [[ -z $($PKG_CHECK_INSTALLED "packer") ]]; then
   e_header "Installing Packer"
   PACKER_PKGBUILD_URL="https://aur.archlinux.org/packages/pa/packer/PKGBUILD"
   CWD=$(pwd)
   BUILD_DIR="./packer"
   cd $BUILD_DIR
-  curl $PACKER_PKGBUILD_URL
+  curl -o PKGBUILD $PACKER_PKGBUILD_URL
   makepkg -s PKGBUILD
   PACKER_PKG=$(ls packer*pkg.tar.xz)
   sudo pacman -U $PACKER_PKG
