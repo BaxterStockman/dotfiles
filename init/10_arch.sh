@@ -10,12 +10,14 @@ if [[ -z $($PKG_CHECK_INSTALLED "packer") ]]; then
   e_header "Installing Packer"
   PACKER_PKGBUILD_URL="https://aur.archlinux.org/packages/pa/packer/PKGBUILD"
   CWD=$(pwd)
-  BUILD_DIR="./packer"
+  BUILD_DIR="$CWD/packer"
   cd $BUILD_DIR
   curl -o PKGBUILD $PACKER_PKGBUILD_URL
   makepkg -s PKGBUILD
   PACKER_PKG=$(ls packer*pkg.tar.xz)
   sudo pacman -U $PACKER_PKG
+  cd $CWD
+  rm -r $BUILD_DIR
 fi
 
 e_header "Updating packages"
