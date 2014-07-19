@@ -17,6 +17,7 @@ noclobber="1"
 
 # Flags for whether to print link/copy operations
 print_copy_header="1"
+print_skel_header="1"
 print_link_header="1"
 
 # Flag for whether to print help doc
@@ -39,6 +40,7 @@ do
       ;;
     q)
       print_copy_header="0"
+      print_skel_header="0"
       print_link_header="0"
       ;;
     h)
@@ -184,10 +186,30 @@ function copy_test() {
     echo "destination file newer"
   fi
 }
+
 function copy_do() {
   dest_dir=$(pathname $1)
   [[ -e $dest_dir ]] || e_arrow "Creating $dest_dir." && mkdir -p $dest_dir
   e_success "Copying $2 to $1."
+  cp "$2" "$1"
+}
+
+# Copy skeleton files.
+function skel_header() {
+  if [[ "$print_skel_header" -eq "1" ]]; then
+    e_header "Copying skeleton files into home directory";
+    print_skel_header="0"
+  fi
+}
+
+function skel_test() {
+  [[ -e "$2" ]] && echo "$2 already exists"
+}
+
+function skel_do() {
+  dest_dir=$(pathname $1)
+  [[ -e $dest_dir ]] || e_arrow "Creating $dest_dir." && mkdir -p $dest_dir
+  e_success "Copying skeleton file $2 to $1."
   cp "$2" "$1"
 }
 
@@ -245,6 +267,7 @@ function link_do() {
 # Copy, link, init, etc.
 function do_stuff() {
   local base basedir dest filepath files fullpath relpath skip
+
   # '$1' holds the name of a subdirectory of .dotfiles or .dotfiles/opt/*/
   # '$2' holds the option 'opt/*/'
   if [[ "$2" ]]; then
@@ -252,20 +275,26 @@ function do_stuff() {
   else
     files=($DOTFILES_ROOT/$1/*)
   fi
+
   # No files? abort.
   if (( ${#files[@]} == 0 )); then return; fi
+
   basedir=$(basedir $1)
+
   # relpath() returns the pathname relative
   # to an immediate subdirectory of .dotfiles
   # (e.g. the relpath of source/madeupdir/fakedir
   # would be madeupdir/fakedir)
   relpath=$(relpath "$1")
+
   # Run _header function only if declared.
   local _header="_header"
   [[ $(declare -f "$basedir$_header") ]] && "$basedir$_header"
+
   # Iterate over files.
   for file in "${files[@]}"; do
     base=$(basename "$file")
+
     # If 'relpath' is not empty, filepath = relpath + base.
     # Otherwise filepath = base. (e.g., the filepath of
     # source/madeupdir/fakedir/dummy is madeupdir/fakedir/dummy)
@@ -274,9 +303,11 @@ function do_stuff() {
     else
       filepath="$base"
     fi
+
     # fullpath = full path to file relative to .dotfiles
     fullpath="$1/$base"
     dest="$HOME/$filepath"
+
     # if '$file' is a directory, create it in the
     # $HOME directory unless it already exists
     if [[ -d "$file" ]]; then
@@ -286,6 +317,7 @@ function do_stuff() {
         # skip to next iteration
         continue
     fi
+
     # Run _test function only if declared.
     local _test="_test"
     basedir_test="$basedir$_test"
@@ -296,6 +328,7 @@ function do_stuff() {
         e_error "Skipping $file, $skip."
         continue
       fi
+
       # Destination file already exists in ~/. Back it up!
       if [[ -e "$dest" ]]; then
         e_arrow "Backing up $dest."
@@ -307,6 +340,7 @@ function do_stuff() {
         #mv "$dest" "$backup_dir"
         cp "$dest" "$backup_dir"
       fi
+
     fi
     # Do stuff.
     local _do="_do"
@@ -320,16 +354,20 @@ function do_stuff() {
 function process_opt_dirs() {
   local dir_type
   local opt_dirs=($DOTFILES_ROOT/opt/*)
+
   if (( ${#opt_dirs[@]} == 0 )); then return; fi
   e_header "Processing optional directories"
+
   # Iterate over files.
   for dir in "${opt_dirs[@]}"; do
     opt_dir_base=$(basename "$dir")
     read -N 1 -t 15 -p "Process $opt_dir_base? [y/N] " process_dir; echo
+
     if [[ "$process_dir" =~ [Yy] ]]; then
       print_copy_header="1"
       print_link_header="1"
       local subdirs=($DOTFILES_ROOT/opt/$opt_dir_base/*)
+
       for subdir in "${subdirs[@]}"; do
           do_stuff "$(basename $subdir)" "opt/$opt_dir_base"
       done
@@ -443,6 +481,7 @@ backup=
 # Execute code for each file in these subdirectories.
 do_stuff "init"
 do_stuff "copy"
+do_stuff "skel"
 do_stuff "link"
 process_opt_dirs
 

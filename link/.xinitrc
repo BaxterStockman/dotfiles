@@ -22,4 +22,6 @@ fi
 [[ -f ~/.Xresources.local ]] && xrdb -merge ~/.Xresources.local
 exists urxvtd && urxvtd -q -o -f &
 
-exec $1
+if [[ -n "$1" ]]; then
+    exec $1
+fi
