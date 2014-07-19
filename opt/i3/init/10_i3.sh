@@ -4,6 +4,6 @@ wants=(
     feh
 )
 
-for package in ${wants[2]}; do
-    exists $package || sudo pacman -S $package
+for pkg in ${wants[@]}; do
+    exists $pkg || pacman -Qss $pkg || sudo pacman -S $package
 done

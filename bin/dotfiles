@@ -16,12 +16,27 @@ skip_init="0"
 noclobber="1"
 
 # Flags for whether to print link/copy operations
+print_want_header="1"
 print_copy_header="1"
 print_skel_header="1"
 print_link_header="1"
 
 # Flag for whether to print help doc
 print_help="0"
+
+if [[ "$(cat /etc/issue 2> /dev/null)" =~ Arch ]]; then
+    PKG_INSTALL="packer -S "
+    PKG_CHECK_INSTALLED="pacman -Qqs "
+    PKG_CHECK_AVAIL="packer -Sqs "
+elif [[ "$OSTYPE" =~ ^darwin ]]; then
+    PKG_INSTALL="brew install "
+    PKG_CHECK_INSTALLED="brew list --versions "
+    PKG_CHECK_AVAIL="brew search "
+elif [[ "$(cat /etc/issue 2> /dev/null)" =~ Ubuntu ]];then
+    PKG_INSTALL="sudo apt-get install "
+    PKG_CHECK_INSTALLED="dpkg -s "
+    PKG_CHECK_AVAIL="apt-cache search "
+fi
 
 # RC files to not clobber when linking
 declare -a noclobber_rcs=(bashrc bash_login bash_logout bash_profile muttrc subversion perlbrew ssh)
@@ -39,6 +54,7 @@ do
       noclobber="0"
       ;;
     q)
+      print_want_header="1"
       print_copy_header="0"
       print_skel_header="0"
       print_link_header="0"
@@ -169,6 +185,32 @@ function skip() {
 function init_do() {
   e_header "Sourcing $2"
   source "$2"
+}
+
+# Copy files.
+function want_header() {
+  if [[ "$print_want_header" -eq "1" ]]; then
+    e_header "Installing packages";
+    print_want_header="0"
+  fi
+}
+
+# Initialize.
+function want_do() {
+  pkgs=$(tr '\n' ' ' < $2)
+  to_install=""
+
+  for pkg in $pkgs; do
+      echo "PACKAGE: $pkg"
+      if ! exists $pkg && [[ -z $($PKG_CHECK_INSTALLED $pkg) ]] && [[ -n $($PKG_CHECK_AVAIL $pkg) ]]; then
+      to_install="$to_install $pkg"
+    fi
+  done
+
+  if [[ -n $to_install ]]; then
+    e_header "Installing $to_install"
+    $PKG_INSTALL $to_install
+  fi
 }
 
 # Copy files.
@@ -480,6 +522,7 @@ backup=
 
 # Execute code for each file in these subdirectories.
 do_stuff "init"
+do_stuff "want"
 do_stuff "copy"
 do_stuff "skel"
 do_stuff "link"
