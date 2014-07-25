@@ -20,10 +20,8 @@ if [[ -z $($PKG_CHECK_INSTALLED "packer") ]]; then
   rm -r $BUILD_DIR
 fi
 
-e_header "Updating packages"
-packer -Syy
-
 # Upgrade existing packages
+e_header "Updating packages"
 cat <<EOF
 Would you like to upgrade installed packages?
 
@@ -32,21 +30,9 @@ EOF
 read -N 1 -t 15 -p "Upgrade packages? [y/N] " upgrade_packages; echo
     if [[ "$upgrade_packages" =~ [Yy] ]]; then
         e_header "Upgrading packages"
-        packer -Su
+        packer -Syu
         echo "Upgraded packages." ||
         echo "Error upgrading packages"
     else
         echo "Skipping."
 fi
-
-# Install new packages
-pkgs=(
-    bash-completion
-    ranger
-    ruby
-    rxvt-unicode-terminfo
-    tmux
-    vim
-    wget
-    xbindkeys
-)
