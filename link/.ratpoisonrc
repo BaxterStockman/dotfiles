@@ -193,6 +193,24 @@ bind F1 select 9
 bind F11 select 10
 bind F12 select 11
 
+# Make focused window the only window
+bind O only
+
+# Close current window
+bind Q kill
+
+# Delete current window
+bind q delete
+
+# Undo last change of frame layout
+bind u undo
+
+# Save configuration to temporary file
+bind C-s exec mkdir -p $HOME/.ratpoisonrc.d; ratpoison -c sfdump > $HOME/.ratpoisonrc.d/layout.default
+
+# Restore configuration from temporary file
+bind C-r exec ratpoison -c sfrestore `[[ -e $HOME/.ratpoisonrc.d/layout.default ]] && cat $HOME/.ratpoisonrc.d/layout.default`
+
 ################################################################################
 # Command-related settings
 ################################################################################
@@ -206,15 +224,6 @@ alias reload exec rp-reload
 # make semicolon invoke ratpoison command, and colon shell command.
 bind semicolon colon
 bind colon exec
-
-# Make focused window the only window
-bind O only
-
-# Close current window
-bind Q kill
-
-# Delete current window
-bind q delete
 
 # 'Nullify' prefix by pressing Escape
 bind Escape abort
@@ -257,7 +266,7 @@ bind e exec $HOME/bin/scripts/expose
 bind E exec $HOME/bin/scripts/windows
 
 # Open link in dwb
-bind f exec dwb `ratpoison -c getsel`
+bind f exec dwb -x "tabopen `ratpoison -c getsel`"
 
 # Package update
 bind s term -e sudo pacman -Syu
