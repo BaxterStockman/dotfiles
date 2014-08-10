@@ -10,3 +10,50 @@ function path_remove() {
   # output the new array
   echo "${t[*]}"
 }
+
+# Check whether a program exists
+function exists() {
+    command -v $1 >/dev/null 2>&1
+}
+
+# Echoes a string representing a directory
+# specification minus the root directory.
+#
+# E.g., the relpath of 'foo/bar/baz'
+# is 'bar/baz'
+function relpath() {
+    local fullpath="$1"
+    OIFS="$IFS"
+    IFS="/"
+    dir_arr=($fullpath)
+    echo "${dir_arr[*]:1}"
+    IFS="$OIFS"
+}
+
+# Echoes a string representing a directory
+# specification minus the last directory/file.
+#
+# E.g., the pathname of 'foo/bar/baz'
+# is 'foo/bar'
+function pathname() {
+    local fullpath="$1"
+    OIFS="$IFS"
+    IFS="/"
+    dir_arr=($fullpath)
+    echo "${dir_arr[*]::(${#dir_arr[@]}-1)}"
+    IFS="$OIFS"
+}
+
+# Echoes a string representing the root
+# directory of a directory specification.
+#
+# E.g., the basedir of 'foo/bar/baz'
+# is 'foo'
+function basedir() {
+    local fullpath="$1"
+    OIFS="$IFS"
+    IFS="/"
+    dir_arr=($fullpath)
+    echo "${dir_arr[*]::1}"
+    IFS="$OIFS"
+}
