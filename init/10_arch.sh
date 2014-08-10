@@ -1,23 +1,26 @@
 # Check that we're on Arch
 [[ "$(cat /etc/issue 2> /dev/null)" =~ Arch ]] || return 1
 
-if [[ -z $($PKG_CHECK_INSTALLED "curl") ]]; then
+#if [[ -z $($PKG_CHECK_INSTALLED "curl") ]]; then
+if ! $PKG_CHECK_INSTALLED "curl"; then
   e_header "Installing curl"
   pacman -S curl
 fi
 
-if [[ -z $($PKG_CHECK_INSTALLED "packer") ]]; then
+#if [[ -z $($PKG_CHECK_INSTALLED "packer") ]]; then
+if ! $PKG_CHECK_INSTALLED "packer"; then
   e_header "Installing Packer"
   PACKER_PKGBUILD_URL="https://aur.archlinux.org/packages/pa/packer/PKGBUILD"
   CWD=$(pwd)
   BUILD_DIR="$CWD/packer"
+  mkdir -p $BUILD_DIR
   cd $BUILD_DIR
-  curl -o PKGBUILD $PACKER_PKGBUILD_URL
+  curl -L -o PKGBUILD $PACKER_PKGBUILD_URL
   makepkg -s PKGBUILD
-  PACKER_PKG=$(ls packer*pkg.tar.xz)
+  PACKER_PKG=$(ls -1 packer*pkg.tar.xz | head -1)
   sudo pacman -U $PACKER_PKG
   cd $CWD
-  rm -r $BUILD_DIR
+  rm -rf $BUILD_DIR
 fi
 
 # Upgrade existing packages
@@ -28,11 +31,13 @@ Would you like to upgrade installed packages?
 This will be skipped if "Y" isn't pressed within the next 15 seconds.
 EOF
 read -N 1 -t 15 -p "Upgrade packages? [y/N] " upgrade_packages; echo
-    if [[ "$upgrade_packages" =~ [Yy] ]]; then
-        e_header "Upgrading packages"
-        packer -Syu
-        echo "Upgraded packages." ||
-        echo "Error upgrading packages"
+if [[ "$upgrade_packages" =~ [Yy] ]]; then
+    e_header "Upgrading packages"
+    if packer -Syu; then
+        echo "Upgraded packages."
     else
-        echo "Skipping."
+        echo "Error upgrading packages"
+    fi
+else
+    echo "Skipping."
 fi

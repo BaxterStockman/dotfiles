@@ -21,7 +21,7 @@ EOF
   read -N 1 -t 15 -p "Update spf13-vim? [y/N] " update_spf13; echo
   if [[ "$update_spf13" =~ [Yy] ]]; then
     e_header "Updating spf13-vim"
-    update_spf13-vim || exec curl -L http://j.mp/spf13-vim3 | sh
+    update_spf13-vim || exec curl -L http://j.mp/spf13-vim3 | sh &&
     echo "Updated spf13-vim." ||
     echo "Error updating spf13-vim."
   else
@@ -42,6 +42,27 @@ EOF
     curl -L http://install.perlbrew.pl | bash >/dev/null 2>&1 &&
     echo "Installed Perlbrew." ||
     echo "Error installing Perlbrew."
+    perlbrew install-patchperl
+    perlbrew install-cpanm
+  else
+    echo "Skipping."
+  fi
+fi
+
+if exists perlbrew && ! perlbrew list &>/dev/null; then
+  cat <<EOF
+Would you like to install the latest stable version of perl?
+
+This will be skipped if "Y" isn't pressed within the next 15 seconds.
+EOF
+  read -N 1 -t 15 -p "Install perl? [y/N] " install_perl; echo
+  if [[ "$install_perl" =~ [Yy] ]]; then
+    e_header "Installing perl"
+    export PERLBREW_ROOT=$HOME/opt/perl5/perlbrew
+    perlbrew install stable &&
+    echo "Installed perl." ||
+    echo "Error installing perl."
+    perlbrew switch `perlbrew list | grep -o "perl-.*"`
   else
     echo "Skipping."
   fi
