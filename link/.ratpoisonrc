@@ -13,6 +13,9 @@ exec ratpoison -c "source $HOME/.ratpoisonrc.unbind"
 # Set prefix to ctrl-z
 escape C-z
 
+# 'Escape' the prefix so that it is sent to the currently-focused pane
+bind C-z generate
+
 # Exec .xinitrc local and
 # load .Xresources and .Xresources local
 # For some reason, merging them in .xinitrc
@@ -130,6 +133,7 @@ bind j focusdown
 bind k focusup
 bind l focusright
 
+# Rotate focus between currently-visible panes
 bind space focus
 
 # Vim-style movements
