@@ -83,10 +83,10 @@ alias te='trash-empty'
 
 ## VirtualBox Manager
 alias vbm="VBoxManage"
+alias virtualboxmanage="vboxmanage"
 
 ## WM-related stuff
 alias rp='ratpoison'
 
-## Alias urxvtc to urxvt if the system has
-## urxvtd and urxvtc
-exists urxvtc && exists urxvtd && alias urxvt='urxvtc'
+## Alias urxvtc to urxvt if the system has urxvtd and urxvtc
+alias urxvt='urxvtc'
