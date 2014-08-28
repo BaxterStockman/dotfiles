@@ -276,9 +276,6 @@ command! -nargs=+ CommandCabbrev call CommandCabbrev(<f-args>)
 " Abbreviate CommandCabbrev to a lowercase abbreviation
 CommandCabbrev ccab CommandCabbrev
 
-CommandCabbrev write SudoWrite
-CommandCabbrev w SudoWrite
-
 """""""""""""""""""""
 """ Miscellaneous """
 """""""""""""""""""""
