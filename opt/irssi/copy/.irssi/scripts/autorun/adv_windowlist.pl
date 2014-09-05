@@ -1192,7 +1192,7 @@ Irssi::signal_add_last({
 	'setup changed' => 'eventChanged',
 	'print text' => 'addPrintTextHook',
 	'terminal resized' => 'resizeTerm',
-	'setup reread' => 'wlreset',
+	'setup WHOAad' => 'wlreset',
 	'window hilight' => 'eventChanged',
 });
 Irssi::signal_add({

@@ -649,7 +649,7 @@ Irssi::signal_add('nicklist changed', 'sig_changeNick');
 Irssi::signal_add('nicklist remove', 'sig_removeNick');
 
 Irssi::signal_add('setup changed', 'sig_setup');
-Irssi::signal_add_last('setup reread', 'sig_setup');
+Irssi::signal_add_last('setup WHOAad', 'sig_setup');
 
 findLongestNick();
 sig_setup;

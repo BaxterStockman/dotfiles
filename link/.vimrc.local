@@ -270,11 +270,23 @@ function! CommandCabbrev(abbreviation, expansion)
 endfunction
 command! -nargs=+ CommandCabbrev call CommandCabbrev(<f-args>)
 
+" Source all vimrc files
+command! SourceAll if filereadable($MYVIMRC) | source $MYVIMRC | endif | if has('gui_running') && filereadable($MYGVIMRC) |  source $MYGVIMRC | endif
+
+augroup myvimrc
+    au!
+    au BufWritePost .vimrc*,_vimrc*,vimrc*,vimrc*,.gvimrc*,_gvimrc*,gvimrc* SourceAll
+augroup END
+
 """""""""""""""""""""
 """ Abbreviations """
 """""""""""""""""""""
 " Abbreviate CommandCabbrev to a lowercase abbreviation
 CommandCabbrev ccab CommandCabbrev
+CommandCabbrev sw SudoWrite
+CommandCabbrev sr SudoRead
+CommandCabbrev src SourceAll
+CommandCabbrev chk SyntasticCheck
 
 """""""""""""""""""""
 """ Miscellaneous """
@@ -286,9 +298,3 @@ CommandCabbrev ccab CommandCabbrev
     endif
 " }
 
-command! SourceAll if filereadable($MYVIMRC) | source $MYVIMRC | endif | if has('gui_running') && filereadable($MYGVIMRC) |  source $MYGVIMRC | endif
-
-augroup myvimrc
-    au!
-    au BufWritePost .vimrc*,_vimrc*,vimrc*,vimrc*,.gvimrc*,_gvimrc*,gvimrc* SourceAll
-augroup END
