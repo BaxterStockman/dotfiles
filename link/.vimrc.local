@@ -200,6 +200,11 @@ map Y y$
 " search highlighting until the next search.
 nnoremap <C-L> :nohl<CR><C-L>
 
+" Undo the mapping of <C-a>, since that's what I use for my tmux prefix and
+" it's causing mischief with numbers
+nnoremap <A-a> <C-a>
+nnoremap <A-x> <C-x>
+
 """"""""""""""""""""""""""
 """ Functions/Commands """
 """"""""""""""""""""""""""
