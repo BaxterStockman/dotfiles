@@ -142,9 +142,6 @@ nnoremap <C-L> :nohl<CR><C-L>
 " Remove any trailing whitespace that is in the file
 autocmd BufRead,BufWrite * if ! &bin | silent! %s/\s\+$//ge | endif
 
-" Automatically detect filetype upon :w
-autocmd BufRead,BufWrite,BufWritePost * :filetype detect
-
 " Don't automatically fold
 set foldmethod=manual
 
@@ -153,6 +150,8 @@ let g:autoclose_vim_commentmode = 1     " try to stop autoclose from closing  co
 let g:C_SourceCodeExtensions = 'c cc cp cxx cpp CPP c++ C i ii hxx h'
 
 let g:Perl_MapLeader = ';'
+let perl_include_pod = 1
+let perl_extended_vars = 1
 
 " Deals with temporary hang when saving python files
 let g:pymode_rope_lookup_project = 0
@@ -163,12 +162,41 @@ set shell=/bin/bash
 " Stop it with the stupid automatic folding
 set foldlevelstart=20
 
-" No longer using Haskellmode
-" Haskellmode settings
-"au FileType haskell nnoremap <buffer> <F1> :HdevtoolsType<CR>
-"au FileType haskell nnoremap <buffer> <silent> <F2> :HdevtoolsClear<CR>
-"au BufEnter *.hs compiler ghc
-"let g:haddock_browser="/usr/bin/dwb"
+""""""""""""""""""""""""""
+""" Syntastic settings """
+""""""""""""""""""""""""""
+" Options that apply to all filetypes
+let g:syntastic_check_on_open = 1
+
+" Aggregate errors/warnings from all enabled checkers
+let g:syntastic_aggregate_errors = 1
+
+let g:syntastic_perl_checkers = ['perl', 'perlcritic']
+" Could be dangerous to use this when checking third-party files...
+let g:syntastic_enable_perl_checker = 1
+
+" perlcritic.vim settings
+
+" perlcritic.vim has a slight but important bug/flaw: it doesn't pass any
+" '-12345'/'--brutal'/etc. flags to the perlcritic executable, so only
+" registers policy violations of level 5, perlcritic's default severity level.
+" We fix this here by manually setting the '--brutal' flag, which catches all
+" severity levels.
+let g:syntastic_perl_perlcritic_args = '--brutal --exclude=HardTabs'
+
+" All perlcritic messages above 3 are highlighted as errors, the rest are shown
+" as warnings
+let g:syntastic_perl_perlcritic_thres = 3
+
+""""""""""""""""""""""""""""""""""""""""""""""
+""" Filetype mappings and related settings """
+""""""""""""""""""""""""""""""""""""""""""""""
+
+" Automatically detect filetype upon :w
+autocmd BufRead,BufWrite,BufWritePost * :filetype detect
+
+" Set Rexfiles to use Perl syntax
+autocmd BufRead,BufNewFile Rexfile set filetype=perl
 
 """"""""""""""""""""""
 """ Key remappings """
@@ -274,6 +302,8 @@ function! CommandCabbrev(abbreviation, expansion)
   execute 'cabbr ' . a:abbreviation . ' <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "' . a:expansion . '" : "' . a:abbreviation . '"<CR>'
 endfunction
 command! -nargs=+ CommandCabbrev call CommandCabbrev(<f-args>)
+
+command! -range=% -nargs=* PerlTidy if &filetype ==? 'perl' | <line1>,<line2> !perltidy -q -nst -b <args> <NL>| endif
 
 " Source all vimrc files
 command! SourceAll if filereadable($MYVIMRC) | source $MYVIMRC | endif | if has('gui_running') && filereadable($MYGVIMRC) |  source $MYGVIMRC | endif
