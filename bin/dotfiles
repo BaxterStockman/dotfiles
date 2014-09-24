@@ -249,7 +249,8 @@ function check_exists () {
 
 function link_do() {
   local dest_dir="$(pathname "$1")"
-  local src_file=${2#$HOME/}
+  #local src_file=${2#$HOME/}
+  local src_file="$2"
   local dest_file=$1
 
   [[ -e $dest_dir ]] || e_arrow "Creating $dest_dir." && mkdir -p "$dest_dir"

@@ -96,6 +96,9 @@ URxvt*.urgentOnBell:    true
 URxvt*.visualBell:      false
 URxvt*.lineSpace:       0
 
+! Set meta key
+URxvt*modifier: super
+
 ! Perl extensions
 URxvt*.perl-ext-common: default,clipboard,keyboard-select,url-select,-option-popup,-selection-popup,-realine
 URxvt*.matcher.button:  1
