@@ -135,10 +135,6 @@ map Y y$
                     " Map Y to work like D and C, i.e. to yank until EOL,
                     " rather than to act as yy, which is the default.
 
-nnoremap <C-L> :nohl<CR><C-L>
-                    " Map <C-L> (redraw screen) to also turn off
-                    " search highlighting until the next search.
-
 " Remove any trailing whitespace that is in the file
 autocmd BufRead,BufWrite * if ! &bin | silent! %s/\s\+$//ge | endif
 
