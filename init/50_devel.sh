@@ -6,7 +6,7 @@ update_spf13-vim() {
     cd $spf13dir
     [[ $(git pull) =~ "up-to-date" ]] && return 1
     vim +BundleInstall! +BundleClean +q +q
-    ch $HOME
+    cd $HOME
     return 0
 }
 
