@@ -21,7 +21,7 @@ EOF
   read -N 1 -t 15 -p "Update spf13-vim? [y/N] " update_spf13; echo
   if [[ "$update_spf13" =~ [Yy] ]]; then
     e_header "Updating spf13-vim"
-    update_spf13-vim || exec curl -L http://j.mp/spf13-vim3 | sh &&
+    update_spf13-vim || curl http://j.mp/spf13-vim3 -L -o - | sh &&
     echo "Updated spf13-vim." ||
     echo "Error updating spf13-vim."
   else
