@@ -19,7 +19,7 @@ fi
 [[ -f ~/.xinitrc.local ]] && source ~/.xinitrc.local
 
 [[ -f ~/.Xresources ]] && xrdb -merge ~/.Xresources
-[[ -f ~/.Xresources.local ]] && xrdb -merge ~/.Xresources.local
+#[[ -f ~/.Xresources.local ]] && xrdb -merge ~/.Xresources.local
 exists urxvtd && urxvtd -q -o -f &
 
 if [[ -n "$1" ]]; then
