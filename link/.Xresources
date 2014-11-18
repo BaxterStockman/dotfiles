@@ -68,9 +68,6 @@ URxvt*.intensityStyles:     false
 URxvt*.BD:  White
 URxvt*.colorUL: #00D1FF
 
-! Fix font space
-URxvt*letterSpace:  -1
-
 ! Scrollbar
 URxvt*.scrollStyle:         plain
 URxvt*.scrollTtyKeypress:   true
@@ -151,3 +148,10 @@ Xautolock.locker:           slimlock
 Xautolock.time:             5
 Xautolock.killer:           ~/bin/scripts/sleeper
 Xautolock.killtime:         10
+
+!------ Default Xorg font settings -------!
+*font:     -*-fixed-medium-r-normal-*-*-130-*-*-*-*-iso10646-1
+*boldFont: -*-fixed-medium-r-normal-*-*-130-*-*-*-*-iso10646-1
+
+!------ Local settings ------!
+#include "/home/matt/.Xresources.local"
