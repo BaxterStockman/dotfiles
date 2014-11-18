@@ -20,6 +20,7 @@ fi
 
 [ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
 [ -f ~/.Xresources.local ] && xrdb -merge ~/.Xresources.local
+exists urxvtd && urxvtd -q -o -f &
 
 if exists urxvtd; then
     urxvtd -q -o -f &
