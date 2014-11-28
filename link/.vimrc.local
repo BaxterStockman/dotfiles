@@ -319,6 +319,12 @@ CommandCabbrev sr SudoRead
 CommandCabbrev src SourceAll
 CommandCabbrev chk SyntasticCheck
 
+""""""""""""""""""""""""""""""""
+""" Plugin-specific settings """
+""""""""""""""""""""""""""""""""
+" haskellmode-vim
+let g:haddock_browser = 'dwb'
+
 """""""""""""""""""""
 """ Miscellaneous """
 """""""""""""""""""""

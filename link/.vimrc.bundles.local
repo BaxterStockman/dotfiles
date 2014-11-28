@@ -1,24 +1,28 @@
+"Plugin 'bitc/vim-hdevtools'
+Plugin 'dag/vim2hs'
+Plugin 'eagletmt/neco-ghc'
+Plugin 'eagletmt/ghcmod-vim'
+"Plugin 'kana/vim-textobj-indent'
+Plugin 'pbrisbin/vim-syntax-shakespeare'
+Plugin 'vim-scripts/cmdalias.vim'
+Plugin 'vim-scripts/c.vim'
+Plugin 'vim-scripts/jQuery'
+Plugin 'vim-scripts/LaTeX-Box'
+Plugin 'vim-scripts/linediff.vim'
+Plugin 'vim-scripts/perl-support.vim'
+Plugin 'vim-scripts/SudoEdit.vim'
+Plugin 'vim-scripts/txt2pdf.vim'
+Plugin 'vim-scripts/unicode.vim'
+Plugin 'vitalk/vim-shebang'
+Plugin 'Shougo/neobundle.vim'
+Plugin 'xolox/vim-misc'
+Plugin 'xolox/vim-notes'
+
+" Plugins installed by spf-13 that should be gotten rid of
+UnBundle 'lukerandall/haskellmode-vim'
+
 " Use .vimrc.bundles.custom if available {
     if filereadable(expand("~/.vimrc.bundles.custom"))
         source ~/.vimrc.bundles.custom
     endif
 " }
-Bundle 'bitc/vim-hdevtools'
-Bundle 'dag/vim2hs'
-Bundle 'eagletmt/neco-ghc'
-Bundle 'eagletmt/ghcmod-vim'
-Bundle 'pbrisbin/vim-syntax-shakespeare'
-Bundle 'vim-scripts/cmdalias.vim'
-Bundle 'vim-scripts/c.vim'
-Bundle 'vim-scripts/jQuery'
-Bundle 'vim-scripts/LaTeX-Box'
-Bundle 'vim-scripts/linediff.vim'
-Bundle 'vim-scripts/perl-support.vim'
-Bundle 'vim-scripts/SudoEdit.vim'
-Bundle 'vim-scripts/txt2pdf.vim'
-Bundle 'vim-scripts/unicode.vim'
-Bundle 'vitalk/vim-shebang'
-Bundle 'Shougo/neobundle.vim'
-Bundle 'xolox/vim-misc'
-Bundle 'xolox/vim-notes'
-UnBundle 'lukerandall/haskellmode-vim'
