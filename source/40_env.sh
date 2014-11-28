@@ -11,7 +11,9 @@ shopt -s extglob
 shopt -s nocaseglob
 
 # Color grep results
-export GREP_OPTIONS='--color=auto'
+# XXX DEPRECATED
+#export GREP_OPTIONS='--color=auto'
+alias grep='grep --color=auto'
 
 # Prevent less from clearing the screen while still showing colors.
 export LESS=-XR
