@@ -64,53 +64,31 @@ function set_prompts() {
         BOLD=$(tput bold)
         RESET=$(tput sgr0)
     else
-        BASE03="\e]P8002b36" # S_base03
-        BASE02="\e]P0073642" # S_base02
-        BASE01="\e]PA586e75" # S_base01
-        BASE00="\e]PB657b83" # S_base00
-        BASE3="\e]PFfdf6e3" # S_base3
-        BASE2="\e]P7eee8d5" # S_base2
-        BASE1="\e]PE93a1a1" # S_base1
-        BASE0="\e]PC839496" # S_base0
-        CYAN="\e]P62aa198" # S_cyan
-        GREEN="\e]P2859900" # S_green
-        MAGENTA="\e]P5d33682" # S_magenta
-        RED="\e]P1dc322f" # S_red
-        ORANGE="\e]P9cb4b16" # S_orange
-        BLUE="\e]P4268bd2" # S_blue
-        YELLOW="\e]P3b58900" # S_yellow
-        VIOLET="\e]PD6c71c4" # S_violet
-
-        echo -en $BASE03
-        echo -en $BASE02
-        echo -en $BASE01
-        echo -en $BASE00
-        echo -en $BASE3
-        echo -en $BASE2
-        echo -en $BASE1
-        echo -en $BASE0
-        echo -en $CYAN
-        echo -en $GREEN
-        echo -en $MAGENTA
-        echo -en $RED
-        echo -en $ORANGE
-        echo -en $BLUE
-        echo -en $YELLOW
-        echo -en $VIOLET
-
         clear # against bg artifacts
+
         # Linux console colors. I don't have the energy
         # to figure out the Solarized values
-        #YELLOW="\e[1;33m"
-        #ORANGE="\033[1;33m"
-        #RED="\e[1;31m"
-        #MAGENTA="\033[1;31m"
-        #VIOLET="\033[1;35m"
-        #BLUE="\e[1;34m"
-        #CYAN="\e[1;36m"
-        #GREEN="\033[1;32m"
-        #BOLD=""
-        #RESET="\033[m"
+        BLUE="\e[1;34m"
+        CYAN="\e[1;36m"
+        GREEN="\033[1;32m"
+        MAGENTA="\033[1;31m"
+        ORANGE="\033[1;33m"
+        RED="\e[1;31m"
+        VIOLET="\033[1;35m"
+        YELLOW="\e[1;33m"
+
+        BOLD=""
+        RESET="\033[m"
+
+        echo -en $CYAN
+        echo -en $BLUE
+        echo -en $GREEN
+        echo -en $MAGENTA
+        echo -en $ORANGE
+        echo -en $RED
+        echo -en $VIOLET
+        echo -en $YELLOW
+
     fi
 
     local PS1_user=""

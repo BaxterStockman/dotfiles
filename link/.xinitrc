@@ -4,8 +4,11 @@
 #
 # Executed by startx (run your window manager from here)
 
+echo "Got here! Starting $1" >> /home/matt/xsession.log
+
 # Check whether a program exists
 exists() {
+    [[ -n "$1" ]] || echo "'exists' requires an argument" && return 1
     command -v "$1" >/dev/null 2>&1 || test -e "$1"
 }
 
@@ -20,7 +23,6 @@ fi
 
 [ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
 [ -f ~/.Xresources.local ] && xrdb -merge ~/.Xresources.local
-exists urxvtd && urxvtd -q -o -f &
 
 if exists urxvtd; then
     urxvtd -q -o -f &
@@ -29,6 +31,8 @@ if exists urxvtd; then
     # the server.
     export TERMINAL=urxvtc
 fi
+
+echo "Got here! Exec'ing $1" >> /home/matt/xsession.log
 
 if [ -n "$1" ]; then
     exec "$1"

@@ -7,7 +7,6 @@
 # information.
 
 [[ $EUID -eq 0 ]] && return
-[[ $TERM = "linux" ]] && return
 exists tmux || return
 
 alias tmux='tmux -2'
@@ -45,7 +44,6 @@ irssi_repair() {
 }
 
 if [[ -z "$TMUX" ]] && exists tmux &> /dev/null; then
-    #export TERM="screen-256color"
     if [[ -n "$SSH_CONNECTION" ]]; then
         prefix="ssh"
     else
