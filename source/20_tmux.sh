@@ -6,14 +6,22 @@
 # sessions. See https://github.com/spencertipping/bashrc-tmux for usage
 # information.
 
-[[ $EUID -eq 0 ]] && return
-exists tmux || return
+# XXX TESTING
+#return
 
-alias tmux='tmux -2'
+exists tmux || return
+[[ $EUID -eq 0 ]] && return
+[[ $TERM == linux ]] && return
+
+COLOR_COUNT=${COLOR_COUNT:-$(tput colors)}
+if [[ $COLOR_COUNT -ge 256 ]]; then
+    alias tmux='tmux -2'
+else
+    echo "\$TERM is $TERM, supporting $COLOR_COUNT colors" >> "$HOME/colors.log"
+fi
 
 T3=$(pgrep -u $USER -x irssi)
 logfile="$HOME/.log/bash_tmux.log"
-#prefix=""
 irc_win="irssi"
 
 log() {
@@ -68,7 +76,7 @@ if [[ -z "$TMUX" ]] && exists tmux &> /dev/null; then
   # Allocating a session ID.
   # There are two possibilities here. First, we could have a list of session
   # IDs that is densely packed; e.g. [0, 1, 2, 3, 4]. In this case, we want to
-  # allocate 5.
+  # allocate 6.
   #
   # If, on the other hand, there is a gap, then it becomes unsafe to just use
   # #sessions as the new ID. So instead, we search through the list to see if
