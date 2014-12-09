@@ -32,8 +32,6 @@ if exists urxvtd; then
     export TERMINAL=urxvtc
 fi
 
-echo "Got here! Exec'ing $1" >> /home/matt/xsession.log
-
 if [ -n "$1" ]; then
     exec "$1"
 else

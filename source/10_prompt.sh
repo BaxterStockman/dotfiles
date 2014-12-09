@@ -1,25 +1,13 @@
 # Set colorful PS1 only on colorful terminals.
-function set_prompts() {
+function configure_color_prompts() {
     ## Solarized colors
-    local BASE03=""
-    local BASE02=""
-    local BASE01=""
-    local BASE00=""
-    local BASE0=""
-    local BASE1=""
-    local BASE2=""
-    local BASE3=""
-    local YELLOW=""
-    local ORANGE=""
-    local RED=""
-    local MAGENTA=""
-    local VIOLET=""
-    local BLUE=""
-    local CYAN=""
-    local GREEN=""
+    local BASE03 BASE02 BASE01 BASE00
+    local BASE3 BASE2 BASE1 BASE0
+    local BLACK RED GREEN YELLOW
+    local BLUE MAGENTA CYAN WHITE
+    local VIOLET ORANGE
 
-    local BOLD=""
-    local RESET=""
+    local BOLD RESET
 
     # Colors for elements of prompt:
     # ROOT_C            root username color
@@ -30,7 +18,8 @@ function set_prompts() {
     # PROMPT_C          prompt character color
     # ERROR_FACE_C      error-indicator color
     # ERROR_PROMPT_C    prompt character color on error
-    local USERNAME_C AT_C HOSTNAME_C CWD_C PROMPT_C ERROR_C
+    local ROOT_C USERNAME_C AT_C HOSTNAME_C
+    local CWD_C PROMPT_C ERROR_FACE_C ERROR_PROMPT_C
 
     if tput setaf 1 &> /dev/null; then
         tput sgr0
@@ -45,35 +34,35 @@ function set_prompts() {
                 BASE02=$(tput setaf 235)
                 BASE01=$(tput setaf 240)
                 BASE00=$(tput setaf 241)
-                BASE0=$(tput setaf 244)
-                BASE1=$(tput setaf 245)
-                BASE2=$(tput setaf 254)
                 BASE3=$(tput setaf 230)
-                YELLOW=$(tput setaf 136)
-                ORANGE=$(tput setaf 166)
+                BASE2=$(tput setaf 254)
+                BASE1=$(tput setaf 245)
+                BASE0=$(tput setaf 244)
                 RED=$(tput setaf 160)
-                MAGENTA=$(tput setaf 125)
-                VIOLET=$(tput setaf 61)
-                BLUE=$(tput setaf 33)
-                CYAN=$(tput setaf 37)
                 GREEN=$(tput setaf 64)
+                YELLOW=$(tput setaf 136)
+                BLUE=$(tput setaf 33)
+                MAGENTA=$(tput setaf 125)
+                CYAN=$(tput setaf 37)
+                VIOLET=$(tput setaf 61)
+                ORANGE=$(tput setaf 166)
             else
                 BASE03=$(tput setaf 8)
                 BASE02=$(tput setaf 0)
                 BASE01=$(tput setaf 10)
                 BASE00=$(tput setaf 11)
-                BASE0=$(tput setaf 12)
-                BASE1=$(tput setaf 14)
-                BASE2=$(tput setaf 7)
                 BASE3=$(tput setaf 15)
-                YELLOW=$(tput setaf 3)
-                ORANGE=$(tput setaf 9)
+                BASE2=$(tput setaf 7)
+                BASE1=$(tput setaf 14)
+                BASE0=$(tput setaf 12)
                 RED=$(tput setaf 1)
-                MAGENTA=$(tput setaf 5)
-                VIOLET=$(tput setaf 13)
-                BLUE=$(tput setaf 4)
-                CYAN=$(tput setaf 6)
                 GREEN=$(tput setaf 2)
+                YELLOW=$(tput setaf 3)
+                BLUE=$(tput setaf 4)
+                MAGENTA=$(tput setaf 5)
+                CYAN=$(tput setaf 6)
+                VIOLET=$(tput setaf 13)
+                ORANGE=$(tput setaf 9)
             fi
 
             ROOT_C="${BOLD}${RED}"
@@ -148,54 +137,60 @@ function set_prompts() {
     export PS1="${PS1_user}${PS1_suff}"
 }
 
+function set_prompts () {
 # dircolors --print-database uses its own built-in database instead of using
 # /etc/DIR_COLORS. Try to use the external file first to take advantage of user
 # additions. Use internal bash globbing instead of external grep binary.
 
-# sanitize TERM:
-safe_term=${TERM//[^[:alnum:]]/?}
-match_lhs=""
+    # sanitize TERM:
+    local safe_term=${TERM//[^[:alnum:]]/?}
+    local match_lhs=""
 
-[[ -f ~/.dir_colors ]] && match_lhs="${match_lhs}$(<~/.dir_colors)"
-[[ -f /etc/DIR_COLORS ]] && match_lhs="${match_lhs}$(</etc/DIR_COLORS)"
-[[ -z ${match_lhs} ]] \
-    && type -P dircolors >/dev/null \
-    && match_lhs=$(dircolors --print-database)
+    if [[ -f ~/.dir_colors ]]; then
+        match_lhs="${match_lhs}$(<~/.dir_colors)"
+    elif [[ -f /etc/DIR_COLORS ]]; then
+        match_lhs="${match_lhs}$(</etc/DIR_COLORS)"
+    fi
 
-if [[ $'\n'${match_lhs} == *$'\n'"TERM "${safe_term}* ]] ; then
-    # we have colors :-)
+    if [[ -z ${match_lhs} ]]; then
+        type -P dircolors >/dev/null
+        match_lhs=$(dircolors --print-database)
+    fi
 
-    # Enable colors for ls, etc. Prefer ~/.dir_colors
-    if type -P dircolors >/dev/null ; then
-        if [[ -f ~/.dir_colors ]] ; then
-            eval $(dircolors -b ~/.dir_colors)
-        elif [[ -f /etc/DIR_COLORS ]] ; then
-            eval $(dircolors -b /etc/DIR_COLORS)
+    if [[ $'\n'${match_lhs} == *$'\n'"TERM "${safe_term}* ]] ; then
+        # we have colors :-)
+
+        # Enable colors for ls, etc. Prefer ~/.dir_colors
+        if type -P dircolors >/dev/null ; then
+            if [[ -f ~/.dir_colors ]] ; then
+                eval $(dircolors -b ~/.dir_colors)
+            elif [[ -f /etc/DIR_COLORS ]] ; then
+                eval $(dircolors -b /etc/DIR_COLORS)
+            fi
         fi
+
+        configure_color_prompts
+
+        if [[ ! "$OSTYPE" =~ ^(darwin|freebsd) ]]; then
+            alias ls="ls --color=auto"
+            alias diff='colordiff'
+            alias dir="dir --color=auto"
+            alias grep="grep --color=auto"
+            alias dmesg='dmesg --color'
+        fi
+    else
+        # show root@ when we do not have colors
+        PS1="\u@\h \w \$([[ \$? != 0 ]] && echo \":( \")\$ "
+
+        # Use this other PS1 string if you want \W for root and \w for all other users:
+        # PS1="\u@\h $(if [[ ${EUID} == 0 ]]; then echo '\W'; else echo '\w'; fi) \$([[ \$? != 0 ]] && echo \":( \")\$ "
     fi
+}
 
-    set_prompts
-    unset set_prompts
-
-    if [[ ! "$OSTYPE" =~ ^(darwin|freebsd) ]]; then
-        alias ls="ls --color=auto"
-        alias diff='colordiff'
-        alias dir="dir --color=auto"
-        alias grep="grep --color=auto"
-        alias dmesg='dmesg --color'
-    fi
-
-else
-    # show root@ when we do not have colors
-    PS1="\u@\h \w \$([[ \$? != 0 ]] && echo \":( \")\$ "
-
-    # Use this other PS1 string if you want \W for root and \w for all other users:
-    # PS1="\u@\h $(if [[ ${EUID} == 0 ]]; then echo '\W'; else echo '\w'; fi) \$([[ \$? != 0 ]] && echo \":( \")\$ "
-
-fi
+set_prompts
 
 # Try to keep environment pollution down, EPA loves us.
-unset safe_term match_lh
+unset set_prompts configure_color_prompts
 
 PS2="> "
 PS3="~ "
