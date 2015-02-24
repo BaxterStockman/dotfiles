@@ -1,28 +1,68 @@
 " ~/.vimperatorrc | vi: set ft=vimperator: | Curtis Free (http://curtisfree.com)
 
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+" Focus
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " Custom settings
 "set noinsertmode
 set focuscontent
 
+"" Return focus automatically for certain pages
+autocmd PageLoad (www\\.youtube|groups.google)\\.com :normal <Esc>"
+autocmd LocationChange (www\\.youtube|groups.google)\\.com :normal <Esc>"
+
+autocmd LocationChange .* js modes.passAllKeys = false
+autocmd LocationChange mail\\.google\\.com js modes.passAllKeys = true
+autocmd LocationChange docs\\.google\\.com js modes.passAllKeys = true
+
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+" Startup
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " These settings prevent Vimperator from overwriting my preferred Firefox settings.
 set! browser.startup.page=1
 
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " Miscellaneous
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set history=50
 "" vertical bar CANNOT be used here
 set urlseparator=;
 
-""
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+" Commandline
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hi CmdLine font-family: "Inconsolatazi4";
+hi -a CmdLine font-size: 14px;
+hi -a CmdLine padding: 4px 0 0;
+
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+" Hints
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"" Limit hintchars to homerow
 set hintchars=asdfghjkl
 
+"" Prettify hints
+hi Hint font-family: "Inconsolatazi4";
+hi -a Hint border: 1px solid black;
+hi -a Hint padding: 1px 1px 0 1px;
+hi -a Hint color: black;
+hi -a Hint background-color: #fffcc8;
+hi -a Hint font-size: 14px;
+hi HintActive background-color: rgba(0,0,0,0) !important;
+hi HintElem background-color: rgba(0,0,0,0) !important;
+
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " Awesome Bar
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 "" See http://developernotes.com/archive/2008/09/22/vimperator-tip-awesome-bar.aspx.
 "" Additional 's' option gives initial suggestion of search engine but (mistakenly?)
 "" enables suggestions (which should only occur given 'S'). Useful, but I'll favor
 "" privacy/security and just use 'l' here.
 set complete=l
 
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " Scrolling
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 "" Vimperator does not give the user direct control over scroll distance. Vimium (for
 "" Chromium/Google Chrome) uses a nice 60px by default; 2<dir> is much smaller, but it
 "" feels better in Vimperator.
@@ -31,7 +71,11 @@ nnoremap k 2k
 nnoremap h 2h
 nnoremap l 2l
 
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " Display
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"" Turn on animations
+set animations
 "" show only the tab bar
 set gui=tabs
 "" show numbers on each tab
@@ -39,7 +83,9 @@ set tabnumbers
 "" see http://code.google.com/p/vimperator-labs/issues/detail?id=311
 set popups=tab,resized
 
-" Find
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+" Text Search
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 "" perform incremental searching
 set incsearch
 "" highlight search results
@@ -49,10 +95,14 @@ set ignorecase
 "" only consider case if an upper case char is used
 set smartcase
 
+
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " Maps
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 "" Note: Since about Vimperator 2.2, one must use S-char (shift+char) instead of CHAR (uppercase).
 """ Stop
 map <Esc> <C-c>
+
 """ Site Opening
 map  <C-l> o
 imap <C-l> <Esc>o
@@ -60,9 +110,23 @@ map  <C-S-l> t
 imap <C-S-l> <Esc>t
 map  <C-e> O
 imap <C-e> <Esc>O
+map go o
+map gO O
+map O t
+
 """ Navigation
 map < H
 map > L
+map <S-j> gt
+map <S-k> gT
+
+" Map <C-L> (redraw screen) to also turn off
+" search highlighting until the next search.
+nnoremap <C-l> :nohl<CR><C-l>
+
+" Unmap <Tab> in insert mode
+"unmap <Tab>
+
 """ Searching (Google)
 map  <C-k> ogoogle<Space>
 imap <C-k> <Esc>ogoogle<Space>
@@ -100,13 +164,17 @@ cmap <C-k> <Esc><C-k>
 cmap <C-l> <Esc><C-l>
 cmap <C-t> <Esc><C-t>
 
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " Style
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 "" See http://bbs.archlinux.org/viewtopic.php?id=69123
 "" See http://github.com/VoQn/vimperator-colorscheme/raw/e13afec1be5ec1c9de775d0e2a464862f8d3a453/colors/default.vimp
 hi CompItem  font-size: 12px;
 hi CompTitle color: magenta; font-weight: bold; font-size: 12px;
 
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " Commands
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 "" Show Error Console
 """ NOTE: Requires Web Developer toolbar.
 command! error js webdeveloper_openErrorConsole();
@@ -122,7 +190,9 @@ command! jekyll open http://0.0.0.0:4000
 "" App Tabs
 command! app set apptab!
 
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 " JavaScript
+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 "" Window
 :js var win = window.content.wrappedJSObject;
 "" Element Toggle
