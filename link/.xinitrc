@@ -30,8 +30,4 @@ if exists urxvtd; then
     export TERMINAL=urxvtc
 fi
 
-if [ -n "$1" ]; then
-    exec "$1"
-else
-    exec ratpoison
-fi
+exec ${1:-i3}
