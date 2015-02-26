@@ -4,8 +4,6 @@
 #
 # Executed by startx (run your window manager from here)
 
-echo "Got here! Starting $1" >> /home/matt/xsession.log
-
 # Check whether a program exists
 exists() {
     [[ -n "$1" ]] || echo "'exists' requires an argument" && return 1
