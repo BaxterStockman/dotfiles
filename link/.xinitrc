@@ -4,8 +4,6 @@
 #
 # Executed by startx (run your window manager from here)
 
-echo "Got here! Starting $1" >> /home/matt/xsession.log
-
 # Check whether a program exists
 exists() {
     [[ -n "$1" ]] || echo "'exists' requires an argument" && return 1
@@ -32,8 +30,4 @@ if exists urxvtd; then
     export TERMINAL=urxvtc
 fi
 
-if [ -n "$1" ]; then
-    exec "$1"
-else
-    exec ratpoison
-fi
+exec ${1:-i3}
