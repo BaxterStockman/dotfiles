@@ -56,7 +56,7 @@ alias dsstore="find . -name '*.DS_Store' -type f -ls -delete"
 # Aliasing eachdir like this allows you to use aliases/functions as commands.
 alias eachdir=". eachdir"
 
-## Safety features
+# Safety features
 alias cp='cp -i'
 alias mv='mv -i'
 exists trash-put && alias rm='echo "Try trash-put instead."; false'
@@ -69,24 +69,27 @@ alias cls=' echo -ne "\033c"'       # clear screen for real (it does not work in
 alias shred=' timeout 3 shred -v'
 
 
-## Make Bash error tolerant
+# Make Bash error tolerant
 alias :q=' exit'
 alias :Q=' exit'
 alias :x=' exit'
 alias cd..='cd ..'
 
-## Assorted other aliases
+# Assorted other aliases
 alias chkrun='top -b | grep'
 alias tp='trash-put'
 alias tl='trash-list'
 alias te='trash-empty'
 
-## VirtualBox Manager
+# VirtualBox Manager
 alias vbm="VBoxManage"
 alias virtualboxmanage="vboxmanage"
 
-## WM-related stuff
+# WM-related stuff
 alias rp='ratpoison'
 
-## Alias urxvtc to urxvt if the system has urxvtd and urxvtc
+# Alias urxvtc to urxvt if the system has urxvtd and urxvtc
 alias urxvt='urxvtc'
+
+# Make xrdb search for includes in $HOME/.Xresources.d
+alias xrdb="xrdb -I${HOME}/.Xresources.d"

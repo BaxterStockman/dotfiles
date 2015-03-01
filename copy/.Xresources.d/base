@@ -1,5 +1,14 @@
-#include "/home/matt/.Xresources.d/colors/solarized_dark"
+#include "colors/solarized_dark"
 
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! Default Xorg font settings
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*font:     -*-fixed-medium-r-normal-*-*-130-*-*-*-*-iso10646-1
+*boldFont: -*-fixed-medium-r-normal-*-*-130-*-*-*-*-iso10646-1
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! Override some URxvt settings
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 URxvt*internalBorder:   0
 URxvt*allowSendEvents:  yes
 URxvt*.depth:           32

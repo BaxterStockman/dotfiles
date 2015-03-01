@@ -14,4 +14,4 @@
 #define S_base2         #eee8d5
 #define S_base3         #fdf6e3
 
-
+#include "./solarized_scheme"
