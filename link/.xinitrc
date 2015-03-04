@@ -10,7 +10,8 @@ exists() {
     command -v "$1" >/dev/null 2>&1 || test -e "$1"
 }
 
-if [ -d /etc/X11/xinit/xinitrc.d ]; then
+if [ -d /etc/X11/xinit/xinitrc.d ]
+then
   for f in /etc/X11/xinit/xinitrc.d/*; do
     [ -x "$f" ] && . "$f"
   done
@@ -18,9 +19,20 @@ if [ -d /etc/X11/xinit/xinitrc.d ]; then
 fi
 
 [ -f ~/.xinitrc.local ] && . ~/.xinitrc.local
-[ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
+if [ -f ~/.Xresources ]
+then
+    if [ -d ~/.Xresources.d ]
+    then
+        xrdb -I"${HOME}/.Xresources" -merge ~/.Xresources
+    else
+        xrdb -merge ~/.Xresources
+    fi
+fi
 
-if exists urxvtd; then
+
+
+if exists urxvtd
+then
     urxvtd -q -o -f &
     # Set the value of 'i3-sensible-terminal' properly, so that it will spawn
     # an urxvt client rather than a new instance of the server, or a clone of
