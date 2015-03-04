@@ -23,7 +23,8 @@ if [ -f ~/.Xresources ]
 then
     if [ -d ~/.Xresources.d ]
     then
-        xrdb -I"${HOME}/.Xresources" -merge ~/.Xresources
+        echo 'WHAT' > ~/Xwhat.log
+        xrdb -I"${HOME}/.Xresources.d" -merge ~/.Xresources
     else
         xrdb -merge ~/.Xresources
     fi
