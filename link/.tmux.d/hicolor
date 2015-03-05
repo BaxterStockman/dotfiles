@@ -1,10 +1,4 @@
-###############################################################################
-# Keybindings
-###############################################################################
-
-# TODO only do this if there's an X session
-bind Y run 'tmux save-buffer - | xsel -i 2>/dev/null'
-bind -t vi-copy 'Y' copy-pipe 'xsel -i 2>/dev/null'
+# Configuration for low-color environments
 
 ###############################################################################
 # Cosmetics
@@ -26,4 +20,10 @@ set -g status-left-length 24
 set -g status-left "#[fg=colour136,dim]#S"
 set -g status-right "#[fg=colour136,dim] #h | %d %b %R"
 
-if-shell '[[ $(tmux -V | tr -cd "[:digit:]") -ge 19 ]]' 'source ~/.tmux.d/current'
+# Hack to detect whether tmux is version 1.9 or above. Since the shell can't do
+# floating point comparison and we can't assume that bc or some similar program
+# is available, we just trust that tmux releases will never have more than two
+# digits in it.
+if-shell '[ $(tmux -V | tr -cd "[:digit:]") -ge 19 ]' \
+	'source ~/.tmux.d/current' \
+	'source ~/.tmux.d/deprecated'
