@@ -11,7 +11,11 @@
 
 exists tmux || return
 [[ $EUID -eq 0 ]] && return
-[[ $TERM == linux ]] && return
+if [[ $TERM == linux ]]
+then
+    alias tmux='tmux -L getty'
+    return
+fi
 
 COLOR_COUNT=${COLOR_COUNT:-$(tput colors)}
 if [[ $COLOR_COUNT -ge 256 ]]; then
