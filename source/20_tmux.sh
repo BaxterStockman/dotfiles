@@ -6,9 +6,6 @@
 # sessions. See https://github.com/spencertipping/bashrc-tmux for usage
 # information.
 
-# XXX TESTING
-#return
-
 exists tmux || return
 [[ $EUID -eq 0 ]] && return
 [[ $TERM == linux ]] && return
@@ -17,8 +14,6 @@ COLOR_COUNT=${COLOR_COUNT:-$(tput colors)}
 if [[ $COLOR_COUNT -ge 256 ]]; then
     alias tmux='tmux -2'
 else
-    echo "\$TERM is $TERM, supporting $COLOR_COUNT colors" >> "$HOME/colors.log"
-fi
 
 T3=$(pgrep -u $USER -x irssi)
 logfile="$HOME/.log/bash_tmux.log"
