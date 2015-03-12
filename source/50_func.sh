@@ -62,3 +62,24 @@ then
         done
     }
 fi
+
+set_interactive_opts ()
+{
+    local -a argv=("$@");
+    local funcname="${argv[0]}";
+    local -a funcopts="${argv[@]:1}";
+    local functext;
+
+    read -r -d '' functext  <<EOF
+function $funcname () {
+  if [[ -t 1 ]]
+  then
+    command $funcname ${funcopts[@]} \$@
+  else
+    command $funcname \$@
+  fi
+}
+EOF
+
+    eval "$functext"
+}
