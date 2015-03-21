@@ -1,15 +1,10 @@
 # cd and ls in one
-cl() {
-    if [[ -d "$1" ]]; then
-        cd "$1"
-        ls
-    else
-        echo "bash: cl: '$1': Directory not found"
-    fi
+function cl() {
+    cd "$1" && ls
 }
 
 # calculator
-calc() {
+function calc() {
     echo "scale=3;$@" | bc -l
 }
 
@@ -28,7 +23,7 @@ then
     function export () {
         local argv=$@
         local -A noexport=(
-            [TERM]=1
+            [TERM]=true
         )
 
         builtin export "$@"
@@ -42,8 +37,11 @@ then
             item=${item##-* }
             var=${item%%=*}
             val=${item#*=}
-            [[ ${noexport[$var]} -eq 1 ]] && return
+            ${noexport[$var]} && return
+
+            # For the case 'export SOMEVAR'
             [[ "$val" == "$var" ]] && val=${!var}
+
             tmux setenv "$var" "$val"
         done
     }
@@ -63,8 +61,7 @@ then
     }
 fi
 
-set_interactive_opts ()
-{
+function set_interactive_opts () {
     local -a argv=("$@");
     local funcname="${argv[0]}";
     local -a funcopts="${argv[@]:1}";
@@ -82,4 +79,21 @@ function $funcname () {
 EOF
 
     eval "$functext"
+}
+
+function clean_path () {
+    local varname="${1:-PATH}"
+    local -A elem_map
+    local -a new_var_elems
+
+    while read -r -d ':' elem; do
+        [[ -z "${elem}" ]] && continue
+        if [[ -z "${elem_map["${elem}"]}" ]]; then
+            elem_map["${elem}"]="${elem}"
+            new_var_elems+=("${elem}")
+        fi
+    done <<< "${!varname}"
+
+    local IFS=:
+    echo "${varname}=${new_var_elems[*]} ; export ${varname}"
 }
