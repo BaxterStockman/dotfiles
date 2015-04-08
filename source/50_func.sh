@@ -18,29 +18,31 @@ function titlebar() {
   echo -n $'\e]0;'"$*"$'\a'
 }
 
-if [[ -n $TMUX ]]
-then
+if [[ -n $TMUX ]]; then
     function export () {
-        local argv=$@
+        local -a args=("$@")
         local -A noexport=(
             [TERM]=true
         )
 
         builtin export "$@"
 
-        local var val
-        for item in "$argv"
-        do
+        local var val trimmed_item
+        for item in "${args[@]}"; do
             # Remove the longest substring between the beginning of a flag and a
             # space character.  This should remove all but the positional
             # parameters that the 'export' builtin was invoked with.
-            item=${item##-* }
-            var=${item%%=*}
-            val=${item#*=}
-            ${noexport[$var]} && return
+            trimmed_item="${item##-* }"
+
+	    var="${trimmed_item%%=*}"
+            val="${trimmed_item#*=}"
+
+            if "${noexport["$var"]:-false}"; then
+                return
+            fi
 
             # For the case 'export SOMEVAR'
-            [[ "$val" == "$var" ]] && val=${!var}
+            [[ "$val" == "$var" ]] && val="${!var}"
 
             tmux setenv "$var" "$val"
         done
@@ -56,7 +58,7 @@ then
             # space character.  This should remove all but the positional
             # parameters that the 'unset' builtin was invoked with.
             item=${item##-* }
-            tmux setenv -u "$item"
+            #tmux setenv -u "$item"
         done
     }
 fi
