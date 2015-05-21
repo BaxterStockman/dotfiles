@@ -4,13 +4,11 @@
 # http://old.jorgenschaefer.de/work_environment/gimppoison.html
 FRAMEDUMP="$HOME/.rpframe_gimp"
 
-if [ -f "$FRAMEDUMP" ]
-then
+if [ -f "$FRAMEDUMP" ]; then
     ratpoison -c "frestore `cat "$FRAMEDUMP"`"
 fi
 
-if ! ps -C gimp >/dev/null
-then
+if ! ps -C gimp >/dev/null; then
     exec gimp "$@"
 else
     WGIMP=$(ratpoison -c "windows %n %t" \

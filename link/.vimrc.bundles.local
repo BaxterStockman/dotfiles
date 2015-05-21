@@ -1,9 +1,9 @@
-"Plugin 'bitc/vim-hdevtools'
 Plugin 'dag/vim2hs'
 Plugin 'eagletmt/neco-ghc'
 Plugin 'eagletmt/ghcmod-vim'
 "Plugin 'kana/vim-textobj-indent'
 Plugin 'pbrisbin/vim-syntax-shakespeare'
+Plugin 'tangledhelix/vim-kickstart'
 Plugin 'vim-scripts/cmdalias.vim'
 Plugin 'vim-scripts/c.vim'
 Plugin 'vim-scripts/jQuery'
@@ -20,6 +20,7 @@ Plugin 'xolox/vim-notes'
 
 " Plugins installed by spf-13 that should be gotten rid of
 UnBundle 'lukerandall/haskellmode-vim'
+UnBundle 'bitc/hdevtools'
 
 " Use .vimrc.bundles.custom if available {
     if filereadable(expand("~/.vimrc.bundles.custom"))

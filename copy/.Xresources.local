@@ -1,9 +1,0 @@
-!
-! Put your installation-specific X resources stuff here
-!
-
-#define XRESOURCES_D ./.Xresources.d
-
-#include "/home/matt/.Xresources.d/base"
-#include "/home/matt/.Xresources.d/fonts/base"
-#include "/home/matt/.Xresources.d/fonts/dejavu"

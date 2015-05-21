@@ -4,15 +4,14 @@
 #
 # Executed by startx (run your window manager from here)
 
-echo "Got here! Starting $1" >> /home/matt/xsession.log
-
 # Check whether a program exists
 exists() {
     [[ -n "$1" ]] || echo "'exists' requires an argument" && return 1
     command -v "$1" >/dev/null 2>&1 || test -e "$1"
 }
 
-if [ -d /etc/X11/xinit/xinitrc.d ]; then
+if [ -d /etc/X11/xinit/xinitrc.d ]
+then
   for f in /etc/X11/xinit/xinitrc.d/*; do
     [ -x "$f" ] && . "$f"
   done
@@ -20,11 +19,21 @@ if [ -d /etc/X11/xinit/xinitrc.d ]; then
 fi
 
 [ -f ~/.xinitrc.local ] && . ~/.xinitrc.local
+if [ -f ~/.Xresources ]
+then
+    if [ -d ~/.Xresources.d ]
+    then
+        echo 'WHAT' > ~/Xwhat.log
+        xrdb -I"${HOME}/.Xresources.d" -merge ~/.Xresources
+    else
+        xrdb -merge ~/.Xresources
+    fi
+fi
 
-[ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
-[ -f ~/.Xresources.local ] && xrdb -merge ~/.Xresources.local
 
-if exists urxvtd; then
+
+if exists urxvtd
+then
     urxvtd -q -o -f &
     # Set the value of 'i3-sensible-terminal' properly, so that it will spawn
     # an urxvt client rather than a new instance of the server, or a clone of
@@ -32,8 +41,4 @@ if exists urxvtd; then
     export TERMINAL=urxvtc
 fi
 
-if [ -n "$1" ]; then
-    exec "$1"
-else
-    exec ratpoison
-fi
+exec ${1:-i3}

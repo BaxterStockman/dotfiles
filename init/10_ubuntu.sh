@@ -37,10 +37,15 @@ sudo apt-get -qq dist-upgrade
 
 # Install APT packages.
 packages=(
-  build-essential libssl-dev
+  build-essential
+  libssl-dev
   git-core
-  tree sl id3tool cowsay
-  nmap telnet
+  tree
+  sl
+  id3tool
+  cowsay
+  nmap
+  telnet
   htop
 )
 
@@ -53,16 +58,14 @@ done
 
 if (( ${#list[@]} > 0 )); then
   e_header "Installing APT packages: ${list[*]}"
-  for package in "${list[@]}"; do
-    sudo apt-get -qq install "$package"
-  done
+  sudo apt-get -qq install "${list[@]}"
 fi
 
 # Install Git Extras
 if [[ ! "$(type -P git-extras)" ]]; then
   e_header "Installing Git Extras"
   (
-    cd ~/.dotfiles/libs/git-extras &&
+    cd ~/.dotfiles/vendor/git-extras &&
     sudo make install
   )
 fi

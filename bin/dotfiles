@@ -7,26 +7,35 @@
 # Globals
 DOTFILES_ROOT="$HOME/.dotfiles"
 DOTFILES_GIT=git://github.com/BaxterStockman/dotfiles.git
-SCRIPT_NAME="dotfiles"
-SCRIPT="$DOTFILES_ROOT/bin/$SCRIPT_NAME"
+SCRIPT="${BASH_SOURCE[0]}"
+SCRIPT_NAME="${SCRIPT%%*/}"
 
 # Global flow control flags
-new_dotfiles_install="0"
-skip_init="0"
-noclobber="1"
+new_dotfiles_install=false
+skip_init=false
+noclobber=true
 
 # Flags for whether to print link/copy/etc. operations
-print_want_header="1"
-print_cpan_header="1"
-print_copy_header="1"
-print_skel_header="1"
-print_link_header="1"
+print_want_header=true
+print_cpan_header=true
+print_copy_header=true
+print_skel_header=true
+print_link_header=true
 
 # Flag for whether to print help doc
-print_help="0"
+print_help=false
 
 # RC files to not clobber when linking
-declare -a noclobber_rcs=(bashrc bash_login bash_logout bash_profile muttrc subversion perlbrew ssh)
+declare -a noclobber_rcs=(
+  bashrc
+  bash_login
+  bash_logout
+  bash_profile
+  muttrc
+  subversion
+  perlbrew
+  ssh
+)
 
 # Set package manager stuff based on platform
 if [[ "$(cat /etc/issue 2> /dev/null)" =~ Arch ]]; then
@@ -110,9 +119,9 @@ function init_do() {
 
 # Copy files.
 function want_header() {
-  if [[ "$print_want_header" -eq "1" ]]; then
+  if "${print_want_header}"; then
     e_header "Installing packages";
-    print_want_header="0"
+    print_want_header=false
   fi
 }
 
@@ -141,9 +150,9 @@ function want_do() {
 
 # Copy files.
 function cpan_header() {
-  if [[ "$print_cpan_header" -eq "1" ]]; then
+  if "${print_cpan_header}"; then
     e_header "Installing CPAN modules";
-    print_cpan_header="0"
+    print_cpan_header=false
   fi
 }
 
@@ -176,9 +185,9 @@ function cpan_do() {
 
 # Copy files.
 function copy_header() {
-  if [[ "$print_copy_header" -eq "1" ]]; then
+  if "${print_copy_header}"; then
     e_header "Copying files into home directory";
-    print_copy_header="0"
+    print_copy_header=false
   fi
 }
 
@@ -199,9 +208,9 @@ function copy_do() {
 
 # Copy skeleton files.
 function skel_header() {
-  if [[ "$print_skel_header" -eq "1" ]]; then
+  if "${print_skel_header}"; then
     e_header "Copying skeleton files into home directory";
-    print_skel_header="0"
+    print_skel_header=false
   fi
 }
 
@@ -218,9 +227,9 @@ function skel_do() {
 
 # Link files.
 function link_header() {
-  if [[ "$print_link_header" -eq "1" ]]; then
+  if "${print_link_header}"; then
     e_header "Linking files into home directory";
-    print_link_header="0"
+    print_link_header=false
   fi
 }
 
@@ -229,8 +238,7 @@ function link_test() {
 }
 
 function check_exists () {
-  if [[ $noclobber -eq 1 ]]
-  then
+  if "${noclobber}"; then
     local dest_dir="$(pathname "$1")"
     local src_file=${2#$HOME/}
     local dest_file=$1
@@ -255,10 +263,9 @@ function link_do() {
 
   [[ -e $dest_dir ]] || e_arrow "Creating $dest_dir." && mkdir -p "$dest_dir"
 
-  if check_exists "$1" "$2"
-  then
-    dest_file="${1}.custom"
-    e_arrow "Not clobbering $1; $2 will be appended with '.custom'"
+  if check_exists "$1" "$2"; then
+    dest_file="${dest_file}.custom"
+    e_arrow "Not clobbering ${dest_file}; ${src_file} will be appended with '.custom'"
   fi
 
   ln -sf "$src_file" "$dest_file"
@@ -280,7 +287,9 @@ function do_stuff() {
   fi
 
   # No files? abort.
-  if (( ${#files[@]} == 0 )); then return; fi
+  if (( ${#files[@]} == 0 )); then
+    return 1;
+  fi
 
   basedir=$(basedir "$1")
 
@@ -376,11 +385,11 @@ function process_opt_dirs() {
     read -N 1 -t 15 -p "Process $opt_dir_base? [y/N] " process_dir; echo
 
     if [[ "$process_dir" =~ [Yy] ]]; then
-      print_want_header="1"
-      print_cpan_header="1"
-      print_copy_header="1"
-      print_skel_header="1"
-      print_link_header="1"
+      print_want_header=true
+      print_cpan_header=true
+      print_copy_header=true
+      print_skel_header=true
+      print_link_header=true
 
       for subdir in "${subdirs[@]}"; do
           if [[ -d "$DOTFILES_ROOT/opt/$opt_dir_base/$subdir" ]]; then
@@ -393,11 +402,11 @@ function process_opt_dirs() {
 
 function init_dotfiles() {
   local flags="-"
-  skip_init=1
+  skip_init=true
   # Add command-line flag for skipping initialization
   flags="${flags}s"
   if [[ ! -d $DOTFILES_ROOT ]]; then
-    new_dotfiles_install=1
+    new_dotfiles_install=true
     # Add command-line flag for new install
     flags="${flags}n"
     # ~/.dotfiles doesn't exist? Clone it!
@@ -412,21 +421,21 @@ function init_dotfiles() {
     git submodule update --init --recursive --quiet
   fi
 
-  [[ $noclobber -eq 0 ]] && flags="${flags}c"
-  [[ ! $print_link_header -eq 1 ]] ||  [[ ! $print_copy_header ]] && flags="${flags}q"
-  [[ $print_help -eq 1 ]] && flags="${flags}h"
+  "${noclobber}" || flags="${flags}c"
+  if ! "${print_link_header}" ||  ! "${print_copy_header}"; then
+    flags="${flags}q"
+  fi
 
-  e_header "Executing updated $SCRIPT_NAME script"
-  $SCRIPT $flags
-  unset flags
-  exit 0
+  "${print_help}" && flags="${flags}h"
+
+  e_header "Executing updated ${SCRIPT_NAME} script"
+  exec "${SCRIPT}" "${flags}"
 }
 
 function intro() {
   echo 'Dotfiles - "Cowboy" Ben Alman - http://benalman.com/'
 
   if [[ "$1" == "-h" || "$1" == "--help" ]]; then cat <<HELP
-
 Usage: $(basename "$0")
 
 See the README for documentation.
@@ -446,22 +455,22 @@ while getopts ":nscqh" opt
 do
   case $opt in
     n)
-      new_dotfiles_install="1"
+      new_dotfiles_install=true
       ;;
     s)
-      skip_init="1"
+      skip_init=true
       ;;
     c)
-      noclobber="0"
+      noclobber=false
       ;;
     q)
-      print_want_header="1"
-      print_copy_header="0"
-      print_skel_header="0"
-      print_link_header="0"
+      print_want_header=true
+      print_copy_header=false
+      print_skel_header=false
+      print_link_header=false
       ;;
     h)
-      print_help="0"
+      print_help=false
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -471,8 +480,8 @@ do
 done
 
 # Initial stuff; do only if we haven't updated to the newest version
-if [[ "$skip_init" -ne "1" ]]; then
-  intro $print_help
+if ! "$skip_init"; then
+  intro "${print_help}"
 
   e_header "Performing initial configuration"
   # Ensure that we can actually, like, compile anything.
@@ -481,8 +490,8 @@ if [[ "$skip_init" -ne "1" ]]; then
     exit 1
   fi
   e_header
-  # If Git is not installed, install it (Ubuntu only, since Git comes standard
-  # with recent XCode or CLT)
+  # If Git is not installed, install it (Ubuntu only, since Git comes standard with recent XCode or
+  # CLT)
   if ! command -v git >/dev/null 2>&1; then
     e_header "Installing Git"
     # The second or-clause is a cludge -- on Arch, packer won't be installed yet, so $PKG_INSTALL is
@@ -506,7 +515,7 @@ fi
 # Source some utilities & helpers.
 source "$DOTFILES_ROOT"/source/10_misc.sh
 
-[[ "$noclobber" -eq "1" ]] && e_header "Preserving some existing configurations"
+"${noclobber}" && e_header "Preserving some existing configurations"
 
 # Add binaries into the path
 PATH=$DOTFILES_ROOT/bin:$PATH
@@ -520,7 +529,7 @@ shopt -s nullglob
 mkdir -p "$DOTFILES_ROOT/caches"
 
 # If backups are needed, this is where they'll go.
-backup_dir="$DOTFILES_ROOT/backups/$(date "+%Y_%m_%d-%H_%M_%S")/"
+backup_dir="$DOTFILES_ROOT/backup/$(date "+%Y_%m_%d-%H_%M_%S")/"
 backup=
 
 # Execute code for each file in these subdirectories.
@@ -534,11 +543,11 @@ process_opt_dirs
 
 # Alert if backups were made.
 if [[ "$backup" ]]; then
-  echo -e "\nBackups were moved to ~/${backup_dir#$HOME/}"
+  echo -e "\nBackups were moved to ~/${backup_dir#${HOME}/}"
 fi
 
 # Lest I forget to do a few additional things...
-if [[ "$new_dotfiles_install" -eq "1" && -e "conf/firsttime_reminder.sh" ]]; then
+if "${new_dotfiles_install}" && [[ -f "conf/firsttime_reminder.sh" ]]; then
   e_header "This is a new installation"
   e_header "First-Time Reminders"
   source "conf/firsttime_reminder.sh"
