@@ -4,16 +4,20 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
+SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
+
 # Globals
-DOTFILES_ROOT="$HOME/.dotfiles"
-DOTFILES_GIT=git://github.com/BaxterStockman/dotfiles.git
-SCRIPT="${BASH_SOURCE[0]}"
-SCRIPT_NAME="${SCRIPT%%*/}"
+DOTFILES_ROOT="${DOTFILES_ROOT:-"$(readlink -e "${SCRIPT_DIRNAME}/../.dotfiles")"}"
+DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
 
 # Global flow control flags
-new_dotfiles_install=false
-skip_init=false
-noclobber=true
+DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:-false}"
+DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:-false}"
+DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
+
+DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
 
 # Flags for whether to print link/copy/etc. operations
 print_want_header=true
@@ -26,7 +30,7 @@ print_link_header=true
 print_help=false
 
 # RC files to not clobber when linking
-declare -a noclobber_rcs=(
+declare -a DOTFILES_NOCLOBBER_rcs=(
   bashrc
   bash_login
   bash_logout
@@ -238,12 +242,12 @@ function link_test() {
 }
 
 function check_exists () {
-  if "${noclobber}"; then
+  if "${DOTFILES_NOCLOBBER}"; then
     local dest_dir="$(pathname "$1")"
     local src_file=${2#$HOME/}
     local dest_file=$1
 
-    for rcname in "${noclobber_rcs[@]}"; do
+    for rcname in "${DOTFILES_NOCLOBBER_rcs[@]}"; do
       local rc="$dest_dir/.$rcname"
       if [[ ${1#$dest_dir/} =~ \.$rcname ]] && [[ $(cmp --silent "$src_file" "$rc") -eq 0 ]]
       then
@@ -402,16 +406,16 @@ function process_opt_dirs() {
 
 function init_dotfiles() {
   local flags="-"
-  skip_init=true
+  DOTFILES_SKIP_INIT=true
   # Add command-line flag for skipping initialization
   flags="${flags}s"
   if [[ ! -d $DOTFILES_ROOT ]]; then
-    new_dotfiles_install=true
+    DOTFILES_NEW_INSTALL=true
     # Add command-line flag for new install
     flags="${flags}n"
     # ~/.dotfiles doesn't exist? Clone it!
     e_header "Downloading dotfiles"
-    git clone --recursive "$DOTFILES_GIT" "$DOTFILES_ROOT"
+    git clone --recursive "$DOTFILES_REPO" "$DOTFILES_ROOT"
     cd "$DOTFILES_ROOT"
   else
     # Make sure we have the latest files.
@@ -421,15 +425,15 @@ function init_dotfiles() {
     git submodule update --init --recursive --quiet
   fi
 
-  "${noclobber}" || flags="${flags}c"
+  "${DOTFILES_NOCLOBBER}" || flags="${flags}c"
   if ! "${print_link_header}" ||  ! "${print_copy_header}"; then
     flags="${flags}q"
   fi
 
   "${print_help}" && flags="${flags}h"
 
-  e_header "Executing updated ${SCRIPT_NAME} script"
-  exec "${SCRIPT}" "${flags}"
+  e_header "Executing updated ${SCRIPT_BASENAME} script"
+  exec "${SCRIPT_PATH}" "${flags}"
 }
 
 function intro() {
@@ -455,19 +459,16 @@ while getopts ":nscqh" opt
 do
   case $opt in
     n)
-      new_dotfiles_install=true
+      DOTFILES_NEW_INSTALL=true
       ;;
     s)
-      skip_init=true
+      DOTFILES_SKIP_INIT=true
       ;;
     c)
-      noclobber=false
+      DOTFILES_NOCLOBBER=false
       ;;
     q)
-      print_want_header=true
-      print_copy_header=false
-      print_skel_header=false
-      print_link_header=false
+      DOTFILES_VERBOSE=false
       ;;
     h)
       print_help=false
@@ -479,8 +480,19 @@ do
   esac
 done
 
+# Flags for whether to print link/copy/etc. operations
+print_want_header=true
+print_cpan_header=true
+print_copy_header=true
+print_skel_header=true
+print_link_header=true
+
+for operation in want cpan copy skel link; do
+    declare "print_${operation}_header=$DOTFILES_VERBOSE"
+done
+
 # Initial stuff; do only if we haven't updated to the newest version
-if ! "$skip_init"; then
+if ! "$DOTFILES_SKIP_INIT"; then
   intro "${print_help}"
 
   e_header "Performing initial configuration"
@@ -515,7 +527,7 @@ fi
 # Source some utilities & helpers.
 source "$DOTFILES_ROOT"/source/10_misc.sh
 
-"${noclobber}" && e_header "Preserving some existing configurations"
+"${DOTFILES_NOCLOBBER}" && e_header "Preserving some existing configurations"
 
 # Add binaries into the path
 PATH=$DOTFILES_ROOT/bin:$PATH
@@ -547,7 +559,7 @@ if [[ "$backup" ]]; then
 fi
 
 # Lest I forget to do a few additional things...
-if "${new_dotfiles_install}" && [[ -f "conf/firsttime_reminder.sh" ]]; then
+if "${DOTFILES_NEW_INSTALL}" && [[ -f "conf/firsttime_reminder.sh" ]]; then
   e_header "This is a new installation"
   e_header "First-Time Reminders"
   source "conf/firsttime_reminder.sh"
