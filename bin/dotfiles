@@ -30,7 +30,7 @@ print_link_header=true
 print_help=false
 
 # RC files to not clobber when linking
-declare -a DOTFILES_NOCLOBBER_rcs=(
+declare -a DOTFILES_NOCLOBBER_RCS=(
   bashrc
   bash_login
   bash_logout
@@ -247,7 +247,7 @@ function check_exists () {
     local src_file=${2#$HOME/}
     local dest_file=$1
 
-    for rcname in "${DOTFILES_NOCLOBBER_rcs[@]}"; do
+    for rcname in "${DOTFILES_NOCLOBBER_RCS[@]}"; do
       local rc="$dest_dir/.$rcname"
       if [[ ${1#$dest_dir/} =~ \.$rcname ]] && [[ $(cmp --silent "$src_file" "$rc") -eq 0 ]]
       then
