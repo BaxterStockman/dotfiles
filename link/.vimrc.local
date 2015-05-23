@@ -192,7 +192,7 @@ let g:syntastic_perl_perlcritic_thres = 3
 autocmd BufRead,BufWrite,BufWritePost * :filetype detect
 
 " Set Rexfiles to use Perl syntax
-autocmd BufRead,BufNewFile Rexfile set filetype=perl
+autocmd BufRead,BufWrite,BufWritePost,BufNewFile Rexfile set filetype=perl
 
 " Set Vimperator configuration file to use Vim syntax
 autocmd BufRead,BufNewFile *.vimperatorrc set filetype=vim
