@@ -1,15 +1,10 @@
 # cd and ls in one
-cl() {
-    if [[ -d "$1" ]]; then
-        cd "$1"
-        ls
-    else
-        echo "bash: cl: '$1': Directory not found"
-    fi
+function cl() {
+    cd "$1" && ls
 }
 
 # calculator
-calc() {
+function calc() {
     echo "scale=3;$@" | bc -l
 }
 
@@ -23,27 +18,32 @@ function titlebar() {
   echo -n $'\e]0;'"$*"$'\a'
 }
 
-if [[ -n $TMUX ]]
-then
+if [[ -n $TMUX ]]; then
     function export () {
-        local argv=$@
+        local -a args=("$@")
         local -A noexport=(
-            [TERM]=1
+            [TERM]=true
         )
 
         builtin export "$@"
 
-        local var val
-        for item in "$argv"
-        do
+        local var val trimmed_item
+        for item in "${args[@]}"; do
             # Remove the longest substring between the beginning of a flag and a
             # space character.  This should remove all but the positional
             # parameters that the 'export' builtin was invoked with.
-            item=${item##-* }
-            var=${item%%=*}
-            val=${item#*=}
-            [[ ${noexport[$var]} -eq 1 ]] && return
-            [[ "$val" == "$var" ]] && val=${!var}
+            trimmed_item="${item##-* }"
+
+	    var="${trimmed_item%%=*}"
+            val="${trimmed_item#*=}"
+
+            if "${noexport["$var"]:-false}"; then
+                return
+            fi
+
+            # For the case 'export SOMEVAR'
+            [[ "$val" == "$var" ]] && val="${!var}"
+
             tmux setenv "$var" "$val"
         done
     }
@@ -58,13 +58,12 @@ then
             # space character.  This should remove all but the positional
             # parameters that the 'unset' builtin was invoked with.
             item=${item##-* }
-            tmux setenv -u "$item"
+            #tmux setenv -u "$item"
         done
     }
 fi
 
-set_interactive_opts ()
-{
+function set_interactive_opts () {
     local -a argv=("$@");
     local funcname="${argv[0]}";
     local -a funcopts="${argv[@]:1}";
@@ -82,4 +81,21 @@ function $funcname () {
 EOF
 
     eval "$functext"
+}
+
+function clean_path () {
+    local varname="${1:-PATH}"
+    local -A elem_map
+    local -a new_var_elems
+
+    while read -r -d ':' elem; do
+        [[ -z "${elem}" ]] && continue
+        if [[ -z "${elem_map["${elem}"]}" ]]; then
+            elem_map["${elem}"]="${elem}"
+            new_var_elems+=("${elem}")
+        fi
+    done <<< "${!varname}"
+
+    local IFS=:
+    echo "${varname}=${new_var_elems[*]} ; export ${varname}"
 }
