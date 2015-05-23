@@ -9,6 +9,8 @@ DOTFILES_ROOT="$HOME/.dotfiles"
 DOTFILES_GIT=git://github.com/BaxterStockman/dotfiles.git
 SCRIPT="${BASH_SOURCE[0]}"
 SCRIPT_NAME="${SCRIPT%%*/}"
+SCRIPT_NAME=${SCRIPT_NAME:-dotfiles}
+SCRIPT=${SCRIPT:-"${HOME}"/.dotfiles/bin/dotfiles}
 
 # Global flow control flags
 new_dotfiles_install=false
@@ -80,8 +82,10 @@ function to_install() {
   local debug desired installed i desired_s installed_s remain
   if [[ "$1" == 1 ]]; then debug=1; shift; fi
   # Convert args to arrays, handling both space- and newline-separated lists.
-  read -ra desired < <(echo "$1" | tr '\n' ' ')
-  read -ra installed < <(echo "$2" | tr '\n' ' ')
+  local -a desired=("$1")
+  local -a installed=("$2")
+  #read -ra desired < <(echo "$1" | tr '\n' ' ')
+  #read -ra installed < <(echo "$2" | tr '\n' ' ')
   # Sort desired and installed arrays.
   unset i; while read -r; do desired_s[i++]=$REPLY; done < <(
     printf "%s\n" "${desired[@]}" | sort
