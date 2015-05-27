@@ -22,12 +22,7 @@ function exists() {
 # E.g., the relpath of 'foo/bar/baz'
 # is 'bar/baz'
 function relpath() {
-    local fullpath="$1"
-    OIFS="$IFS"
-    IFS="/"
-    dir_arr=($fullpath)
-    echo "${dir_arr[*]:1}"
-    IFS="$OIFS"
+    echo "${1#*/}"
 }
 
 # Echoes a string representing a directory
@@ -36,12 +31,7 @@ function relpath() {
 # E.g., the pathname of 'foo/bar/baz'
 # is 'foo/bar'
 function pathname() {
-    local fullpath="$1"
-    OIFS="$IFS"
-    IFS="/"
-    dir_arr=($fullpath)
-    echo "${dir_arr[*]::(${#dir_arr[@]}-1)}"
-    IFS="$OIFS"
+    echo "${1%/*}"
 }
 
 # Echoes a string representing the root
@@ -50,10 +40,5 @@ function pathname() {
 # E.g., the basedir of 'foo/bar/baz'
 # is 'foo'
 function basedir() {
-    local fullpath="$1"
-    OIFS="$IFS"
-    IFS="/"
-    dir_arr=($fullpath)
-    echo "${dir_arr[*]::1}"
-    IFS="$OIFS"
+    head="${1#*/}"
 }
