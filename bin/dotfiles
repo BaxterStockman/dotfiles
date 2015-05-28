@@ -4,50 +4,62 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
-SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
-SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
+init () {
+    # Don't allow unset variables or uncaught errors
+    set -o nounset
+    set -o errexit
 
-# Globals
-DOTFILES_ROOT="${DOTFILES_ROOT:-"$(readlink -e "${SCRIPT_DIRNAME}/../.dotfiles")"}"
-DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
+    # Tweak file globbing.
+    shopt -s dotglob
+    shopt -s nullglob
 
-# Global flow control flags
-DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:-false}"
-DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:-false}"
-DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
+    SCRIPT_PATH="${BASH_SOURCE[0]}"
+    SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
+    SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
 
-DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
+    # Globals
+    : "${DOTFILES_HOME:=$HOME}"
+    : "${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/../.dotfiles")}"
+    : "${DOTFILES_REPO:=git://github.com/BaxterStockman/dotfiles.git}"
+    : "${DOTFILES_NEW_INSTALL:=false}"
+    : "${DOTFILES_SKIP_INIT:=false}"
+    : "${DOTFILES_NOCLOBBER:=true}"
+    : "${DOTFILES_VERBOSE:=true}"
+    : "${DOTFILES_CACHE_PATH:=${DOTFILES_ROOT}/caches}"
+    : "${DOTFILES_BACKUP_PATH:=${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
 
-# Flags for whether to print link/copy/etc. optypes
-print_copy_header=true
-print_skel_header=true
-print_link_header=true
+    # Flags for whether to print link/copy/etc. optypes
+    print_copy_header=true
+    print_skel_header=true
+    print_link_header=true
 
-# Flag for whether to print help doc
-print_help=false
+    # Flag for whether to print help doc
+    print_help=false
 
-# RC files to not clobber when linking
-declare -a DOTFILES_NOCLOBBER_RCS=(
-    bashrc
-    bash_login
-    bash_logout
-    bash_profile
-    muttrc
-    subversion
-    perlbrew
-    ssh
-)
+    # RC files to not clobber when linking
+    declare -a DOTFILES_NOCLOBBER_RCS=(
+        bashrc
+        bash_login
+        bash_logout
+        bash_profile
+        muttrc
+        subversion
+        perlbrew
+        ssh
+    )
+}
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Logging stuff.
-function e_header()   { echo -e "\n\033[1m$*\033[0m"; }
-function e_success()  { echo -e " \033[1;32m✔\033[0m  $*"; }
-function e_error()    { echo -e " \033[1;31m✖\033[0m  $*"; }
-function e_arrow()    { echo -e " \033[1;33m➜\033[0m  $*"; }
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+e_header ()   { echo -e "\n\033[1m$*\033[0m"; }
+e_success ()  { echo -e " \033[1;32m✔\033[0m  $*"; }
+e_error ()    { echo -e " \033[1;31m✖\033[0m  $*"; }
+e_arrow ()    { echo -e " \033[1;33m➜\033[0m  $*"; }
 
 # Given a list of desired items and installed items, return a list
 # of uninstalled items. Arrays in bash are insane (not in a good way).
-function to_install() {
+to_install () {
     local debug desired installed i desired_s installed_s remain
     if [[ "$1" == 1 ]]; then debug=1; shift; fi
     # Convert args to arrays, handling both space- and newline-separated lists.
@@ -72,7 +84,9 @@ function to_install() {
     echo "${remain[@]}"
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Offer the user a chance to skip something.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function skip () {
     local REPLY=noskip
     read -t 5 -n 1 -s -p "To skip, press X within 5 seconds. "
@@ -87,58 +101,103 @@ function skip () {
 
 # Initialize.
 function init_do() {
-    e_header "Sourcing $2"
-    source "$2"
+    e_header "Sourcing $1"
+    source "$1"
 }
 
 # Copy files.
 function copy_header() {
-    if "${print_copy_header}"; then
-        e_header "Copying files into home directory";
-        print_copy_header=false
-    fi
+    e_header "Copying files into ${DOTFILES_HOME}";
 }
 
 function copy_test() {
     if [[ -e "$2" && ! "$(cmp "$1" "$2" 2> /dev/null)" ]]; then
         echo "same file"
+        return 1
     elif [[ "$1" -ot "$2" ]]; then
         echo "destination file newer"
+        return 1
+    fi
+
+    return 0
+}
+
+mkdir_pretty () {
+    local mkdir_output="$(mkdir "$@")"
+    local -i exit_code=$?
+
+    if [[ $exit_code == 0 ]]; then
+        while read -r mkdir_output_line; do
+            e_arrow "$mkdir_output_line"
+        done
+        return 0
+    else
+        while read -r mkdir_output_line; do
+            e_error "$mkdir_output_line"
+        done
+        return 1
+    fi
+}
+
+cp_pretty () {
+    local cp_output
+    cp_output="$(cp "$@")"
+    local -i exit_code=$?
+
+    if [[ $exit_code == 0 ]]; then
+        while read -r cp_output_line; do
+            e_arrow "$cp_output_line"
+        done
+        return 0
+    else
+        while read -r cp_output_line; do
+            e_error "$cp_output_line"
+        done
+        return 1
     fi
 }
 
 function copy_do() {
-    dest_dir="$(pathname "$1")"
-    [[ -e "$dest_dir" ]] || e_arrow "Creating $dest_dir." && mkdir -p "$dest_dir"
-    e_success "Copying $2 to $1."
-    cp "$2" "$1"
-}
+    local srcfile="$1"
+    local destfile="$2"
+    local destdir="${destfile%/*}"
 
-# Copy skeleton files.
-function skel_header() {
-    if "${print_skel_header}"; then
-        e_header "Copying skeleton files into home directory";
-        print_skel_header=false
+    if ! mkdir_pretty -p "$destdir"; then
+        e_error "Can't copy ${srcfile} to ${destfile}"
+        return 1
+    fi
+
+    if ! cp "$srcfile" "$desfile"; then
+        e_error "Failed to copy ${srcfile} to ${destfile}"
+        return 1
+    else
+        e_success "Copied ${srcfile} to ${destfile}"
+        return 0
     fi
 }
 
+# Copy skeleton files.
+function skel_header () {
+    e_header "Copying skeleton files into ${DOTFILES_HOME}";
+}
+
 function skel_test() {
-    [[ -e "$2" ]] && echo "$2 already exists"
+    local srcfile="$1"
+    local destfile="$2"
+
+    if [[ -e "$destfile" ]]; then
+        echo "${destfile} already exists"
+        return 1
+    fi
 }
 
 function skel_do() {
-    dest_dir="$(pathname "$1")"
-    [[ -e $dest_dir ]] || e_arrow "Creating $dest_dir." && mkdir -p "$dest_dir"
-    e_success "Copying skeleton file $2 to $1."
-    cp "$2" "$1"
+    copy_do "$@"
 }
 
 # Link files.
 function link_header() {
-    if "${print_link_header}"; then
-        e_header "Linking files into home directory";
-        print_link_header=false
-    fi
+    e_header "Linking files into ${DOTFILES_HOME}";
 }
 
 function link_test() {
@@ -219,65 +278,43 @@ dirdiff () {
 
 # Copy, link, init, etc.
 function do_stuff() {
-    local optype srcdir_relpath srcdir_fullpath dest filepath files fullpath relpath skip
+    local optype srcdir dest filepath files fullpath relpath skip
 
-    srcdir_relpath="${DOTFILES_ROOT}/${1}"
-    if ! [[ -d "$srcdir_relpath" ]]; then
-        echo "No such directory: $srcdir_relpath" 1>&2
-        exit 1
+    optype="$1"
+    srcdir="${DOTFILES_ROOT}/${optype}"
+    if ! [[ -d "$srcdir" ]]; then
+        echo "No such directory: $srcdir" 1>&2
+        return 1
     fi
 
-    optype="${srcdir_relpath##*/}"
+    optype="${srcdir##*/}"
     if [[ -z "$optype" ]]; then
         echo "No optype specified" 1>&2
-        exit 1
+        return 1
     fi
 
     # Run _header function only if declared.
-    local header_func="${optype}_header"
-    type -a "$header_func" &>/dev/null && "$header_func"
+    local optype_header="${optype}_header"
+    local optype_do="${optype}_do"
+    declare -F "$optype_header" &>/dev/null && "$optype_header"
 
     # Iterate over files.
     while read -r srcfile destfile; do
-        base=$(basename "$file")
-
-        # If 'relpath' is not empty, filepath = relpath + base.
-        # Otherwise filepath = base. (e.g., the filepath of
-        # source/madeupdir/fakedir/dummy is madeupdir/fakedir/dummy)
-        if [[ "$relpath" ]]; then
-            filepath="$relpath/$base"
-        else
-            filepath="$base"
-        fi
-
-        # fullpath = full path to file relative to .dotfiles
-        fullpath="$1/$base"
-        dest="$HOME/$filepath"
-
-        # if '$file' is a directory, create it in the
-        # $HOME directory unless it already exists
-        if [[ -d "$file" ]]; then
-                # recurse on the directory so that
-                # all files in subfolders get processed
-                do_stuff "$fullpath" "$2"
-                # skip to next iteration
-                continue
-        fi
-
         # Run _test function only if declared.
-        local _test="_test"
-        basedir_test="$basedir$_test"
-        if [[ $(declare -f "$basedir_test") ]]; then
-            # If _test function returns a string, skip file and print that message.
-            skip="$("$basedir_test" "$file" "$dest")"
-            if [[ "$skip" ]]; then
-                e_error "Skipping $file, $skip."
+        local test_func="${optype}_test"
+
+        if declare -f "$test_func" &>/dev/null; then
+            # If _test function returns a string, skip file and print that
+            # message.
+            skip="$("$test_func" "$srcfile" "$destfile")"
+            if [[ -n "$skip" ]]; then
+                e_error "Skipping ${srcfile#$srcdir}: ${skip}."
                 continue
             fi
 
             # Destination file already exists in ~/. Back it up!
-            if [[ -e "$dest" ]]; then
-                e_arrow "Backing up $dest."
+            if [[ -e "$destfile" ]]; then
+                e_arrow "Backing up ${destfile}."
                 # Set backup flag, so a nice message can be shown at the end.
                 backup=1
                 # Create backup dir if it doesn't already exist.
@@ -289,11 +326,9 @@ function do_stuff() {
 
         fi
         # Do stuff.
-        local _do="_do"
-        basedir_do="$basedir$_do"
         # This will invoke, e.g., link_do "/home/user/.bashrc" "/home/user/.dotfiles/link/.bashrc"
-        "$basedir_do" "$dest" "$file"
-    done < <()
+        "$optype_do" "$dest" "$file"
+    done < <(dirdiff "$srcdir" "$destdir")
 }
 
 # Iterate through directories in .dotfiles/opt,
@@ -331,8 +366,7 @@ function process_opt_dirs() {
 }
 
 function init_dotfiles() {
-    local flags="-"
-    DOTFILES_SKIP_INIT=true
+    export DOTFILES_SKIP_INIT=true
     # Add command-line flag for skipping initialization
     flags="${flags}s"
     if [[ ! -d $DOTFILES_ROOT ]]; then
@@ -378,109 +412,113 @@ HELP
     exit; fi
 }
 
-# Enough with the functions, let's do stuff.
+main () {
+    # Grab command-line options
+    while (( $# )); do
+        read opt_name opt_value <<<"$@"
+        case "${opt_name/-?(-)/}"/ in
+            n|new-install)
+                DOTFILES_NEW_INSTALL=true
+                ;;
+            s|skip-init)
+                DOTFILES_SKIP_INIT=true
+                ;;
+            C|no-clobber)
+                DOTFILES_NOCLOBBER=false
+                ;;
+            v|verbose)
+                DOTFILES_VERBOSE=true
+                ;;
+            q|quiet)
+                DOTFILES_VERBOSE=false
+                ;;
+            h|help)
+                print_help=false
+                ;;
+            \?)
+                echo "Invalid option: ${opt_name}" 1>&2
+                exit 1
+                ;;
+        esac
+    done
 
-# Grab command-line options
-while getopts ":nscqh" opt
-do
-    case $opt in
-        n)
-            DOTFILES_NEW_INSTALL=true
-            ;;
-        s)
-            DOTFILES_SKIP_INIT=true
-            ;;
-        c)
-            DOTFILES_NOCLOBBER=false
-            ;;
-        q)
-            DOTFILES_VERBOSE=false
-            ;;
-        h)
-            print_help=false
-            ;;
-        \?)
-            echo "Invalid option: -$OPTARG" >&2
+    # Flags for whether to print link/copy/etc. optypes
+    print_copy_header=true
+    print_skel_header=true
+    print_link_header=true
+
+    for optype in copy skel link; do
+            declare "print_${optype}_header=$DOTFILES_VERBOSE"
+    done
+
+    # Initial stuff; do only if we haven't updated to the newest version
+    if ! "$DOTFILES_SKIP_INIT"; then
+        intro "${print_help}"
+
+        e_header "Performing initial configuration"
+
+        # Ensure that we can actually, like, compile anything.
+        if ! command -v gcc >/dev/null 2>&1 && [[ "$OSTYPE" =~ ^darwin ]]; then
+            e_error "XCode or the Command Line Tools for XCode must be installed first."
             exit 1
-            ;;
-    esac
-done
+        fi
 
-# Flags for whether to print link/copy/etc. optypes
-print_copy_header=true
-print_skel_header=true
-print_link_header=true
+        e_header
 
-for optype in copy skel link; do
-        declare "print_${optype}_header=$DOTFILES_VERBOSE"
-done
+        # If Git is not installed, install it (Ubuntu only, since Git comes
+        # standard with recent XCode or CLT)
+        if ! type -a git >/dev/null 2>&1; then
+            e_error "Git should be installed. It isn't. Aborting."
+            exit 1
+        fi
 
-# Initial stuff; do only if we haven't updated to the newest version
-if ! "$DOTFILES_SKIP_INIT"; then
-    intro "${print_help}"
+        # Update existing sudo time stamp if set, otherwise do nothing.
+        while true; do
+            sudo -n true
+            sleep 60
+            kill -0 "$$" || exit
+        done 2>/dev/null &
 
-    e_header "Performing initial configuration"
-    # Ensure that we can actually, like, compile anything.
-    if ! command -v gcc >/dev/null 2>&1 && [[ "$OSTYPE" =~ ^darwin ]]; then
-        e_error "XCode or the Command Line Tools for XCode must be installed first."
-        exit 1
-    fi
-    e_header
-    # If Git is not installed, install it (Ubuntu only, since Git comes standard with recent XCode or
-    # CLT)
-    if ! command -v git >/dev/null 2>&1; then
-        e_error "Git should be installed. It isn't. Aborting."
-        exit 1
+        # Initialize.
+        e_header "Pulling in updated dotfiles repo"
+        init_dotfiles
+    else
+        e_header "Skipping initialization"
     fi
 
-    # Update existing sudo time stamp if set, otherwise do nothing.
-    while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+    "${DOTFILES_NOCLOBBER}" \
+        && e_header "Preserving some existing configurations"
 
-    # Initialize.
-    e_header "Pulling in updated dotfiles repo"
-    init_dotfiles
-else
-    e_header "Skipping initialization"
-fi
+    # Add binaries into the path
+    PATH="${DOTFILES_ROOT}/bin${PATH:+:}${PATH}"
+    export PATH
 
-# Source some utilities & helpers.
-source "$DOTFILES_ROOT"/source/10_misc.sh
+    # Create caches directory, if it doesn't already exist.
+    mkdir -p "$DOTFILES_CACHE_PATH"
 
-"${DOTFILES_NOCLOBBER}" && e_header "Preserving some existing configurations"
+    # Execute code for each file in these subdirectories.
+    do_stuff "init"
+    do_stuff "copy"
+    do_stuff "skel"
+    do_stuff "link"
+    process_opt_dirs
 
-# Add binaries into the path
-PATH=$DOTFILES_ROOT/bin:$PATH
-export PATH
+    # Alert if backups were made.
+    if [[ "$backup" ]]; then
+        printf "\n%s\n" "Backups were moved to ${DOTFILES_BACKUP_PATH}"
+    fi
 
-# Tweak file globbing.
-shopt -s dotglob
-shopt -s nullglob
+    # Lest I forget to do a few additional things...
+    if "${DOTFILES_NEW_INSTALL}" && [[ -f "conf/firsttime_reminder.sh" ]]; then
+        e_header "This is a new installation"
+        e_header "First-Time Reminders"
+        source "conf/firsttime_reminder.sh"
+    fi
 
-# Create caches directory, if it doesn't already exist.
-mkdir -p "$DOTFILES_ROOT/caches"
+    # All done!
+    e_header "All done!"
+    return 0
+}
 
-# If backups are needed, this is where they'll go.
-backup_dir="$DOTFILES_ROOT/backup/$(date "+%Y_%m_%d-%H_%M_%S")/"
-backup=
-
-# Execute code for each file in these subdirectories.
-do_stuff "init"
-do_stuff "copy"
-do_stuff "skel"
-do_stuff "link"
-process_opt_dirs
-
-# Alert if backups were made.
-if [[ "$backup" ]]; then
-    echo -e "\nBackups were moved to ~/${backup_dir#${HOME}/}"
-fi
-
-# Lest I forget to do a few additional things...
-if "${DOTFILES_NEW_INSTALL}" && [[ -f "conf/firsttime_reminder.sh" ]]; then
-    e_header "This is a new installation"
-    e_header "First-Time Reminders"
-    source "conf/firsttime_reminder.sh"
-fi
-
-# All done!
-e_header "All done!"
+# Enough with the functions, let's do stuff.
+exit main "$@"
