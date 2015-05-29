@@ -4,7 +4,7 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
-init () {
+init_vars () {
     # Don't allow unset variables or uncaught errors
     set -o nounset
     set -o errexit
@@ -27,6 +27,8 @@ init () {
     : "${DOTFILES_VERBOSE:=true}"
     : "${DOTFILES_CACHE_PATH:=${DOTFILES_ROOT}/caches}"
     : "${DOTFILES_BACKUP_PATH:=${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
+    declare -i __DOTFILES_BACKUP=0
+    declare -i __DOTFILES_FAILED=0
 
     # Flags for whether to print link/copy/etc. optypes
     print_copy_header=true
@@ -50,12 +52,77 @@ init () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Logging stuff.
+# Logging stuff
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 e_header ()   { echo -e "\n\033[1m$*\033[0m"; }
 e_success ()  { echo -e " \033[1;32m✔\033[0m  $*"; }
-e_error ()    { echo -e " \033[1;31m✖\033[0m  $*"; }
+e_error ()    { echo -e " \033[1;31m✖\033[0m  $*"; 1>&2 }
 e_arrow ()    { echo -e " \033[1;33m➜\033[0m  $*"; }
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mkdir_pretty () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Just wraps mkdir's output with some of the above logging functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local mkdir_output="$(mkdir "$@")"
+    local -i exit_code=$?
+
+    if [[ $exit_code == 0 ]]; then
+        while read -r mkdir_output_line; do
+            e_arrow "$mkdir_output_line"
+        done
+        return 0
+    else
+        while read -r mkdir_output_line; do
+            e_error "$mkdir_output_line"
+        done
+        return 1
+    fi
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cp_pretty () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Just wraps cp's output with some of the above logging functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local cp_output
+    cp_output="$(cp "$@")"
+    local -i exit_code=$?
+
+    if [[ $exit_code == 0 ]]; then
+        while read -r cp_output_line; do
+            e_arrow "$cp_output_line"
+        done
+        return 0
+    else
+        while read -r cp_output_line; do
+            e_error "$cp_output_line"
+        done
+        return 1
+    fi
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ln_pretty () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Just wraps ln's output with some of the above logging functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local ln_output
+    ln_output="$(ln "$@")"
+    local -i exit_code=$?
+
+    if [[ $exit_code == 0 ]]; then
+        while read -r ln_output_line; do
+            e_arrow "$ln_output_line"
+        done
+        return 0
+    else
+        while read -r ln_output_line; do
+            e_error "$ln_output_line"
+        done
+        return 1
+    fi
+}
 
 # Given a list of desired items and installed items, return a list
 # of uninstalled items. Arrays in bash are insane (not in a good way).
@@ -85,9 +152,10 @@ to_install () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+function skip () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Offer the user a chance to skip something.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function skip () {
     local REPLY=noskip
     read -t 5 -n 1 -s -p "To skip, press X within 5 seconds. "
     if [[ "$REPLY" =~ ^[Xx]$ ]]; then
@@ -99,19 +167,33 @@ function skip () {
     fi
 }
 
-# Initialize.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function init_do() {
-    e_header "Sourcing $1"
-    source "$1"
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Initialize
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    e_header "Sourcing ${srcfile}"
+    source "$srcfile"
 }
 
-# Copy files.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function copy_header() {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     e_header "Copying files into ${DOTFILES_HOME}";
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function copy_test() {
-    if [[ -e "$2" && ! "$(cmp "$1" "$2" 2> /dev/null)" ]]; then
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Ensures that files in the destination aren't overwritten if either
+#   - The destination file is exactly the same as the source file; or
+#   - The destination file is newer than the source file.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    local destfile="$1"
+
+    if [[ -e "${destfile}" && ! "$(cmp "${srcfile}" "${destfile}" 2> /dev/null)" ]]; then
         echo "same file"
         return 1
     elif [[ "$1" -ot "$2" ]]; then
@@ -122,42 +204,11 @@ function copy_test() {
     return 0
 }
 
-mkdir_pretty () {
-    local mkdir_output="$(mkdir "$@")"
-    local -i exit_code=$?
-
-    if [[ $exit_code == 0 ]]; then
-        while read -r mkdir_output_line; do
-            e_arrow "$mkdir_output_line"
-        done
-        return 0
-    else
-        while read -r mkdir_output_line; do
-            e_error "$mkdir_output_line"
-        done
-        return 1
-    fi
-}
-
-cp_pretty () {
-    local cp_output
-    cp_output="$(cp "$@")"
-    local -i exit_code=$?
-
-    if [[ $exit_code == 0 ]]; then
-        while read -r cp_output_line; do
-            e_arrow "$cp_output_line"
-        done
-        return 0
-    else
-        while read -r cp_output_line; do
-            e_error "$cp_output_line"
-        done
-        return 1
-    fi
-}
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function copy_do() {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Attempts to copy a file, printing pretty output
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcfile="$1"
     local destfile="$2"
     local destdir="${destfile%/*}"
@@ -176,12 +227,18 @@ function copy_do() {
     fi
 }
 
-# Copy skeleton files.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function skel_header () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     e_header "Copying skeleton files into ${DOTFILES_HOME}";
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function skel_test() {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# More restrictive than copy_test: if the destination file exists at all, don't
+# overwrite it.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcfile="$1"
     local destfile="$2"
 
@@ -191,29 +248,44 @@ function skel_test() {
     fi
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function skel_do() {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Just another name for copy_do
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     copy_do "$@"
 }
 
-# Link files.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function link_header() {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     e_header "Linking files into ${DOTFILES_HOME}";
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function link_test() {
-    [[ "$1" -ef "$2" ]] && echo "same file"
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    local destfile="$2"
+    if [[ "${srcfile}" -ef "${destfile}" ]]; then
+        echo "${destfile} already links to ${srcfile}"
+        return 0
+    fi
+
+    return 1
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function check_exists () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if "${DOTFILES_NOCLOBBER}"; then
         local dest_dir="$(pathname "$1")"
-        local src_file=${2#$HOME/}
-        local dest_file=$1
+        local srcfile=${2#$HOME/}
+        local destfile=$1
 
         for rcname in "${DOTFILES_NOCLOBBER_RCS[@]}"; do
             local rc="$dest_dir/.$rcname"
-            if [[ ${1#$dest_dir/} =~ \.$rcname ]] && [[ $(cmp --silent "$src_file" "$rc") -eq 0 ]]
-            then
+            if [[ ${1#$dest_dir/} =~ \.$rcname ]] && [[ $(md5cmp "$src_file" "$rc") -eq 0 ]]; then
                 return 0
             fi
         done
@@ -222,74 +294,61 @@ function check_exists () {
     return 1
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function link_do() {
-    local dest_dir="$(pathname "$1")"
-    #local src_file=${2#$HOME/}
-    local src_file="$2"
-    local dest_file=$1
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    local destfile=$2
 
-    [[ -e $dest_dir ]] || e_arrow "Creating $dest_dir." && mkdir -p "$dest_dir"
+    if ! mkdir_pretty -p "$destdir"; then
+        e_error "Can't link ${destfile} to ${srcfile}"
+        return 1
+    fi
 
     if check_exists "$1" "$2"; then
         dest_file="${dest_file}.custom"
         e_arrow "Not clobbering ${dest_file}; ${src_file} will be appended with '.custom'"
     fi
 
-    ln -sf "$src_file" "$dest_file"
-
-    e_success "Linking $src_file to $dest_file."
+    ln_pretty -sf "$srcfile" "$destfile"
+    e_success "Linking ${srcfile} to ${dest_file}"
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 md5cmp () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Minimize dependencies: cmp is in diffutils, md5sum is in coreutils.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local left right leftsumout rightsumout
+
     left="$1"
     right="$2"
+
     leftsumout="$(md5sum "$left")"
     rightsumout="$(md5sum "$right")"
-    [[ "${leftsumout%% *}" == "${rightsumout%% *}" ]]
+
+    return [[ "${leftsumout%% *}" == "${rightsumout%% *}" ]]
 }
 
-dirdiff () {
-    local srcdir destdir srcfile destfile srcstem detailed
-    local -A changed
-    srcdir="$(readlink -e "$1")"
-    destdir="$(readlink -e "$2")"
-
-    if [[ -z "$srcdir" ]]; then
-        echo "Could not find source directory '$1'" 1>&2
-        return 1
-    elif [[ -z "$destdir" ]]; then
-        echo "Could not find destination directory '$2'" 1>&2
-        return 1
-    fi
-
-    while read -r srcfile; do
-        srcstem="${srcfile#$srcdir/}"
-        destfile="${destdir}/${srcstem}"
-        if ! [[ -r "$destfile" ]] || ! md5cmp "$srcfile" "$destfile"; then
-            changed["$srcfile"]="$destfile"
-        fi
-    done < <(find "$srcdir" -xtype f)
-
-    for key in "${!changed[@]}"; do
-        echo "$key" "${changed["$key"]}"
-    done
-}
-
-# Copy, link, init, etc.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function do_stuff() {
-    local optype srcdir dest filepath files fullpath relpath skip
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Copy, link, init, etc.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local optype srcdir_relpath srcdir
 
-    optype="$1"
-    srcdir="${DOTFILES_ROOT}/${optype}"
-    if ! [[ -d "$srcdir" ]]; then
-        echo "No such directory: $srcdir" 1>&2
-        return 1
-    fi
-
+    # Little trick: this makes both 'do_stuff "link"' and 'do_stuff "opt/link"'
+    # work as expected.
+    srcdir_relpath="$1"
     optype="${srcdir##*/}"
     if [[ -z "$optype" ]]; then
         echo "No optype specified" 1>&2
+        return 1
+    fi
+
+    srcdir="${DOTFILES_ROOT}/${srcdir_relpath}"
+    if ! [[ -d "$srcdir" ]]; then
+        e_error "No such directory: $srcdir"
         return 1
     fi
 
@@ -298,17 +357,22 @@ function do_stuff() {
     local optype_do="${optype}_do"
     declare -F "$optype_header" &>/dev/null && "$optype_header"
 
+    # Run _test function only if declared.
+    local test_func="${optype}_test"
+
     # Iterate over files.
-    while read -r srcfile destfile; do
-        # Run _test function only if declared.
-        local test_func="${optype}_test"
+    local skip_reason srcstem destfile backup_subpath
+    local -i failed
+    while read -r srcfile; do
+        srcstem="${srcfile#$srcdir/}"
+        destfile="${destdir}/${srcstem}"
 
         if declare -f "$test_func" &>/dev/null; then
             # If _test function returns a string, skip file and print that
             # message.
-            skip="$("$test_func" "$srcfile" "$destfile")"
-            if [[ -n "$skip" ]]; then
-                e_error "Skipping ${srcfile#$srcdir}: ${skip}."
+            skip_reason="$("$test_func" "$srcfile" "$destfile")"
+            if [[ -n "$skip_reason" ]]; then
+                e_error "Skipping ${optype}/${srcstem}: ${skip_reason}."
                 continue
             fi
 
@@ -316,71 +380,62 @@ function do_stuff() {
             if [[ -e "$destfile" ]]; then
                 e_arrow "Backing up ${destfile}."
                 # Set backup flag, so a nice message can be shown at the end.
-                backup=1
-                # Create backup dir if it doesn't already exist.
-                [[ -e "$backup_dir" ]] || mkdir -p "$backup_dir"
-                # Backup file / link / whatever.
-                #mv "$dest" "$backup_dir"
-                cp "$dest" "$backup_dir"
-            fi
+                ((__DOTFILES_BACKUP++))
 
+                backup_subpath="${DOTFILES_BACKUP_PATH}/${destfile%/*}"
+                # Create backup dir if it doesn't already exist.
+                if ! [[ -e "$backup_subpath" ]]; then
+                    mkdir -p "$backup_subpath"
+                elif ! [[ -d "$backup_subpath" ]]; then
+                    e_error "${backup_subpath} exists but is not a directory"
+                    ((failed++))
+                fi
+
+                cp "$destfile" "$backup_subpath"
+            fi
         fi
+
         # Do stuff.
-        # This will invoke, e.g., link_do "/home/user/.bashrc" "/home/user/.dotfiles/link/.bashrc"
         "$optype_do" "$dest" "$file"
-    done < <(dirdiff "$srcdir" "$destdir")
+    done < <(find -xtype f "$srcdir")
+
+    [[ $failed -eq 0 ]]
 }
 
 # Iterate through directories in .dotfiles/opt,
 # prompting user whether or not to process them.
-function process_opt_dirs() {
-    local dir_type
-    local opt_dirs=($DOTFILES_ROOT/opt/*)
-    local -a subdirs=(
-        init
-        copy
-        skel
-        link
-    )
+do_opt_stuff () {
+    local srcdir_relpath="$1"
 
-    if (( ${#opt_dirs[@]} == 0 )); then return; fi
-    e_header "Processing optional directories"
-
-    # Iterate over files.
-    for dir in "${opt_dirs[@]}"; do
-        opt_dir_base=$(basename "$dir")
-        read -N 1 -t 15 -p "Process $opt_dir_base? [y/N] " process_dir; echo
+    if [[ -d "${DOTFILES_ROOT}/${srcdir_relpath}" ]]; then
+        local do_process
+        read -N 1 -t 15 -p "Process optional ${srcdir_relpath##*/} files? [y/N] " do_process
+        echo
 
         if [[ "$process_dir" =~ [Yy] ]]; then
-            print_copy_header=true
-            print_skel_header=true
-            print_link_header=true
-
-            for subdir in "${subdirs[@]}"; do
-                    if [[ -d "$DOTFILES_ROOT/opt/$opt_dir_base/$subdir" ]]; then
-                        do_stuff "$subdir" "opt/$opt_dir_base"
-                    fi
-            done
+            do_stuff "$srcdir_relpath"
         fi
-    done
+    fi
+
+    return 0
 }
 
 function init_dotfiles() {
+    $DOTFILES_SKIP_INIT && return 0
+
+    # Skip this function after we exec the updated version of this script.
     export DOTFILES_SKIP_INIT=true
-    # Add command-line flag for skipping initialization
-    flags="${flags}s"
+
     if [[ ! -d $DOTFILES_ROOT ]]; then
-        DOTFILES_NEW_INSTALL=true
-        # Add command-line flag for new install
-        flags="${flags}n"
-        # ~/.dotfiles doesn't exist? Clone it!
+        # If the root directory doesn't exist, treat this as a new
+        # installation.
+        export DOTFILES_NEW_INSTALL=true
         e_header "Downloading dotfiles"
         git clone --recursive "$DOTFILES_REPO" "$DOTFILES_ROOT"
-        cd "$DOTFILES_ROOT"
     else
         # Make sure we have the latest files.
         e_header "Updating dotfiles"
-        cd "$DOTFILES_ROOT"
+        pushd "$DOTFILES_ROOT" >/dev/null
         git pull
         git submodule update --init --recursive --quiet
     fi
@@ -390,26 +445,23 @@ function init_dotfiles() {
         flags="${flags}q"
     fi
 
+    export
     "${print_help}" && flags="${flags}h"
 
     e_header "Executing updated ${SCRIPT_BASENAME} script"
-    exec "${SCRIPT_PATH}" "${flags}"
+    exec "${SCRIPT_PATH}"
 }
 
-function intro() {
-    echo 'Dotfiles - "Cowboy" Ben Alman - http://benalman.com/'
+usage () {
+        cat <<EOF
+Usage: $SCRIPT_BASENAME [-n] [-c] [-h]
 
-    if [[ "$1" == "-h" || "$1" == "--help" ]]; then cat <<HELP
-Usage: $(basename "$0")
+See the README for documentation. https://github.com/cowboy/dotfiles
 
-See the README for documentation.
-https://github.com/cowboy/dotfiles
-
-Copyright (c) 2012 "Cowboy" Ben Alman
-Licensed under the MIT license.
+Copyright (c) 2012 "Cowboy" Ben Alman Licensed under the MIT license.
 http://benalman.com/about/license/
-HELP
-    exit; fi
+EOF
+        exit
 }
 
 main () {
@@ -423,7 +475,7 @@ main () {
             s|skip-init)
                 DOTFILES_SKIP_INIT=true
                 ;;
-            C|no-clobber)
+            c|clobber)
                 DOTFILES_NOCLOBBER=false
                 ;;
             v|verbose)
@@ -497,14 +549,13 @@ main () {
     mkdir -p "$DOTFILES_CACHE_PATH"
 
     # Execute code for each file in these subdirectories.
-    do_stuff "init"
-    do_stuff "copy"
-    do_stuff "skel"
-    do_stuff "link"
-    process_opt_dirs
+    for optype in init copy skel link; do
+        do_stuff "$optype"
+        do_opt_stuff "$optype"
+    done
 
     # Alert if backups were made.
-    if [[ "$backup" ]]; then
+    if [[ "$__DOTFILES_BACKUP" -gt 0 ]]; then
         printf "\n%s\n" "Backups were moved to ${DOTFILES_BACKUP_PATH}"
     fi
 
