@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function is_git_repo () {
-    [[ -d "${PWD}"/.git ]] || git rev-parse --git-dir > /dev/null 2>&1
+    [[ -d "${PWD}"/.git ]] || git rev-parse --git-dir &>/dev/null
 }
 
 gitmodules_file="${PWD}"/.gitmodules
@@ -12,7 +12,7 @@ if ! is_git_repo; then
 fi
 
 if ! [[ -f "${gitmodules_file}" ]]; then
-    echo "${gitmodules_file} does not exist" 1>&2
+    echo "${gitmodules_file} does not exist" 2>&2
     exit 2
 fi
 
