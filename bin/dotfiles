@@ -4,10 +4,12 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_vars () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Don't allow unset variables or uncaught errors
     set -o nounset
-    set -o errexit
+    #set -o errexit
 
     # Tweak file globbing.
     shopt -s dotglob
@@ -18,7 +20,7 @@ init_vars () {
     SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
 
     # Globals
-    : "${DOTFILES_HOME:=$HOME}"
+    : "${DOTFILES_DESTDIR:=$HOME}"
     : "${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/../.dotfiles")}"
     : "${DOTFILES_REPO:=git://github.com/BaxterStockman/dotfiles.git}"
     : "${DOTFILES_NEW_INSTALL:=false}"
@@ -27,19 +29,11 @@ init_vars () {
     : "${DOTFILES_VERBOSE:=true}"
     : "${DOTFILES_CACHE_PATH:=${DOTFILES_ROOT}/caches}"
     : "${DOTFILES_BACKUP_PATH:=${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
-    declare -i __DOTFILES_BACKUP=0
-    declare -i __DOTFILES_FAILED=0
-
-    # Flags for whether to print link/copy/etc. optypes
-    print_copy_header=true
-    print_skel_header=true
-    print_link_header=true
-
-    # Flag for whether to print help doc
-    print_help=false
+    declare -gi __DOTFILES_BACKUP=0
+    declare -gi __DOTFILES_FAILED=0
 
     # RC files to not clobber when linking
-    declare -a DOTFILES_NOCLOBBER_RCS=(
+    declare -ga DOTFILES_NOCLOBBER_RCS=(
         bashrc
         bash_login
         bash_logout
@@ -56,73 +50,53 @@ init_vars () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 e_header ()   { echo -e "\n\033[1m$*\033[0m"; }
 e_success ()  { echo -e " \033[1;32m✔\033[0m  $*"; }
-e_error ()    { echo -e " \033[1;31m✖\033[0m  $*"; 1>&2 }
+e_error ()    { echo -e " \033[1;31m✖\033[0m  $*" 1>&2; }
 e_arrow ()    { echo -e " \033[1;33m➜\033[0m  $*"; }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-mkdir_pretty () {
+__make_pretty () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Just wraps mkdir's output with some of the above logging functions
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local mkdir_output="$(mkdir "$@")"
-    local -i exit_code=$?
+    # Reset IFS, i.e. ensure that it's ' '
+    local IFS
+    # Split on whitespace
+    local -a maybe_util=($1)
+    # Extract the first element
+    local util="${maybe_util[0]}"
 
-    if [[ $exit_code == 0 ]]; then
-        while read -r mkdir_output_line; do
-            e_arrow "$mkdir_output_line"
-        done
-        return 0
-    else
-        while read -r mkdir_output_line; do
-            e_error "$mkdir_output_line"
-        done
+    if [[ -z $util  ]]; then
+        echo "Please provide an executable name or path to wrap" 1>&2
         return 1
     fi
-}
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cp_pretty () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Just wraps cp's output with some of the above logging functions
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local cp_output
-    cp_output="$(cp "$@")"
-    local -i exit_code=$?
+    cat <<META
+${util}_pretty () {
+    local ${util}_output="\$(${util} "\$@")";
+    local -i exit_code=\$?;
+    local line
 
-    if [[ $exit_code == 0 ]]; then
-        while read -r cp_output_line; do
-            e_arrow "$cp_output_line"
-        done
-        return 0
+    if [[ \$exit_code == 0 ]]; then
+        while read -r ${util}_output_line; do
+            e_arrow "\$${util}_output_line";
+        done <<<\$${util}_output;
+        return 0;
     else
-        while read -r cp_output_line; do
-            e_error "$cp_output_line"
-        done
-        return 1
-    fi
+        while read -r ${util}_output_line; do
+            e_error "\$${util}_output_line";
+        done <<<\$${util}_output;
+        return 1;
+    fi;
+};
+META
 }
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ln_pretty () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Just wraps ln's output with some of the above logging functions
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local ln_output
-    ln_output="$(ln "$@")"
-    local -i exit_code=$?
+eval "$(__make_pretty 'mkdir')"
+eval "$(__make_pretty 'cp')"
+eval "$(__make_pretty 'ln')"
 
-    if [[ $exit_code == 0 ]]; then
-        while read -r ln_output_line; do
-            e_arrow "$ln_output_line"
-        done
-        return 0
-    else
-        while read -r ln_output_line; do
-            e_error "$ln_output_line"
-        done
-        return 1
-    fi
-}
+declare -f mkdir_pretty
+declare -f ln_pretty
+
+unset -f __make_pretty
 
 # Given a list of desired items and installed items, return a list
 # of uninstalled items. Arrays in bash are insane (not in a good way).
@@ -152,7 +126,7 @@ to_install () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function skip () {
+skip () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Offer the user a chance to skip something.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -168,7 +142,7 @@ function skip () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function init_do() {
+init_do() {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Initialize
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -178,13 +152,13 @@ function init_do() {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function copy_header() {
+copy_header () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Copying files into ${DOTFILES_HOME}";
+    e_header "Copying files into ${DOTFILES_DESTDIR}"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function copy_test() {
+copy_test () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Ensures that files in the destination aren't overwritten if either
 #   - The destination file is exactly the same as the source file; or
@@ -205,7 +179,7 @@ function copy_test() {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function copy_do() {
+copy_do () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Attempts to copy a file, printing pretty output
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -218,7 +192,7 @@ function copy_do() {
         return 1
     fi
 
-    if ! cp "$srcfile" "$desfile"; then
+    if ! cp "$srcfile" "$destfile"; then
         e_error "Failed to copy ${srcfile} to ${destfile}"
         return 1
     else
@@ -228,13 +202,13 @@ function copy_do() {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function skel_header () {
+skel_header () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Copying skeleton files into ${DOTFILES_HOME}";
+    e_header "Copying skeleton files into ${DOTFILES_DESTDIR}";
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function skel_test() {
+skel_test () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # More restrictive than copy_test: if the destination file exists at all, don't
 # overwrite it.
@@ -249,7 +223,7 @@ function skel_test() {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function skel_do() {
+skel_do () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Just another name for copy_do
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -257,13 +231,13 @@ function skel_do() {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function link_header() {
+link_header () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Linking files into ${DOTFILES_HOME}";
+    e_header "Linking files into ${DOTFILES_DESTDIR}";
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function link_test() {
+link_test () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcfile="$1"
     local destfile="$2"
@@ -276,7 +250,7 @@ function link_test() {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function check_exists () {
+check_exists () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if "${DOTFILES_NOCLOBBER}"; then
         local dest_dir="$(pathname "$1")"
@@ -295,10 +269,12 @@ function check_exists () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function link_do() {
+link_do () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcfile="$1"
     local destfile=$2
+
+    local destdir="${destfile%/*}"
 
     if ! mkdir_pretty -p "$destdir"; then
         e_error "Can't link ${destfile} to ${srcfile}"
@@ -311,7 +287,7 @@ function link_do() {
     fi
 
     ln_pretty -sf "$srcfile" "$destfile"
-    e_success "Linking ${srcfile} to ${dest_file}"
+    e_success "Linking ${srcfile} to ${destfile}"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -327,11 +303,11 @@ md5cmp () {
     leftsumout="$(md5sum "$left")"
     rightsumout="$(md5sum "$right")"
 
-    return [[ "${leftsumout%% *}" == "${rightsumout%% *}" ]]
+    [[ "${leftsumout%% *}" == "${rightsumout%% *}" ]]
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function do_stuff() {
+do_stuff () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Copy, link, init, etc.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -340,7 +316,7 @@ function do_stuff() {
     # Little trick: this makes both 'do_stuff "link"' and 'do_stuff "opt/link"'
     # work as expected.
     srcdir_relpath="$1"
-    optype="${srcdir##*/}"
+    optype="${srcdir_relpath##*/}"
     if [[ -z "$optype" ]]; then
         echo "No optype specified" 1>&2
         return 1
@@ -361,11 +337,11 @@ function do_stuff() {
     local test_func="${optype}_test"
 
     # Iterate over files.
-    local skip_reason srcstem destfile backup_subpath
-    local -i failed
-    while read -r srcfile; do
+    local skip_reason srcfile srcstem destfile backup_subpath
+    local -i failed=0
+    for srcfile in $(find "$srcdir" -xtype f); do
         srcstem="${srcfile#$srcdir/}"
-        destfile="${destdir}/${srcstem}"
+        destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
         if declare -f "$test_func" &>/dev/null; then
             # If _test function returns a string, skip file and print that
@@ -396,15 +372,18 @@ function do_stuff() {
         fi
 
         # Do stuff.
-        "$optype_do" "$dest" "$file"
-    done < <(find -xtype f "$srcdir")
+        "$optype_do" "$srcfile" "$destfile"
+    done
 
     [[ $failed -eq 0 ]]
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+do_opt_stuff () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Iterate through directories in .dotfiles/opt,
 # prompting user whether or not to process them.
-do_opt_stuff () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcdir_relpath="$1"
 
     if [[ -d "${DOTFILES_ROOT}/${srcdir_relpath}" ]]; then
@@ -412,7 +391,7 @@ do_opt_stuff () {
         read -N 1 -t 15 -p "Process optional ${srcdir_relpath##*/} files? [y/N] " do_process
         echo
 
-        if [[ "$process_dir" =~ [Yy] ]]; then
+        if [[ "$do_process" =~ [Yy] ]]; then
             do_stuff "$srcdir_relpath"
         fi
     fi
@@ -420,7 +399,9 @@ do_opt_stuff () {
     return 0
 }
 
-function init_dotfiles() {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init_dotfiles() {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     $DOTFILES_SKIP_INIT && return 0
 
     # Skip this function after we exec the updated version of this script.
@@ -437,22 +418,17 @@ function init_dotfiles() {
         e_header "Updating dotfiles"
         pushd "$DOTFILES_ROOT" >/dev/null
         git pull
-        git submodule update --init --recursive --quiet
+        git submodule update --init --recursive --quiet || :
     fi
-
-    "${DOTFILES_NOCLOBBER}" || flags="${flags}c"
-    if ! "${print_link_header}" ||  ! "${print_copy_header}"; then
-        flags="${flags}q"
-    fi
-
-    export
-    "${print_help}" && flags="${flags}h"
 
     e_header "Executing updated ${SCRIPT_BASENAME} script"
     exec "${SCRIPT_PATH}"
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 usage () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local -i return_code=${1:-0}
         cat <<EOF
 Usage: $SCRIPT_BASENAME [-n] [-c] [-h]
 
@@ -461,10 +437,14 @@ See the README for documentation. https://github.com/cowboy/dotfiles
 Copyright (c) 2012 "Cowboy" Ben Alman Licensed under the MIT license.
 http://benalman.com/about/license/
 EOF
-        exit
+    return $return_code
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 main () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    init_vars
+
     # Grab command-line options
     while (( $# )); do
         read opt_name opt_value <<<"$@"
@@ -494,18 +474,9 @@ main () {
         esac
     done
 
-    # Flags for whether to print link/copy/etc. optypes
-    print_copy_header=true
-    print_skel_header=true
-    print_link_header=true
-
-    for optype in copy skel link; do
-            declare "print_${optype}_header=$DOTFILES_VERBOSE"
-    done
-
     # Initial stuff; do only if we haven't updated to the newest version
     if ! "$DOTFILES_SKIP_INIT"; then
-        intro "${print_help}"
+        usage
 
         e_header "Performing initial configuration"
 
@@ -572,4 +543,5 @@ main () {
 }
 
 # Enough with the functions, let's do stuff.
-exit main "$@"
+main "$@"
+exit $?

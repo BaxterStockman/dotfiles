@@ -1,3 +1,4 @@
+return
 # Check that we're on Arch
 [[ "$(cat /etc/issue 2> /dev/null)" =~ Arch ]] || return 1
 

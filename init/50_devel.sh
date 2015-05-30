@@ -12,7 +12,7 @@ update_spf13-vim() {
 
 # If Vim exists, try to update spf13-vim.
 # Otherwise, install spf13-vim
-if exists vim; then
+if type -a vim >/dev/null; then
   cat <<EOF
 Would you like to update spf13-vim?
 
