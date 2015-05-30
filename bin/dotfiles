@@ -271,12 +271,6 @@ link_do () {
         return 1
     fi
 
-    if check_exists "$1" "$2"; then
-        dest_file="${dest_file}.custom"
-        e_arrow "Not clobbering ${dest_file}; ${src_file} will be appended" \
-            "with '.custom'"
-    fi
-
     ln -sf "$srcfile" "$destfile"
     e_success "Linking ${srcfile} to ${destfile}"
 }

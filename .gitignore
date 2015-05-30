@@ -1,5 +1,6 @@
 cache/
 backup/
+vendor/
 *LOCAL*
 
 # Compiled source #
