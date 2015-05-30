@@ -205,7 +205,7 @@ skel_test () {
     local destfile="$2"
 
     if [[ -e "$destfile" ]]; then
-        echo "${destfile} already exists"
+        echo "destination file already exists"
         return 1
     fi
 }
@@ -231,7 +231,7 @@ link_test () {
     local destfile="$2"
 
     if [[ "${srcfile}" -ef "${destfile}" ]]; then
-        echo "${destfile} already links to ${srcfile}"
+        echo "link already exists"
         return 0
     fi
 
