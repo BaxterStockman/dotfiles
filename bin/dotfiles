@@ -4,21 +4,23 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
+# Don't allow unset variables or uncaught errors
+set -o nounset
+#set -o errexit
+
+# Tweak file globbing.
+shopt -s dotglob
+shopt -s nullglob
+
+declare -r SCRIPT_PATH="${BASH_SOURCE[0]}"
+declare -r SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
+declare -r SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
+
+declare -rx DOTFILES_VERSION="${DOTFILES_VERSION:-1.0}"
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_vars () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Don't allow unset variables or uncaught errors
-    set -o nounset
-    #set -o errexit
-
-    # Tweak file globbing.
-    shopt -s dotglob
-    shopt -s nullglob
-
-    declare -gr SCRIPT_PATH="${BASH_SOURCE[0]}"
-    declare -gr SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
-    declare -gr SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
-
     # Globals
     declare -gx DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:=${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
     declare -gx DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:=${DOTFILES_ROOT}/caches}"
@@ -31,8 +33,6 @@ init_vars () {
     declare -gx DOTFILES_VERBOSE="${DOTFILES_VERBOSE:=true}"
     declare -gx DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
     declare -gx DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
-
-    declare -grx DOTFILES_VERSION='1.0'
 
     declare -gi __DOTFILES_BACKUP=0
     declare -gi __DOTFILES_FAILED=0
@@ -273,7 +273,8 @@ link_do () {
 
     if check_exists "$1" "$2"; then
         dest_file="${dest_file}.custom"
-        e_arrow "Not clobbering ${dest_file}; ${src_file} will be appended with '.custom'"
+        e_arrow "Not clobbering ${dest_file}; ${src_file} will be appended" \
+            "with '.custom'"
     fi
 
     ln -sf "$srcfile" "$destfile"
@@ -358,7 +359,7 @@ do_stuff () {
                 if ! [[ -e "$backup_subpath" ]]; then
                     if ! mkdir -p "$backup_subpath" &>/dev/null; then
                         e_fatal "Could not create backup directory" \
-                            " ${backup_subpath}; exiting".
+                            "${backup_subpath}; exiting".
                         exit 1
                     fi
                 elif ! [[ -d "$backup_subpath" ]]; then
@@ -419,7 +420,7 @@ init_dotfiles() {
         git pull
         if ! git submodule update --init --recursive --quiet; then
 		e_error "Failed to update git submodules." \
-			" This probably requires your intervention." 1>&2
+			"This probably requires your intervention." 1>&2
 	fi
         popd >/dev/null
     fi
@@ -447,8 +448,16 @@ EOF
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 main () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local opt_name opt_value
     # Grab command-line options
+    if [[ -z $DOTFILES_VERSION ]] \
+        || awk -v n1="$DOTFILES_VERSION" n2='1.0' \
+        'BEGIN{if(n2<n1)exit 0;exit 1}' &>/dev/null; then
+        e_fatal "You are running an old version of dotfiles.  Old options may" \
+            "nolonger work.  Please run 'dotfiles --help' to view usage."
+        exit 1
+    fi
+
+    local opt_name opt_value
     while (( $# )); do
         read opt_name opt_value <<<"$@"
         case "$opt_name" in
