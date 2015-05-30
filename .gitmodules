@@ -28,3 +28,9 @@
 [submodule "rbenv-update"]
     path = link/.rbenv/plugins/rbenv-update
     url = git://github.com/rkh/rbenv-update.git
+[submodule "git-extras"]
+    path = vendor/git-extras
+    url = git://github.com/tj/git-extras.git
+[submodule "ack2"]
+    path = vendor/ack2
+    url = git://github.com/petdance/ack2.git
