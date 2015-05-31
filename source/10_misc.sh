@@ -10,17 +10,19 @@ path_remove () {
     done
     IFS=:
     # output the new array
-    echo "${path_elems[*]}"
+    echo "PATH=${path_elems[*]} ; export PATH"
 }
 
 path_push () {
+    eval "$(path_remove "$@")"
     local IFS=:
-    echo "${PATH}${PATH:+:}$*"
+    echo "PATH=${PATH}${PATH:+:}$* ; export PATH"
 }
 
 path_unshift () {
+    eval "$(path_remove "$@")"
     local IFS=:
-    echo "$*${PATH:+:}${PATH}"
+    echo "PATH=$*${PATH:+:}${PATH} ; export PATH"
 }
 
 # Check whether a program exists

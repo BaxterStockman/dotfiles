@@ -4,14 +4,6 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
-# Don't allow unset variables or uncaught errors
-set -o nounset
-#set -o errexit
-
-# Tweak file globbing.
-shopt -s dotglob
-shopt -s nullglob
-
 declare -r SCRIPT_PATH="${BASH_SOURCE[0]}"
 declare -r SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
 declare -r SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
@@ -359,6 +351,7 @@ do_stuff () {
                 elif ! [[ -d "$backup_subpath" ]]; then
                     e_error "${backup_subpath} exists but is not a directory" 1>&2
                     ((failed++))
+                    ((__DOTFILES_FAILED++))
                 fi
 
                 cp "$destfile" "$backup_subpath"
@@ -427,7 +420,7 @@ init_dotfiles() {
 usage () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local -i return_code=${1:-0}
-    [[ $return_code -ne 0 ]] && Usage: $SCRIPT_BASENAME [-n] [-c] [-h]
+    [[ "$return_code" -ne 0 ]] && echo "Usage: $SCRIPT_BASENAME [-n] [-c] [-h]"
     cat <<EOF
 
 See the README for documentation. https://github.com/cowboy/dotfiles
@@ -436,7 +429,7 @@ Copyright (c) 2012 "Cowboy" Ben Alman Licensed under the MIT license.
 http://benalman.com/about/license/
 
 EOF
-    return $return_code
+    return "$return_code"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -493,7 +486,8 @@ main () {
                 ;;
             *)
                 echo "Invalid option: ${opt_name}" 1>&2
-                exit 1
+                usage 1
+                exit $?
                 ;;
         esac
     done
@@ -571,10 +565,16 @@ main () {
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    # Don't allow unset variables or uncaught errors
+    set -o nounset
+
+    # Tweak file globbing.
+    shopt -s dotglob
+    shopt -s nullglob
+
     # Enough with the functions, let's do stuff.
     main "$@"
     exit $?
 else
     init_vars
-    printenv |ack -i dotfiles
 fi
