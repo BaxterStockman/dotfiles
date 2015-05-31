@@ -1,12 +1,14 @@
+#!/usr/bin/env bash
+
 # Editing
 
 if [[ ! "$SSH_TTY" && "$OSTYPE" =~ ^darwin ]]; then
-  export EDITOR='subl -w'
-  export LESSEDIT='subl %f'
-  alias q='subl'
+    export EDITOR='subl -w'
+    export LESSEDIT='subl %f'
+    alias q='subl'
 else
-  export EDITOR=$(type vim vi nano pico 2>/dev/null | sed 's/ .*$//;q')
-  alias q="$EDITOR -w -z"
+    export EDITOR=$(type vim vi nano pico 2>/dev/null | sed 's/ .*$//;q')
+    alias q="$EDITOR -w -z"
 fi
 
 export VISUAL="$EDITOR"
@@ -14,6 +16,6 @@ export VISUAL="$EDITOR"
 alias q.='q .'
 
 function qs() {
-  pwd | perl -ne"s#^$(echo ~/.dotfiles)## && exit 1" && cd ~/.dotfiles
-  q ~/.dotfiles
+    pwd | perl -ne"s#^$(echo ~/.dotfiles)## && exit 1" && cd ~/.dotfiles
+    q ~/.dotfiles
 }

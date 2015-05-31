@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Bash won't get SIGWINCH if another process is in the foreground.
 # Enable checkwinsize so that bash will check the terminal size when
 # it regains control.
@@ -34,5 +36,5 @@ complete -cf man
 
 # SSH auto-completion based on entries in known_hosts.
 if [[ -e ~/.ssh/known_hosts ]]; then
-  complete -o default -W "$(cat ~/.ssh/known_hosts | sed 's/[, ].*//' | sort | uniq | grep -v '[0-9]')" ssh scp sftp
+  complete -o default -W "$(sed 's/[, ].*//' < "${HOME}/.ssh/known_hosts" | sort | uniq | grep -v '[0-9]')" ssh scp sftp rsync
 fi

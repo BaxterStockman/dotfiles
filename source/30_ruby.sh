@@ -1,6 +1,9 @@
+#!/usr/bin/env bash
+
 # Make local gems available
-if exists ruby && exists gem
-then
-    export GEM_HOME="$(ruby -rubygems -e 'print Gem.user_dir')"
-    export PATH="${GEM_HOME}/bin":$PATH
-fi
+exists ruby && exists gem || return
+
+declare -g GEM_HOME
+GEM_HOME="$(ruby -rubygems -e 'print Gem.user_dir')"
+export GEM_HOME
+path_unshift "${GEM_HOME}/bin"

@@ -1,7 +1,10 @@
-# Set up cabal env
-CABAL_ROOT=$HOME/.cabal
+#!/usr/bin/env bash
 
-exists ${CABAL_ROOT}/bin/cabal || exists /usr/bin/cabal || return
+# Set up cabal env
+CABAL_ROOT="${HOME}/.cabal"
+
+exists "${CABAL_ROOT}/bin/cabal" || exists /usr/bin/cabal || return
+
 export CABAL_ROOT
-PATH=${CABAL_ROOT}/bin:$PATH
+path_unshift "${CABAL_ROOT}/bin"
 export PATH

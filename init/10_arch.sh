@@ -1,14 +1,11 @@
-return
 # Check that we're on Arch
-[[ "$(cat /etc/issue 2> /dev/null)" =~ Arch ]] || return 1
+[[ "$(< /etc/issue)" =~ ^Arch ]] || return 1
 
-#if [[ -z $($PKG_CHECK_INSTALLED "curl") ]]; then
 if ! $PKG_CHECK_INSTALLED "curl"; then
   e_header "Installing curl"
   pacman -S curl
 fi
 
-#if [[ -z $($PKG_CHECK_INSTALLED "packer") ]]; then
 if ! $PKG_CHECK_INSTALLED "packer"; then
   e_header "Installing Packer"
   PACKER_PKGBUILD_URL="https://aur.archlinux.org/packages/pa/packer/PKGBUILD"

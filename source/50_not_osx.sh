@@ -1,3 +1,5 @@
+#!/usr/bin/env bahs
+
 # Stuff that doesn't work in OSX.
 # Abort if OSX detected.
 #

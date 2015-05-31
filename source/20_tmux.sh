@@ -7,14 +7,14 @@
 # information.
 
 # Don't source this file if tmux isn't runnable
-exists tmux || return
+type -a tmux &>/dev/null || return
 
 # Don't start if we're root
 [[ "${EUID}" -eq 0 ]] && return
 
 # Use a separate socket if we're running in a low-color environment
 if [[ "${TERM}" == linux ]]; then
-    alias tmux='tmux -L getty'
+    alias tmux='tmux -L locolor'
     return
 fi
 
@@ -38,7 +38,7 @@ if [[ -z "${TMUX}" ]] && exists tmux &> /dev/null; then
 
   declare -A session_index_attached
   while read -r session_name session_attached; do
-    [[ "${session_name}" == ${base_session} ]] && continue
+    [[ "${session_name}" == "${base_session}" ]] && continue
     session_index="${session_name##"${base_session}-"}"
     session_index_attached["${session_index}"]="${session_attached}"
   done < <(tmux ls -F '#{session_name} #{session_attached}')

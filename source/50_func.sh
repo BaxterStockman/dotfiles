@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # cd and ls in one
 function cl() {
     cd "$1" && ls
@@ -5,12 +7,12 @@ function cl() {
 
 # calculator
 function calc() {
-    echo "scale=3;$@" | bc -l
+    echo "scale=3;$*" | bc -l
 }
 
 # Create a new directory and enter it
 function md() {
-  mkdir -p "$@" && cd "$@"
+    mkdir -p "$@" && cd "$@"
 }
 
 # Set the terminal's title bar.
@@ -49,11 +51,10 @@ if [[ -n $TMUX ]]; then
     }
 
     function unset () {
-        local argv=$@
+        local -a argv=("$@")
         builtin unset "$@"
 
-        for item in "$argv"
-        do
+        for item in "${argv[@]}"; do
             # Remove the longest substring between the beginning of a flag and a
             # space character.  This should remove all but the positional
             # parameters that the 'unset' builtin was invoked with.
@@ -62,26 +63,6 @@ if [[ -n $TMUX ]]; then
         done
     }
 fi
-
-function set_interactive_opts () {
-    local -a argv=("$@");
-    local funcname="${argv[0]}";
-    local -a funcopts="${argv[@]:1}";
-    local functext;
-
-    read -r -d '' functext  <<EOF
-function $funcname () {
-  if [[ -t 1 ]]
-  then
-    command $funcname ${funcopts[@]} \$@
-  else
-    command $funcname \$@
-  fi
-}
-EOF
-
-    eval "$functext"
-}
 
 function clean_path () {
     local varname="${1:-PATH}"

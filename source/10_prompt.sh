@@ -27,7 +27,8 @@ function configure_color_prompts() {
         BOLD=$(tput bold)
         RESET=$(tput sgr0)
 
-        local COLOR_COUNT=$(tput colors 2>/dev/null)
+        local COLOR_COUNT
+        COLOR_COUNT=$(tput colors 2>/dev/null)
         if [[ $COLOR_COUNT -ge 16 ]]; then
             if [[ $COLOR_COUNT -ge 256 ]]; then
                 BASE03=$(tput setaf 234)
@@ -171,7 +172,7 @@ function set_prompts () {
 
         configure_color_prompts
 
-        if [[ ! "$OSTYPE" =~ ^(darwin|freebsd) ]]; then
+        if ! [[ "$OSTYPE" =~ ^(darwin|freebsd) ]]; then
             alias ls="ls --color=auto"
             alias diff='colordiff'
             alias dir="dir --color=auto"

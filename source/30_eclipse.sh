@@ -1,5 +1,5 @@
 # Just a simple PATH alteration and some other environment stuff
 if exists eclipse; then
-    export PATH=/usr/share/eclipse/:$PATH
+    path_unshift /usr/share/eclipse
     export ECLIPSE_HOME=/usr/share/eclipse
 fi

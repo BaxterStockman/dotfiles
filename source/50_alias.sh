@@ -1,6 +1,8 @@
+#!/usr/bin/env bash
+
 ## Modified commands
-alias less=$PAGER
-alias more=$PAGER
+alias less="\$PAGER"
+alias more="\$PAGER"
 alias df='df -h'
 alias du='du -c -h'
 alias mkdir='mkdir -p -v'
@@ -9,7 +11,7 @@ alias ping='ping -c 5'
 alias dmesg='dmesg -HL'
 
 ## Privileged access
-if [ $UID -ne 0 ]; then
+if [[ $UID -ne 0 ]]; then
     alias sudo='sudo '
     alias scat='sudo cat'
     alias svim='sudoedit'
@@ -19,19 +21,18 @@ fi
 ## ls
 # Always use color output for `ls`
 if [[ "$OSTYPE" =~ ^(darwin|freebsd) ]]; then
-  alias ls="command ls -hFG"
+    alias ls="command ls -hFG"
 else
-  alias ls='ls -hF --color=auto'
-  #export LS_COLORS='no=00:fi=00:di=01;34:ln=01;36:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arj=01;31:*.taz=01;31:*.lzh=01;31:*.zip=01;31:*.z=01;31:*.Z=01;31:*.gz=01;31:*.bz2=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.jpg=01;35:*.jpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.avi=01;35:*.fli=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.ogg=01;35:*.mp3=01;35:*.wav=01;35:'
+    alias ls='ls -hF --color=auto'
 fi
 
 # Directory listing
 if [[ "$(type -P tree)" ]]; then
-  alias ll='tree --dirsfirst -aLpughDFiC 1'
-  alias lsd='ll -d'
+    alias ll='tree --dirsfirst -aLpughDFiC 1'
+    alias lsd='ll -d'
 else
-  alias ll='ls -al'
-  alias lsd='CLICOLOR_FORCE=1 ll | grep --color=never "^d"'
+    alias ll='ls -al'
+    alias lsd='CLICOLOR_FORCE=1 ll | grep --color=never "^d"'
 fi
 
 alias lr='ls -R'                    # recursive ls
@@ -92,4 +93,4 @@ alias rp='ratpoison'
 alias urxvt='urxvtc'
 
 # Make xrdb search for includes in $HOME/.Xresources.d
-alias xrdb="xrdb -I${HOME}/.Xresources.d"
+alias xrdb="xrdb -I\${HOME}/.Xresources.d"

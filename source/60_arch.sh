@@ -1,5 +1,7 @@
+#!/usr/bin/env bash
+
 # Check that we're on Arch
-[[ "$(cat /etc/issue 2> /dev/null)" =~ Arch ]] || return 1
+[[ "$(< /etc/issue)" =~ Arch ]] || return 1
 
 # Other aliases
 alias cower='cower --color=auto'
@@ -15,6 +17,6 @@ if [ $UID -ne 0 ]; then
 fi
 
 # Odds and ends
-if [[ `pgrep rxvt | wc -l` == 1 ]] && exists archey3; then
+if [[ "$(pgrep rxvt | wc -l)" -ge 1 ]] && exists archey3; then
     archey3
 fi

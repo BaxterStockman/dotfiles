@@ -1,1 +1,3 @@
-export LC_ALL=${LC_ALL:-en_US.UTF-8}
+#!/bin/bash
+
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
