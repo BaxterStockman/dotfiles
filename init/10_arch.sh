@@ -1,12 +1,12 @@
 # Check that we're on Arch
 [[ "$(< /etc/issue)" =~ ^Arch ]] || return 1
 
-if ! $PKG_CHECK_INSTALLED "curl"; then
+if ! pacman -Qqs curl &>/dev/null; then
   e_header "Installing curl"
   pacman -S curl
 fi
 
-if ! $PKG_CHECK_INSTALLED "packer"; then
+if ! pacman -Qqs packer &>/dev/null; then
   e_header "Installing Packer"
   PACKER_PKGBUILD_URL="https://aur.archlinux.org/packages/pa/packer/PKGBUILD"
   CWD=$(pwd)
