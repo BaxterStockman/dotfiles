@@ -8,18 +8,18 @@ declare -r SCRIPT_PATH="${BASH_SOURCE[0]}"
 declare -r SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
 declare -r SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
 
-declare -rx DOTFILES_VERSION="${DOTFILES_VERSION:-1.0}"
+declare -x DOTFILES_ROOT="${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/../.dotfiles")}"
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_vars () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Globals
+    declare -rx DOTFILES_VERSION="${DOTFILES_VERSION:-1.0}"
     declare -x DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:=${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
     declare -x DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:=${DOTFILES_ROOT}/caches}"
     declare -x DOTFILES_DESTDIR="${DOTFILES_DESTDIR:=$HOME}"
     declare -x DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:=false}"
     declare -x DOTFILES_REPO="${DOTFILES_REPO:=git://github.com/BaxterStockman/dotfiles.git}"
-    declare -x DOTFILES_ROOT="${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/../.dotfiles")}"
     declare -x DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:=false}"
     declare -x DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:=true}"
     declare -x DOTFILES_VERBOSE="${DOTFILES_VERBOSE:=true}"
@@ -574,7 +574,4 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # Enough with the functions, let's do stuff.
     main "$@"
-    exit $?
 else
-    init_vars
-fi
