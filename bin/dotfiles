@@ -14,23 +14,23 @@ declare -rx DOTFILES_VERSION="${DOTFILES_VERSION:-1.0}"
 init_vars () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Globals
-    declare -gx DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:=${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
-    declare -gx DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:=${DOTFILES_ROOT}/caches}"
-    declare -gx DOTFILES_DESTDIR="${DOTFILES_DESTDIR:=$HOME}"
-    declare -gx DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:=false}"
-    declare -gx DOTFILES_REPO="${DOTFILES_REPO:=git://github.com/BaxterStockman/dotfiles.git}"
-    declare -gx DOTFILES_ROOT="${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/../.dotfiles")}"
-    declare -gx DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:=false}"
-    declare -gx DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:=true}"
-    declare -gx DOTFILES_VERBOSE="${DOTFILES_VERBOSE:=true}"
-    declare -gx DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
-    declare -gx DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
+    declare -x DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:=${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
+    declare -x DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:=${DOTFILES_ROOT}/caches}"
+    declare -x DOTFILES_DESTDIR="${DOTFILES_DESTDIR:=$HOME}"
+    declare -x DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:=false}"
+    declare -x DOTFILES_REPO="${DOTFILES_REPO:=git://github.com/BaxterStockman/dotfiles.git}"
+    declare -x DOTFILES_ROOT="${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/../.dotfiles")}"
+    declare -x DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:=false}"
+    declare -x DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:=true}"
+    declare -x DOTFILES_VERBOSE="${DOTFILES_VERBOSE:=true}"
+    declare -x DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
+    declare -x DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
 
-    declare -gi __DOTFILES_BACKUP=0
-    declare -gi __DOTFILES_FAILED=0
+    declare -i __DOTFILES_BACKUP=0
+    declare -i __DOTFILES_FAILED=0
 
     # RC files to not clobber when linking
-    declare -gA __DOTFILES_NOCLOBBER_RC_MAP
+    declare -A __DOTFILES_NOCLOBBER_RC_MAP
     if [[ -n "$DOTFILES_NOCLOBBER_RCS" ]]; then
         local IFS=$','
         local rc
@@ -544,12 +544,12 @@ main () {
         optype="${dotfiles_subdir##*/}"
         declare -F "${optype}_do" &>/dev/null || continue
         do_stuff "$optype"
-        [[ -d "${DOTFILES_ROOT}/${optype}" ]] && do_opt_stuff "$optype"
+        [[ -d "${DOTFILES_ROOT}/opt/${optype}" ]] && do_opt_stuff "$optype"
     done
 
     # Alert if backups were made.
     if [[ "$__DOTFILES_BACKUP" -gt 0 ]]; then
-        printf "\n%s\n" "Backups were moved to ${DOTFILES_BACKUP_PATH}"
+        e_arrow "\nBackups were moved to ${DOTFILES_BACKUP_PATH}\n"
     fi
 
     # Lest I forget to do a few additional things...
