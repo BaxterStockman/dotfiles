@@ -289,6 +289,12 @@ do_stuff () {
     local skip_reason srcfile srcstem destfile backup_subpath
     local -i failed=0
     while read -r srcfile; do
+        # Don't quite know why this is necessary -- 'find' sometimes strips the
+        # leading slash when called using process substitution...
+        # Because find returns absolute paths, it's probably (?) safe to just
+        # append a leading slash.
+        [[ "$srcfile" =~ ^/ ]] || srcfile="/${srcfile}"
+
         srcstem="${srcfile#$srcdir/}"
         destfile="${DOTFILES_DESTDIR}/${srcstem}"
 

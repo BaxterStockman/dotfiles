@@ -98,7 +98,7 @@ Plug 'tpope/vim-surround'
 " kickstart.vim provides syntax highligting for RedHat Linux kickstart files
 Plug 'tangledhelix/vim-kickstart'
 
-Plug 'Valloric/YouCompleteMe', {'do': '.install.sh'}
+Plug 'Valloric/YouCompleteMe', {'do': './install.sh'}
 autocmd! User YouCompleteMe call youcompleteme#Enable()
 
 " Create aliases for Vim commands
@@ -262,6 +262,14 @@ set showmatch
 
 " Show the line and column number of the cursor position, separated by a comma.
 set ruler
+
+" Attempt to load preferred colorscheme.  Since it might not be installed,
+" default to a colorscheme bundled with Vim
+try
+    colorscheme solarized
+catch
+    colorscheme elflord
+endtry
 
 " When set to "dark", Vim will try to use colors that look good on a dark
 " background. When set to "light", Vim will try to use colors that look good on
@@ -602,12 +610,6 @@ let g:syntastic_perl_perlcritic_args = '--brutal --exclude=HardTabs'
 " All perlcritic messages above 3 are highlighted as errors, the rest are shown
 " as warnings
 let g:syntastic_perl_perlcritic_thres = 3
-
-" =============================================================================
-" Post-plugin configuration
-" =============================================================================
-
-colorscheme solarized
 
 " =============================================================================
 " Sourcing further vim configurations
