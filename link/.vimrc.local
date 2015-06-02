@@ -326,7 +326,7 @@ CommandCabbrev chk SyntasticCheck
 """ Plugin-specific settings """
 """"""""""""""""""""""""""""""""
 " haskellmode-vim
-let g:haddock_browser = 'dwb'
+let g:haddock_browser = 'firefox'
 
 """""""""""""""""""""
 """ Miscellaneous """
