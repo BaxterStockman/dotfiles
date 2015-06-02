@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # From http://stackoverflow.com/questions/370047/#370255
 path_remove () {
     local IFS=:

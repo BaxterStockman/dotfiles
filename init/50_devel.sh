@@ -2,6 +2,12 @@
 
 install_vim_plug () {
     local vim_autoload_path="${1:-${HOME}/.vim/autoload}"
+
+    if ! type -P curl; then
+        e_error "Curl is not installed; aborting"
+        return 1
+    fi
+
     curl -fLo "${vim_autoload_path}/plug.vim" --create-dirs \
         https://raw.githubusercontent.com/junegunn/vim-plugmaster/plug.vim
 }
@@ -15,7 +21,10 @@ update_vim_plug () {
 if type -P vim >/dev/null; then
     e_header "Updating vim-plug"
     if ! update_vim_plug 2>/dev/null; then
-        install_vim_plug
+        if ! install_vim_plug "$DOTFILES_VIM_AUTOLOAD_PATH"; then
+            e_error "Failed to install vim-plug"
+            return 1
+        fi
         update_vim_plug 2>/dev/null
     fi
 fi
