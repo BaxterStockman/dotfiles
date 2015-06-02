@@ -574,4 +574,4 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # Enough with the functions, let's do stuff.
     main "$@"
-else
+fi
