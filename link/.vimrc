@@ -1,10 +1,40 @@
 " .gvimrc
 " See: http://vimdoc.sourceforge.net/htmldoc/options.html for details
 
+"verbose set tabstop
+"verbose set shiftwidth
+"verbose set softtabstop
+"verbose set expandtab
+"verbose set noexpandtab
+
 " =============================================================================
 " Plugins
 " =============================================================================
-"
+
+" Use per-host local vimrc if available
+function! LoadLocal(...)
+    if a:0
+        let rc = fnameescape(a:0)
+    else
+        let rc = "~/.vimrc.local"
+    endif
+    let rc_fullpath = expand(rc)
+    if filereadable(rc_fullpath)
+        execute 'source ' . rc_fullpath
+    endif
+endfunction
+
+augroup vimrc
+    autocmd!
+augroup END
+
+" Install vim-plug if it isn't already installed
+" From https://github.com/junegunn/vim-plug/wiki/faq
+if empty(glob('~/.vim/autoload/plug.vim'))
+  silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs
+    \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+  autocmd VimEnter * PlugInstall
+endif
 " Load plugins
 silent! if plug#begin('~/.vim/plugged')
 
@@ -15,7 +45,9 @@ silent! if plug#begin('~/.vim/plugged')
 Plug 'bling/vim-airline'
 
 " Adds additional syntax highlighting and fixes for Ansible's dialect of YAML
+"Plug 'BaxterStockman/vim-ansible-yaml'
 Plug 'chase/vim-ansible-yaml'
+"autocmd! User vim-ansible-yaml call LoadLocal()
 
 " Fuzzy file, buffer, mru, tag, etc finder
 Plug 'ctrlpvim/ctrlp.vim'
@@ -50,9 +82,16 @@ Plug 'klen/python-mode', {'for': 'python'}
 " Show a diff via Vim sign column
 Plug 'mhinz/vim-signify'
 
-" A Vim plugin for visually displaying indent levels in code
-Plug 'nathanaelkane/vim-indent-guides'
-autocmd! User vim-indent-guides call indent_guides#enable()
+if v:version >= 703
+	" a vim plugin to display the indentation levels with thin vertical
+	" lines
+	Plug 'Yggdroot/indentLine'
+	"Plug 'Yggdroot/indentLine', {'on': 'IndentLinesEnable'}
+else
+	" A Vim plugin for visually displaying indent levels in code
+	Plug 'nathanaelkane/vim-indent-guides'
+	"Plug 'nathanaelkane/vim-indent-guides', {'on': 'IndentGuidesOn'}
+endif
 
 " Vastly improved Javascript indentation and syntax support in Vim
 Plug 'pangloss/vim-javascript', {'for': 'javascript'}
@@ -82,6 +121,9 @@ Plug 'tpope/vim-repeat'
 
 " Defaults everyone can agree on
 Plug 'tpope/vim-sensible'
+
+" Defaults everyone can agree on
+"Plug 'tpope/vim-sleuth'
 
 " Quoting/parenthesizing made simple
 Plug 'tpope/vim-surround'
@@ -141,12 +183,6 @@ Plug 'xolox/vim-notes'
 call plug#end()
 endif "/silent
 
-" Use .vimrc.custom if available {
-    if filereadable(expand("~/.vimrc.custom"))
-        source ~/.vimrc.custom
-    endif
-" }
-"
 " For multi-byte character support (CJK support, for example):
 "set fileencodings=ucs-bom,utf-8,cp936,big5,euc-jp,euc-kr,gb18030,latin1
 "
@@ -343,7 +379,8 @@ set notimeout ttimeout ttimeoutlen=200
 "Attempt to determine the type of file based on its name and possibly its
 "contents.  Use this to allow intelligent auto-indenting for each filetype, and
 "for plugins that are filetype-specific.
-filetype plugin indent on
+filetype off
+"filetype plugin indent on
 
 " Enable syntax highlighting
 syntax on
@@ -537,9 +574,10 @@ command! -range=% -nargs=* PerlTidy if &filetype ==? 'perl' | <line1>,<line2> !p
 " Source all vimrc files
 command! SourceAll if filereadable($MYVIMRC) | source $MYVIMRC | endif | if has('gui_running') && filereadable($MYGVIMRC) |  source $MYGVIMRC | endif
 
-augroup myvimrc
-    au!
-    au BufWritePost .vimrc*,_vimrc*,vimrc*,vimrc*,.gvimrc*,_gvimrc*,gvimrc* SourceAll
+augroup vimrc
+    " Automatically reload vimrc files upon BufWritePost to any of the matching
+    " files
+    autocmd BufWritePost .vimrc*,_vimrc*,vimrc*,vimrc*,.gvimrc*,_gvimrc*,gvimrc* SourceAll
 augroup END
 
 " =============================================================================
@@ -574,7 +612,7 @@ let g:pymode_rope_lookup_project = 0
 
 " vim-indent-guides
 let g:indent_guides_start_level = 2
-let g:indent_guides_guid_size = 1
+let g:indent_guides_guide_size = 1
 
 " vim-easy-align
 " Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
@@ -612,11 +650,17 @@ let g:syntastic_perl_perlcritic_args = '--brutal --exclude=HardTabs'
 let g:syntastic_perl_perlcritic_thres = 3
 
 " =============================================================================
+" vim-ansible-yaml settings
+" =============================================================================
+"let g:ansible_use_default_indentation = 0
+let g:ansible_shiftwidth = 8
+let g:ansible_tabstop = 8
+let g:ansible_expandtab = 0
+
+" =============================================================================
 " Sourcing further vim configurations
 " =============================================================================
 
-" Use per-host local vimrc if available {
-    if filereadable(expand("~/.vimrc.local"))
-        source ~/.vimrc.local.custom
-    endif
-" }
+augroup vimrc
+	autocmd VimEnter call LoadLocal()
+augroup END
