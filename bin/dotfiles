@@ -442,10 +442,6 @@ main () {
         exit 1
     fi
 
-    # Initialize variables after the version check -- otherwise we'll end up with issues because of
-    # the fact that init_vars declares an associative array.
-    init_vars
-
     local opt_name opt_value
     while (( $# )); do
         read opt_name opt_value <<<"$@"
@@ -607,7 +603,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
             ['.perlbrew']=true
             ['.ssh']=true
         )
-        local IFS=$','
+        IFS=$','
         export DOTFILES_NOCLOBBER_RCS="${!__DOTFILES_NOCLOBBER_RC_MAP[*]}"
         unset IFS
     fi
