@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 
-echo "HOME: $HOME"
 DOTFILES_VIM_AUTOLOAD_PATH="${DOTFILES_VIM_AUTOLOAD_PATH:-${HOME}/.vim/autoload}"
 DOTFILES_VIM_PLUG_PATH="${DOTFILES_VIM_PLUG_PATH:-${DOTFILES_VIM_AUTOLOAD_PATH}/plug.vim}"
-echo "DOTFILES_VIM_AUTOLOAD_PATH: $DOTFILES_VIM_AUTOLOAD_PATH"
-echo "DOTFILES_VIM_PLUG_PATH: $DOTFILES_VIM_PLUG_PATH"
 
 install_vim_plug () {
     local vim_autoload_path="${1:-${HOME}/.vim/autoload}"
@@ -20,7 +17,7 @@ install_vim_plug () {
 }
 
 update_vim_plug () {
-    vim +PlugUpgrade +PlugUpdate +qall
+    vim '+try | PlugUpgrade | PlugUpdate | qall | catch | cquit | endtry'
 }
 
 # Uninstall spf13

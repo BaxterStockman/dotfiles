@@ -3,6 +3,9 @@ backup/
 vendor/
 *LOCAL*
 
+# Swap files
+*.swp
+
 # Compiled source #
 ###################
 *.com
