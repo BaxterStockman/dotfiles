@@ -78,5 +78,5 @@ function clean_path () {
     done <<< "${!varname}"
 
     local IFS=:
-    echo "${varname}=${new_var_elems[*]} ; export \$${varname}"
+    echo "${varname}=${new_var_elems[*]} ; export ${varname}"
 }
