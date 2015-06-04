@@ -1,21 +1,24 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function is_git_repo () {
-    local moduledir="${1:-$PWD}"
+    local moduledir="${1:-$DOTFILES_ROOT}"
     [[ -d "${moduledir}/.git" ]] || git rev-parse --git-dir &>/dev/null
 }
 
-moduledir="${1:-$PWD}"
+e_header "Installing git submodules"
+
+moduledir="$DOTFILES_ROOT"
+
 if ! pushd "$moduledir" &>/dev/null; then
-	echo "Can't chdir to ${moduledir}; exiting" 1>&2
-	exit 1
+	e_error "Can't chdir to ${moduledir}; exiting" 1>&2
+	return 1
 fi
 
 gitmodules_file="${moduledir}/.gitmodules"
 
 if ! is_git_repo "$moduledir"; then
-    echo "${PWD} is not a git repository" 1>&2
-    exit 2
+    e_error "${moduledir} is not a git repository" 1>&2
+    exit 1
 fi
 
 if ! [[ -f "$gitmodules_file" ]]; then
