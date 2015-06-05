@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Set colorful PS1 only on colorful terminals.
 function configure_color_prompts() {
     ## Solarized colors
@@ -75,8 +77,10 @@ function configure_color_prompts() {
             ERROR_FACE_C="$RED"
             ERROR_PROMPT_C="$VIOLET"
         else
-            local WHITE=$(tput setaf 7)
-            local BLACK=$(tput setaf 0)
+            local WHITE
+            WHITE=$(tput setaf 7)
+            local BLACK
+            BLACK=$(tput setaf 0)
             RED=$(tput setaf 1)
             GREEN=$(tput setaf 2)
             YELLOW=$(tput setaf 3)
@@ -107,14 +111,14 @@ function configure_color_prompts() {
         BOLD=""
         RESET="\033[m"
 
-        echo -en $CYAN
-        echo -en $BLUE
-        echo -en $GREEN
-        echo -en $MAGENTA
-        echo -en $ORANGE
-        echo -en $RED
-        echo -en $VIOLET
-        echo -en $YELLOW
+        echo -en "$CYAN"
+        echo -en "$BLUE"
+        echo -en "$GREEN"
+        echo -en "$MAGENTA"
+        echo -en "$ORANGE"
+        echo -en "$RED"
+        echo -en "$VIOLET"
+        echo -en "$YELLOW"
 
         USERNAME_C="$GREEN"
         AT_C="$WHITE"
@@ -164,9 +168,9 @@ function set_prompts () {
         # Enable colors for ls, etc. Prefer ~/.dir_colors
         if type -P dircolors >/dev/null ; then
             if [[ -f ~/.dir_colors ]] ; then
-                eval $(dircolors -b ~/.dir_colors)
+                eval "$(dircolors -b ~/.dir_colors)"
             elif [[ -f /etc/DIR_COLORS ]] ; then
-                eval $(dircolors -b /etc/DIR_COLORS)
+                eval "$(dircolors -b /etc/DIR_COLORS)"
             fi
         fi
 

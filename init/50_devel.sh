@@ -17,7 +17,7 @@ install_vim_plug () {
 }
 
 update_vim_plug () {
-    vim '+try | PlugUpgrade | PlugUpdate | qall | catch | cquit | endtry'
+    vim -c 'try | PlugUpgrade | PlugUpdate | qall | catch | cquit | endtry'
 }
 
 # Uninstall spf13
@@ -42,4 +42,7 @@ if type -P vim >/dev/null; then
         fi
     fi
     update_vim_plug
+    exit_code=$?
+    reset
+    return $exit_code
 fi
