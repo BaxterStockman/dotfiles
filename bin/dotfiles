@@ -251,6 +251,54 @@ md5cmp () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+splitfile () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local file="$1"
+    local prefix="$2"
+    local relpath="${file##$prefix}"
+    local -a path_elements
+    local IFS=$'/'
+    read -ra path_elements <<<"$relpath"
+    unset IFS
+    # Necessary in order to get rid of the leading trailing space
+    echo "${path_elements[@]:1}"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+find_hierarchical () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local targetdir="$1"
+    shift
+    local prefix
+
+    local opt_name opt_arg remain
+    while (( $# )); do
+        read -r opt_name opt_arg remain <<<"$@"
+        case "$opt_name" in
+		-p|--prefix)
+			prefix="$opt_arg"
+			shift 2
+			break
+			;;
+		*)
+			continue
+			;;
+	esac
+    done
+
+    local IFS
+    while read -ra path_elements; do
+        IFS=$'/'
+        echo "${prefix}${prefix:+/}${path_elements[*]}"
+        unset IFS
+    done < <(sort -n < <(while read -r target; do
+        splitfile "$target" "$prefix"
+    done < <(find "$targetdir" "$@")))
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 do_stuff () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Copy, link, init, etc.
@@ -333,7 +381,7 @@ do_stuff () {
 
         # Do stuff.
         "$optype_do" "$srcfile" "$destfile"
-    done < <(find "$srcdir" -xtype f)
+    done < <(find_hierarchical "$srcdir" --prefix "$DOTFILES_ROOT" -xtype f)
 
     [[ $failed -eq 0 ]]
 }

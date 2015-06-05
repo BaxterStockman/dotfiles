@@ -34,3 +34,6 @@
 [submodule "ack2"]
     path = vendor/ack2
     url = git://github.com/petdance/ack2.git
+[submodule "vendor/ack2"]
+	path = vendor/ack2
+	url = git://github.com/petdance/ack2.git

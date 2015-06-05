@@ -100,6 +100,9 @@ Plug 'pangloss/vim-javascript', {'for': 'javascript'}
 " languages used by Yesod
 Plug 'pbrisbin/vim-syntax-shakespeare'
 
+" provides insert mode auto-completion for quotes, parens, brackets, etc.
+Plug 'Raimondi/delimitMate'
+
 " A tree explorer plugin for vim
 Plug 'scrooloose/nerdtree'
 
@@ -108,6 +111,9 @@ Plug 'scrooloose/syntastic'
 
 " True Sublime Text style multiple selections for Vim
 Plug 'terryma/vim-multiple-cursors'
+
+" Wise endings
+Plug 'tpope/vim-endwise'
 
 " Helpers for UNIX
 Plug 'tpope/vim-eunuch'
