@@ -1,7 +1,8 @@
-caches/
-cache/
-backup/
-vendor/
+/caches/
+/cache/
+/backup/
+/vendor/
+
 *LOCAL*
 
 # Swap files
