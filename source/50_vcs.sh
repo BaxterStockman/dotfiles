@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 # Git shortcuts
 
@@ -35,7 +36,7 @@ alias gs-all='eachdir git status'
 function ged() {
   local files=()
   for f in $(git diff --name-only "$@"); do
-    [[ -e "$f" ]] && files=("${files[@]}" "$f")
+    [[ -e "$f" ]] && files+=("$f")
   done
   local n=${#files[@]}
   echo "Opening $n $([[ "$@" ]] || echo "modified ")file$([[ $n != 1 ]] && \
