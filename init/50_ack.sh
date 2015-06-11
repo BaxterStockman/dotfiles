@@ -27,4 +27,4 @@ make ack-standalone
 
 popd >/dev/null
 
-ln -s "${ack_submodule_dir}/ack-standalone" "${DOTFILES_ROOT}/bin/ack"
+ln -sfn "${ack_submodule_dir}/ack-standalone" "${DOTFILES_ROOT}/bin/ack"

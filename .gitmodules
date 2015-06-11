@@ -37,3 +37,15 @@
 [submodule "vendor/ack2"]
 	path = vendor/ack2
 	url = git://github.com/petdance/ack2.git
+[submodule "vendor/rbenv"]
+	path = vendor/rbenv
+	url = git://github.com/sstephenson/rbenv.git
+[submodule "vendor/z"]
+	path = vendor/z
+	url = git://github.com/rupa/z.git
+[submodule "vendor/nave"]
+	path = vendor/nave
+	url = git://github.com/isaacs/nave.git
+[submodule "vendor/git-extras"]
+	path = vendor/git-extras
+	url = git://github.com/tj/git-extras.git

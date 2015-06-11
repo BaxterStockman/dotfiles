@@ -310,6 +310,12 @@ ansible_header () {
 ansible_test () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local playbook_path="$1"
+
+    if ! type -P ansible; then
+        echo "Can't run ansible; system configuration will be incomplete"
+        return
+    fi
+
     if ! [[ -f "$playbook_path" ]] \
       || ! [[ "$playbook_path" =~ playbook.yml$ ]]; then
         echo "$playbook_path is not a valid path to a playbook"
@@ -588,7 +594,6 @@ main () {
         # Check that certain programs are installed
         local -A dependency_map=(
             [git]="git should be installed.  It isn't"
-            [ansible]="You really need ansible"
             [gcc]="XCode or the XCode CLI Tools must be installed"
         )
 
@@ -596,6 +601,7 @@ main () {
         for dependency in "${!dependency_map[@]}"; do
             if ! type -P "$dependency" &>/dev/null; then
                 e_error "${dependency_map[$dependency]}" 1>&2
+                exit 1
             fi
         done
 
