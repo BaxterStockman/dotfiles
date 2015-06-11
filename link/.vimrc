@@ -35,6 +35,7 @@ if empty(glob('~/.vim/autoload/plug.vim'))
     \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
   autocmd VimEnter * PlugInstall
 endif
+
 " Load plugins
 silent! if plug#begin('~/.vim/plugged')
 
@@ -45,9 +46,7 @@ silent! if plug#begin('~/.vim/plugged')
 Plug 'bling/vim-airline'
 
 " Adds additional syntax highlighting and fixes for Ansible's dialect of YAML
-"Plug 'BaxterStockman/vim-ansible-yaml'
 Plug 'chase/vim-ansible-yaml'
-"autocmd! User vim-ansible-yaml call LoadLocal()
 
 " Fuzzy file, buffer, mru, tag, etc finder
 Plug 'ctrlpvim/ctrlp.vim'
@@ -382,18 +381,20 @@ set notimeout ttimeout ttimeoutlen=200
 " Syntax- and filetype-related settings
 " =============================================================================
 
-"Attempt to determine the type of file based on its name and possibly its
-"contents.  Use this to allow intelligent auto-indenting for each filetype, and
-"for plugins that are filetype-specific.
-filetype off
+" XXX Not needed with vim-plug; see:
+" https://github.com/junegunn/vim-plug/wiki/faq
+""Attempt to determine the type of file based on its name and possibly its
+""contents.  Use this to allow intelligent auto-indenting for each filetype, and
+""for plugins that are filetype-specific.
 "filetype plugin indent on
-
-" Enable syntax highlighting
-syntax on
+"
+"" Enable syntax highlighting
+"syntax on
 
 " =============================================================================
 " Wildmenu
 " =============================================================================
+
 " Better command-line completion
 set wildmenu
 set wildmode=list:longest,full
@@ -401,6 +402,7 @@ set wildmode=list:longest,full
 " =============================================================================
 " Miscellaneous
 " =============================================================================
+"
 " Change working directory to directory of current file
 autocmd BufEnter * if bufname("") !~ "^\[A-Za-z0-9\]*://" | lcd %:p:h | endif
 
@@ -415,6 +417,12 @@ endfunction
 augroup resCur
     autocmd!
     autocmd BufWinEnter * call ResCur()
+augroup END
+
+augroup vimrc
+    " Automatically reload vimrc files upon BufWritePost to any of the matching
+    " files
+    autocmd BufWritePost .vimrc*,_vimrc*,vimrc*,vimrc*,.gvimrc*,_gvimrc*,gvimrc* SourceAll
 augroup END
 
 " =============================================================================
@@ -506,14 +514,8 @@ vnoremap . :normal .<CR>
 cmap w!! w !sudo tee % >/dev/null
 
 " =============================================================================
-" Functions/Commands
+" Functions
 " =============================================================================
-
-" Syntax: [:Etabs | :Ewindows | :Evwindows] file1 [, file2, ... , fileN]
-" Opens a list of files in different tabs/windows/vertical windows
-command! -complete=file -nargs=+ Etabs call s:ETW('tabnew', <f-args>)
-command! -complete=file -nargs=+ Ewindows call s:ETW('new', <f-args>)
-command! -complete=file -nargs=+ Evwindows call s:ETW('vnew', <f-args>)
 
 function! s:ETW(what, ...)
   for f1 in a:000
@@ -527,9 +529,6 @@ function! s:ETW(what, ...)
     endif
   endfor
 endfunction
-
-command! -nargs=+ Tabposition call s:Tabposition(<f-args>)
-command! -nargs=? Tabfirst call s:Tabposition(0, <f-args>)
 
 function! s:Tabposition(posi, ...)
     let file = fnameescape(a:1)
@@ -575,20 +574,70 @@ function! CommandCabbrev(abbreviation, expansion)
 endfunction
 command! -nargs=+ CommandCabbrev call CommandCabbrev(<f-args>)
 
+" Copied from spf13: https://github.com/spf13/spf13-vim/blob/3.0/.vimrc
+function! InitializeDirectories()
+  let parent = $HOME
+  let prefix = 'vim'
+  let dir_list = {
+              \ 'backup': 'backupdir',
+              \ 'views': 'viewdir',
+              \ 'swap': 'directory' }
+
+  if has('persistent_undo')
+    let dir_list['undo'] = 'undodir'
+  endif
+
+  " To specify a different directory in which to place the vimbackup,
+  " vimviews, vimundo, and vimswap files/directories, add the following to
+  " your .vimrc.before.local file:
+  "   let g:spf13_consolidated_directory = <full path to desired directory>
+  "   eg: let g:spf13_consolidated_directory = $HOME . '/.vim/'
+  if exists('g:spf13_consolidated_directory')
+    let common_dir = g:spf13_consolidated_directory . prefix
+  else
+    let common_dir = parent . '/.' . prefix
+  endif
+
+  for [dirname, settingname] in items(dir_list)
+    let directory = common_dir . dirname . '/'
+    if exists("*mkdir")
+      if !isdirectory(directory)
+        call mkdir(directory)
+      endif
+    endif
+    if !isdirectory(directory)
+      echo "Warning: Unable to create backup directory: " . directory
+      echo "Try: mkdir -p " . directory
+    else
+      let directory = substitute(directory, " ", "\\\\ ", "g")
+      exec "set " . settingname . "=" . directory
+    endif
+endfor
+endfunction
+
+
+" =============================================================================
+" Commands
+" =============================================================================
+
+" Syntax: [:Etabs | :Ewindows | :Evwindows] file1 [, file2, ... , fileN]
+" Opens a list of files in different tabs/windows/vertical windows
+command! -complete=file -nargs=+ Etabs call s:ETW('tabnew', <f-args>)
+command! -complete=file -nargs=+ Ewindows call s:ETW('new', <f-args>)
+command! -complete=file -nargs=+ Evwindows call s:ETW('vnew', <f-args>)
+
+command! -nargs=+ Tabposition call s:Tabposition(<f-args>)
+command! -nargs=? Tabfirst call s:Tabposition(0, <f-args>)
+
 command! -range=% -nargs=* PerlTidy if &filetype ==? 'perl' | <line1>,<line2> !perltidy -q -nst -b <args> <NL>| endif
 
 " Source all vimrc files
 command! SourceAll if filereadable($MYVIMRC) | source $MYVIMRC | endif | if has('gui_running') && filereadable($MYGVIMRC) |  source $MYGVIMRC | endif
 
-augroup vimrc
-    " Automatically reload vimrc files upon BufWritePost to any of the matching
-    " files
-    autocmd BufWritePost .vimrc*,_vimrc*,vimrc*,vimrc*,.gvimrc*,_gvimrc*,gvimrc* SourceAll
-augroup END
-
 " =============================================================================
 " Abbreviations
 " =============================================================================
+
 " Abbreviate CommandCabbrev to a lowercase abbreviation
 CommandCabbrev ccab CommandCabbrev
 CommandCabbrev sw SudoWrite
@@ -599,6 +648,7 @@ CommandCabbrev chk SyntasticCheck
 " =============================================================================
 " Plugin-specific settings
 " =============================================================================
+
 " haskellmode-vim
 let g:haddock_browser = 'dwb'
 
@@ -628,8 +678,22 @@ vmap <Enter> <Plug>(EasyAlign)
 nmap ga <Plug>(EasyAlign)
 
 " =============================================================================
+" Backups and swap files
+" =============================================================================
+
+set backup
+if has('persistent_undo')
+  set undofile
+  set undolevels=1000
+  set undoreload=10000
+endif
+
+call InitializeDirectories()
+
+" =============================================================================
 " Syntastic settings
 " =============================================================================
+
 " Options that apply to all filetypes
 let g:syntastic_check_on_open = 1
 
@@ -658,10 +722,11 @@ let g:syntastic_perl_perlcritic_thres = 3
 " =============================================================================
 " vim-ansible-yaml settings
 " =============================================================================
+
 "let g:ansible_use_default_indentation = 0
-let g:ansible_shiftwidth = 8
-let g:ansible_tabstop = 8
-let g:ansible_expandtab = 0
+"let g:ansible_shiftwidth = 8
+"let g:ansible_tabstop = 8
+"let g:ansible_expandtab = 0
 
 " =============================================================================
 " Sourcing further vim configurations
