@@ -43,6 +43,6 @@ if type -P vim >/dev/null; then
     fi
     update_vim_plug
     exit_code=$?
-    reset
+    ssty sane || reset
     return $exit_code
 fi

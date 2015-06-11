@@ -18,13 +18,13 @@ if [[ ! -d "$ack_submodule_dir" ]]; then
 	return 1
 fi
 
-pushd "$ack_submodule_dir" &>/dev/null
+pushd "$ack_submodule_dir" >/dev/null
 
 perl Makefile.PL
 make clean
 make
 make ack-standalone
 
-popd &>/dev/null
+popd >/dev/null
 
 ln -s "${ack_submodule_dir}/ack-standalone" "${DOTFILES_ROOT}/bin/ack"
