@@ -46,7 +46,7 @@ md5cmp () {
     leftsumout="$(md5sum "$left")"
     rightsumout="$(md5sum "$right")"
 
-    [[ "${leftsumout%% *}" == "${rightsumout%% *}" ]]
+    [[ "${leftsumout%% *}" == ${rightsumout%% *} ]]
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -131,13 +131,17 @@ to_install () {
 check_noclobber () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcfile="$1"
-    local destfile="$1"
+    local destfile="$2"
     local real_destfile="$destfile"
 
     if "${DOTFILES_NOCLOBBER}"; then
-        if [[ "${__DOTFILES_NOCLOBBER_RC_MAP["${destfile#$DOTFILES_DESTDIR}"]:-false}" == 'true' ]]; then
-            e_arrow "Not clobbering ${destfile};" \
-                "${srcfile} will be appended with '${DOTFILES_NOCLOBBER_EXT}'" 1>&2
+        local noclobber="${__DOTFILES_NOCLOBBER_RC_MAP[$destfile]:-false}"
+
+        if [[ "$noclobber" == true ]]; then
+            local noclobber_message
+            printf -v noclobber_message %s "Not clobbering ${destfile};" \
+                "${srcfile} will be appended with '${DOTFILES_NOCLOBBER_EXT}'"
+            e_arrow "$noclobber_message" 1>&2
             real_destfile="${destfile}${DOTFILES_NOCLOBBER_EXT}"
         fi
     fi
@@ -197,10 +201,7 @@ copy_test () {
 #   - The destination file is newer than the source file.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcfile="$1"
-    local maybe_destfile="$1"
-    local destfile
-
-    destfile="$(check_noclobber "$maybe_destfile")"
+    local destfile="$2"
 
     if [[ -e "${destfile}" && ! "$(cmp "${srcfile}" "${destfile}" 2> /dev/null)" ]]; then
         echo "same file"
@@ -289,10 +290,7 @@ link_test () {
 link_do () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcfile="$1"
-    local maybe_destfile="$2"
-    local destfile
-
-    destfile="$(check_noclobber "$maybe_destfile")"
+    local destfile="$2"
     local destdir="${destfile%/*}"
 
     if ! mkdir -p "$destdir" >/dev/null; then
@@ -316,7 +314,7 @@ ansible_test () {
     local playbook_path="$1"
 
     local python2_bin=python
-    if [[ "$DOTFILES_OSTYPE" == 'arch' ]]; then
+    if [[ "$DOTFILES_OSTYPE" == arch ]]; then
         python2_bin=python2
     fi
 
@@ -344,7 +342,7 @@ ansible_do () {
     local playbook_path="$1"
     local python2_path
 
-    if [[ "$DOTFILES_OSTYPE" == 'arch' ]]; then
+    if [[ "$DOTFILES_OSTYPE" == arch ]]; then
         python2_path=/usr/bin/python2
     fi
 
@@ -401,7 +399,7 @@ do_stuff () {
         [[ "$srcfile" =~ ^/ ]] || srcfile="/${srcfile}"
 
         srcstem="${srcfile#$srcdir/}"
-        destfile="${DOTFILES_DESTDIR}/${srcstem}"
+        destfile="$(check_noclobber "$srcfile" "${DOTFILES_DESTDIR}/${srcstem}")"
 
         # Run _test function only if declared.
         if declare -f "$test_func" &>/dev/null; then
@@ -468,7 +466,7 @@ do_opt_stuff () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_dotfiles() {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    [[ $DOTFILES_SKIP_INIT == 'true' ]] && return 0
+    [[ $DOTFILES_SKIP_INIT == true ]] && return 0
 
     # Skip this function after we exec the updated version of this script.
     export DOTFILES_SKIP_INIT=true
@@ -507,12 +505,23 @@ init_dotfiles() {
     fi
 }
 
+intro () {
+    printf '%s' "\
+See the README for documentation. https://github.com/BaxterStockman/dotfiles
+
+Copyright (c) 2012 \"Cowboy\" Ben Alman Licensed under the MIT license.
+http://benalman.com/about/license/
+
+With modifications copyright (c) 2015 Matt Schreiber under the MIT license.
+"
+}
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 usage () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local -i return_code=${1:-0}
 
-    if [[ "$return_code" -ne 0 ]]; then
+    if (( $return_code != 0 )); then
         printf '%s' "
 Usage: $SCRIPT_BASENAME [-n] [-s] [-c] [-h] [-P FILES] [-B PATH] [-C PATH] [-v] [-V] [-q] [-h]
 "
@@ -521,12 +530,6 @@ Usage: $SCRIPT_BASENAME [-n] [-s] [-c] [-h] [-P FILES] [-B PATH] [-C PATH] [-v] 
     fi
 
     printf '%s' "\
-See the README for documentation. https://github.com/cowboy/dotfiles
-
-Copyright (c) 2012 "Cowboy" Ben Alman Licensed under the MIT license.
-http://benalman.com/about/license/
-
-
 -n, --new-install       Tell dotfiles that this is a new installation.  Causes
                         dotfiles to print some helpful(?) post-installation
                         tips.
@@ -640,8 +643,8 @@ main () {
     done
 
     # Initial stuff; do only if we haven't updated to the newest version
-    if ! [[ "$DOTFILES_SKIP_INIT" == 'true' ]]; then
-        usage
+    if ! [[ "$DOTFILES_SKIP_INIT" == true ]]; then
+        intro
 
         e_header "Performing initial configuration"
 
@@ -727,14 +730,14 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # Globals
     DOTFILES_VERSION="${DOTFILES_VERSION:-1.0}"
-    DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:=${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
-    DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:=${DOTFILES_ROOT}/caches}"
-    DOTFILES_DESTDIR="${DOTFILES_DESTDIR:=$HOME}"
-    DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:=false}"
-    DOTFILES_REPO="${DOTFILES_REPO:=git://github.com/BaxterStockman/dotfiles.git}"
-    DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:=false}"
-    DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:=true}"
-    DOTFILES_VERBOSE="${DOTFILES_VERBOSE:=true}"
+    DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
+    DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:-${DOTFILES_ROOT}/caches}"
+    DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
+    DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:-false}"
+    DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
+    DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:-false}"
+    DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
+    DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
     DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
     DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
     DOTFILES_SKIP_VIM_PLUGINS=false
@@ -743,6 +746,8 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
         declare -r DOTFILES_OSTYPE='arch'
     elif [[ "$OSTYPE" =~ ^darwin ]]; then
         declare -r DOTFILES_OSTYPE='darwin'
+    else
+        declare -r DOTFILES_OSTYPE='linux'
     fi
 
     declare -i __DOTFILES_BACKUP=0
@@ -753,19 +758,23 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     if [[ -n "$DOTFILES_NOCLOBBER_RCS" ]]; then
         IFS=$','
         for rc in $DOTFILES_NOCLOBBER_RCS; do
-            __DOTFILES_NOCLOBBER_RC_MAP["$rc"]=true
+            local real_rc="$rc"
+            if ! [[ "$rc" =~ ^/ ]]; then
+                real_rc="${DOTFILES_DESTDIR}/${rc}"
+            fi
+            __DOTFILES_NOCLOBBER_RC_MAP["$real_rc"]=true
         done
         unset IFS rc
     else
         __DOTFILES_NOCLOBBER_RC_MAP=(
-            ['.bashrc']=true
-            ['.bash_login']=true
-            ['.bash_logout']=true
-            ['.bash_profile']=true
-            ['.muttrc']=true
-            ['.subversion']=true
-            ['.perlbrew']=true
-            ['.ssh']=true
+            ["${DOTFILES_DESTDIR}/.bashrc"]=true
+            ["${DOTFILES_DESTDIR}/.bash_login"]=true
+            ["${DOTFILES_DESTDIR}/.bash_logout"]=true
+            ["${DOTFILES_DESTDIR}/.bash_profile"]=true
+            ["${DOTFILES_DESTDIR}/.muttrc"]=true
+            ["${DOTFILES_DESTDIR}/.subversion"]=true
+            ["${DOTFILES_DESTDIR}/.perlbrew"]=true
+            ["${DOTFILES_DESTDIR}/.ssh"]=true
         )
         IFS=$','
         export DOTFILES_NOCLOBBER_RCS="${!__DOTFILES_NOCLOBBER_RC_MAP[*]}"
