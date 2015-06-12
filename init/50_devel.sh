@@ -32,6 +32,11 @@ for spf_13_dir in "${HOME}/.spf13" "${HOME}/.spf13-vim-3"; do
     fi
 done
 
+if [[ $DOTFILES_SKIP_VIM_PLUG == 'true' ]]; then
+    e_arrow "Skipping installation/update of vim plugins"
+    return 0
+fi
+
 # If Vim exists, try to update vim-plug.  Otherwise, install it.
 if type -P vim >/dev/null; then
     e_header "Updating vim-plug"

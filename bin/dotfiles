@@ -8,7 +8,11 @@ declare -r SCRIPT_PATH="${BASH_SOURCE[0]}"
 declare -r SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
 declare -r SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
 
-declare -x DOTFILES_ROOT="${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/../.dotfiles")}"
+declare -x DOTFILES_ROOT="${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/..")}"
+
+if [[ -z "${DOTFILES_ROOT}" ]]; then
+    export DOTFILES_ROOT="${HOME}/.dotfiles"
+fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Logging stuff
@@ -311,9 +315,21 @@ ansible_test () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local playbook_path="$1"
 
-    if ! type -P ansible; then
-        echo "Can't run ansible; system configuration will be incomplete"
-        return
+    local python2_bin=python
+    if [[ "$DOTFILES_OSTYPE" == 'arch' ]]; then
+        python2_bin=python2
+    fi
+
+    for bin in "$python2_bin" ansible-playbook; do
+        if ! type -P "$bin"; then
+            echo "Can't run ${bin}; system configuration will be incomplete"
+            return
+        fi
+    done
+
+    if ! "$python2_bin" -c 'import ansible'; then
+        echo "ansible-playbook is installed, but there's a problem with the" \
+            " ansible python package.  System configuration will be incomplete"
     fi
 
     if ! [[ -f "$playbook_path" ]] \
@@ -326,13 +342,14 @@ ansible_test () {
 ansible_do () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local playbook_path="$1"
-    local python_path
-    if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
-        python_path=/usr/bin/python2
+    local python2_path
+
+    if [[ "$DOTFILES_OSTYPE" == 'arch' ]]; then
+        python2_path=/usr/bin/python2
     fi
 
     ansible-playbook -c local -i localhost, \
-        ${python_path:+-e ansible_python_interpreter="$python_path"} \
+        ${python2_path:+-e ansible_python_interpreter="$python2_path"} \
         -e git_vendor_path="${DOTFILES_ROOT}/vendor" \
         "$playbook_path"
 
@@ -563,6 +580,10 @@ main () {
                 DOTFILES_VERBOSE=true
                 shift
                 ;;
+            -V|--skip-vim-plug)
+                DOTFILES_SKIP_VIM_PLUG=true
+                shift
+                ;;
             -q|--quiet)
                 DOTFILES_VERBOSE=false
                 shift
@@ -586,7 +607,8 @@ main () {
         e_header "Performing initial configuration"
 
         # Ensure that we can actually, like, compile anything.
-        if ! command -v gcc >/dev/null 2>&1 && [[ "$OSTYPE" =~ ^darwin ]]; then
+        if ! command -v gcc >/dev/null 2>&1  \
+        && [[ "$DOTFILES_OSTYPE" =~ ^darwin ]]; then
             e_fatal "XCode or the Command Line Tools for XCode must be installed first." 1>&2
             exit 1
         fi
@@ -676,6 +698,13 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     DOTFILES_VERBOSE="${DOTFILES_VERBOSE:=true}"
     DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
     DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
+    DOTFILES_SKIP_VIM_PLUG=false
+
+    if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
+        declare -r DOTFILES_OSTYPE='arch'
+    elif [[ "$OSTYPE" =~ ^darwin ]]; then
+        declare -r DOTFILES_OSTYPE='darwin'
+    fi
 
     declare -i __DOTFILES_BACKUP=0
     declare -i __DOTFILES_FAILED=0

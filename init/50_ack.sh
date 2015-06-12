@@ -20,11 +20,15 @@ fi
 
 pushd "$ack_submodule_dir" >/dev/null
 
+make clean 2>/dev/null
 perl Makefile.PL
-make clean
-make
-make ack-standalone
+if ! make ack-standalone; then
+    e_error "Failed to build ack-standalone"
+    unlink "$ack_bin_path" 2>/dev/null
+    popd >/dev/null
+    return 1
+fi
 
 popd >/dev/null
 
-ln -sfn "${ack_submodule_dir}/ack-standalone" "${DOTFILES_ROOT}/bin/ack"
+ln -sfn "${ack_submodule_dir}/ack-standalone" "$ack_bin_path"
