@@ -511,15 +511,54 @@ init_dotfiles() {
 usage () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local -i return_code=${1:-0}
-    [[ "$return_code" -ne 0 ]] && echo "Usage: $SCRIPT_BASENAME [-n] [-c] [-h]"
-    cat <<EOF
 
-See the README for documentation. https://github.com/cowboy/dotfiles
+    if [[ "$return_code" -ne 0 ]]; then
+        cat <<-SHORTUSAGE
+            Usage: $SCRIPT_BASENAME [-n] [-s] [-c] [-h] [-P FILES] [-B PATH]
+                                    [-C PATH] [-v] [-V] [-q] [-h]
+        SHORTUSAGE
+    fi
 
-Copyright (c) 2012 "Cowboy" Ben Alman Licensed under the MIT license.
-http://benalman.com/about/license/
+    cat <<-USAGE
+        See the README for documentation. https://github.com/cowboy/dotfiles
 
-EOF
+        Copyright (c) 2012 "Cowboy" Ben Alman Licensed under the MIT license.
+        http://benalman.com/about/license/
+
+
+        -n, --new-install       Tell dotfiles that this is a new installation.
+                                Causes dotfiles to print some helpful(?)
+                                post-installation tips.
+
+        -s, --skip-init         Tell dotfiles to skip certain initialization
+                                steps, like updating the dotfiles git
+                                repository and checking that dependencies are
+                                installed.  WARNING: might cause dotfiles to
+                                break in hilarious ways.
+
+        -c, --clobber           Tell dotfiles to overwrite configuration files
+                                that would otherwise have been preserved.  By
+                                default, dotfiles doesn't clobber:
+                                ${DOTFILES_NO_CLOBBER_RCS[@]}
+
+        -P, --preserve FILES    Tell dotfiles to preserve a list of files
+                                passed as a comma-separated argument.
+
+        -B, --backup-path PATH  Tell dotfiles where to store backups of
+                                existing configurations.
+
+        -C, --cache-path PATH   Cache path for use with certain git submodules.
+
+        -v, --verbose           Tell dotfiles to be chatty.
+
+        -V, --skip-vim-plugins  Tell dotfiles to skip installing and updating
+                                vim plugins.
+
+        -q, --quiet             Tell dotfiles to pipe it down, guldarnit!
+
+        -h, --help              Print this message.
+    USAGE
+
     return "$return_code"
 }
 
@@ -580,8 +619,8 @@ main () {
                 DOTFILES_VERBOSE=true
                 shift
                 ;;
-            -V|--skip-vim-plug)
-                DOTFILES_SKIP_VIM_PLUG=true
+            -V|--skip-vim-plugins)
+                DOTFILES_SKIP_VIM_PLUGINS=true
                 shift
                 ;;
             -q|--quiet)
@@ -698,7 +737,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     DOTFILES_VERBOSE="${DOTFILES_VERBOSE:=true}"
     DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
     DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
-    DOTFILES_SKIP_VIM_PLUG=false
+    DOTFILES_SKIP_VIM_PLUGINS=false
 
     if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
         declare -r DOTFILES_OSTYPE='arch'
