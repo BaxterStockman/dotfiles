@@ -17,7 +17,7 @@ install_vim_plug () {
 }
 
 update_vim_plug () {
-    vim '+try | PlugUpgrade | PlugUpdate | qall | catch | cquit | endtry'
+    vim -c 'try | PlugUpgrade | PlugUpdate | qall | catch | cquit | endtry'
 }
 
 # Uninstall spf13
@@ -32,6 +32,11 @@ for spf_13_dir in "${HOME}/.spf13" "${HOME}/.spf13-vim-3"; do
     fi
 done
 
+if [[ ${DOTFILES_SKIP_VIM_PLUGINS:-false} == 'true' ]]; then
+    e_arrow "Skipping installation/update of vim plugins"
+    return 0
+fi
+
 # If Vim exists, try to update vim-plug.  Otherwise, install it.
 if type -P vim >/dev/null; then
     e_header "Updating vim-plug"
@@ -42,4 +47,7 @@ if type -P vim >/dev/null; then
         fi
     fi
     update_vim_plug
+    exit_code=$?
+    ssty sane || reset
+    return $exit_code
 fi
