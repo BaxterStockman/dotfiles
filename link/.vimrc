@@ -179,6 +179,13 @@ Plug 'tangledhelix/vim-kickstart'
 Plug 'Valloric/YouCompleteMe', {'do': './install.sh'}
 autocmd! User YouCompleteMe call youcompleteme#Enable()
 
+" Support for Perl 5 and Perl 6 in Vim
+Plug 'vim-perl/vim-perl', {
+    \ 'for':
+    \   'perl',
+    \ 'do':
+    \   'make clean carp dancer highlight-all-pragmas moose test-more try-tiny' }
+
 " Create aliases for Vim commands
 Plug 'vim-scripts/cmdalias.vim'
 
@@ -193,15 +200,11 @@ Plug 'vim-scripts/LaTeX-Box'
 " Perform an interactive diff on two blocks of text
 Plug 'vim-scripts/linediff.vim'
 
-" Perl IDE
-Plug 'vim-scripts/perl-support.vim'
+" extended % matching for HTML, LaTeX, and many other languages
+Plug 'vim-scripts/matchit.zip'
 
-" Support for Perl 5 and Perl 6 in Vim
-Plug 'vim-perl/vim-perl', {
-    \ 'for':
-    \   'perl',
-    \ 'do':
-    \   'make clean carp dancer highlight-all-pragmas moose test-more try-tiny' }
+" Perl IDE
+Plug 'vim-scripts/perl-support.vim', {'for': 'perl'}
 
 " Edit files using sudo or su or any other tool
 " No longer needed, since it's also in eunuch.vim
