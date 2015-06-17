@@ -28,7 +28,7 @@ function! LoadAll(...)
     return 1
 endfunction
 
-command! -nargs=+ LoadAll call LoadAll(<f-args>)
+command! -nargs=* LoadAll call LoadAll(<f-args>)
 
 call SetDefault('g:rcdir', expand('~/.vimrc.d'))
 
