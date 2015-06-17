@@ -10,7 +10,7 @@ function! SetDefault(varname, default)
 endfunction
 
 " Use per-host local vimrc if available
-if v:version < 703
+if v:version >= 703
     function! LoadAll(...)
         if a:0
             let rcdir = fnameescape(a:0)
