@@ -10,23 +10,43 @@ function! SetDefault(varname, default)
 endfunction
 
 " Use per-host local vimrc if available
-function! LoadAll(...)
-    if a:0
-        let rcdir = fnameescape(a:0)
-    elseif exists('g:rcdir')
-        let rcdir = g:rcdir
-    else
-        let rcdir = "~/.vimrc.d"
-    endif
-
-    for rc in globpath(expand(rcdir), '*', 0, 1)
-        let rc_fullpath = expand(rc)
-        if filereadable(rc_fullpath)
-            execute 'source ' . rc_fullpath
+if v:version < 703
+    function! LoadAll(...)
+        if a:0
+            let rcdir = fnameescape(a:0)
+        elseif exists('g:rcdir')
+            let rcdir = g:rcdir
+        else
+            let rcdir = "~/.vimrc.d"
         endif
-    endfor
-    return 1
-endfunction
+
+        for rc in globpath(expand(rcdir), '*', 0, 1)
+            let rc_fullpath = expand(rc)
+            if filereadable(rc_fullpath)
+                execute 'source ' . rc_fullpath
+            endif
+        endfor
+        return 1
+    endfunction
+else
+    function! LoadAll(...)
+        if a:0
+            let rcdir = fnameescape(a:0)
+        elseif exists('g:rcdir')
+            let rcdir = g:rcdir
+        else
+            let rcdir = "~/.vimrc.d"
+        endif
+
+        for rc in split(globpath(expand(rcdir), '*'), '\n')
+            let rc_fullpath = expand(rc)
+            if filereadable(rc_fullpath)
+                execute 'source ' . rc_fullpath
+            endif
+        endfor
+        return 1
+    endfunction
+endif
 
 command! -nargs=* LoadAll call LoadAll(<f-args>)
 
