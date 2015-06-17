@@ -1,33 +1,44 @@
-" .gvimrc
-" See: http://vimdoc.sourceforge.net/htmldoc/options.html for details
-
-"verbose set tabstop
-"verbose set shiftwidth
-"verbose set softtabstop
-"verbose set expandtab
-"verbose set noexpandtab
-
 " =============================================================================
-" Plugins
+" Initialization
 " =============================================================================
+function! SetDefault(varname, default)
+    if !exists(a:varname)
+        let {a:varname} = a:default
+        return 0
+    endif
+    return 1
+endfunction
 
 " Use per-host local vimrc if available
-function! LoadLocal(...)
+function! LoadAll(...)
     if a:0
-        let rc = fnameescape(a:0)
+        let rcdir = fnameescape(a:0)
+    elseif exists('g:rcdir')
+        let rcdir = g:rcdir
     else
-        let rc = "~/.vimrc.local"
+        let rcdir = "~/.vimrc.d"
     endif
-    let rc_fullpath = expand(rc)
-    if filereadable(rc_fullpath)
-        execute 'source ' . rc_fullpath
-    endif
+
+    for rc in glob(expand(rcdir))
+        let rc_fullpath = expand(rc)
+        if filereadable(rc_fullpath)
+            execute 'source ' . rc_fullpath
+        endif
+    endfor
+    return 1
 endfunction
+
+command! -nargs=+ LoadAll call LoadAll(<f-args>)
+
+call SetDefault('g:rcdir', expand('~/.vimrc.d'))
 
 augroup vimrc
     autocmd!
 augroup END
 
+" =============================================================================
+" Plugins
+" =============================================================================
 " Install vim-plug if it isn't already installed
 " From https://github.com/junegunn/vim-plug/wiki/faq
 if empty(glob('~/.vim/autoload/plug.vim'))
@@ -403,9 +414,6 @@ set wildmode=list:longest,full
 " Miscellaneous
 " =============================================================================
 "
-" Change working directory to directory of current file
-autocmd BufEnter * if bufname("") !~ "^\[A-Za-z0-9\]*://" | lcd %:p:h | endif
-
 " Restore cursor position
 function! ResCur()
     if line("'\"") <= line("$")
@@ -420,6 +428,12 @@ augroup resCur
 augroup END
 
 augroup vimrc
+    " Change working directory to directory of current file
+    autocmd BufEnter * if bufname("") !~ "^\[A-Za-z0-9\]*://" | lcd %:p:h | endif
+
+    " Remove any trailing whitespace that is in the file
+    autocmd BufRead,BufWrite * if ! &bin | silent! %s/\s\+$//ge | endif
+
     " Automatically reload vimrc files upon BufWritePost to any of the matching
     " files
     autocmd BufWritePost .vimrc*,_vimrc*,vimrc*,vimrc*,.gvimrc*,_gvimrc*,gvimrc* SourceAll
@@ -432,10 +446,6 @@ augroup END
 " Set options for the :grep command
 set grepprg=grep\ -nH\ $*
 
-" Remove any trailing whitespace that is in the file
-autocmd BufRead,BufWrite * if ! &bin | silent! %s/\s\+$//ge | endif
-
-
 " Maybe fixes BundleSearch errors?
 set shell=/bin/bash
 
@@ -443,20 +453,25 @@ set shell=/bin/bash
 " Filetype mappings and related settings
 " =============================================================================
 
-" Automatically detect filetype upon :w
-autocmd BufRead,BufWrite,BufWritePost * :filetype detect
+augroup vimrc
+    " Automatically detect filetype upon :w
+    autocmd BufRead,BufWrite,BufWritePost * :filetype detect
 
-" Set Rexfiles to use Perl syntax
-autocmd BufRead,BufWrite,BufWritePost,BufNewFile Rexfile set filetype=perl
+    " Set Rexfiles to use Perl syntax
+    autocmd BufRead,BufWrite,BufWritePost,BufNewFile Rexfile set filetype=perl
 
-" Set Vimperator configuration file to use Vim syntax
-autocmd BufRead,BufNewFile *.vimperatorrc set filetype=vim
+    " Set Vimperator configuration file to use Vim syntax
+    autocmd BufRead,BufNewFile *.vimperatorrc set filetype=vim
+
+    " Set files in g:rcdir to use Vim syntax
+    autocmd BufRead,BufNewFile * if bufname("%") =~ "^" . expand(g:rcdir) | set filetype=vim | endif
+augroup END
 
 " =============================================================================
 " Key mappings
 " =============================================================================
 
-let mapleader=','
+let g:mapleader=','
 
 " Map Y to work like D and C, i.e. to yank until EOL, rather than to act as yy,
 " which is the default.
@@ -733,5 +748,5 @@ let g:syntastic_perl_perlcritic_thres = 3
 " =============================================================================
 
 augroup vimrc
-	autocmd VimEnter call LoadLocal()
+	autocmd VimEnter,BufEnter,BufNewFile call LoadAll()
 augroup END
