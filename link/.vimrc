@@ -19,7 +19,7 @@ function! LoadAll(...)
         let rcdir = "~/.vimrc.d"
     endif
 
-    for rc in glob(expand(rcdir))
+    for rc in globpath(expand(rcdir), '*', 0, 1)
         let rc_fullpath = expand(rc)
         if filereadable(rc_fullpath)
             execute 'source ' . rc_fullpath
@@ -750,3 +750,5 @@ let g:syntastic_perl_perlcritic_thres = 3
 augroup vimrc
 	autocmd VimEnter,BufEnter,BufNewFile call LoadAll()
 augroup END
+
+call LoadAll()
