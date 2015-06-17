@@ -196,6 +196,13 @@ Plug 'vim-scripts/linediff.vim'
 " Perl IDE
 Plug 'vim-scripts/perl-support.vim'
 
+" Support for Perl 5 and Perl 6 in Vim
+Plug 'vim-perl/vim-perl', {
+    \ 'for':
+    \   'perl',
+    \ 'do':
+    \   'make clean carp dancer highlight-all-pragmas moose test-more try-tiny' }
+
 " Edit files using sudo or su or any other tool
 " No longer needed, since it's also in eunuch.vim
 "Plug 'vim-scripts/SudoEdit.vim'
