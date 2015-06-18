@@ -316,7 +316,15 @@ set smartcase
 set textwidth=79
 
 " Colorize the column just after 'textwidth'
-set colorcolumn=+1
+if v:version >= 703
+    set colorcolumn=+1
+else
+    if &textwidth > 0
+        execute 'set colorcolumn=' . &textwidth + 1
+    else
+        set colorcolumn=80
+    endif
+endif
 
 " =============================================================================
 " Visual settings
