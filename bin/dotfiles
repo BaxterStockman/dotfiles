@@ -4,18 +4,20 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
-declare -r SCRIPT_PATH="${BASH_SOURCE[0]}"
-declare -r SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
-declare -r SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
-
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    DOTFILES_VERSION=1.0.0.0
-fi
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
+SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
 
 declare -x DOTFILES_ROOT="${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/..")}"
 
 if [[ -z "${DOTFILES_ROOT}" ]]; then
     export DOTFILES_ROOT="${HOME}/.dotfiles"
+fi
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    DOTFILES_VERSION=1.0.0.0
+else
+    unset SCRIPT_PATH SCRIPT_BASENAME SCRIPT_DIRNAME
 fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -161,8 +163,7 @@ explode_version () {
 
     local major_ver minor_ver trailing build revision
     IFS=$'.' read -r major_ver minor_ver trailing <<<"$version_string"
-    echo "trailing: $trailing"
-    if [[ "$trailing" =~ ([[:digit:]]+)\([.(][[:digit:]]+)*\) ]]; then
+    if [[ "$trailing" =~ ([[:digit:]]+)\(([[:digit:]]+)*\) ]]; then
         build="${BASH_REMATCH[1]}"
         revision="${BASH_REMATCH[2]}"
     fi
@@ -186,215 +187,33 @@ skip () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-init_do () {
+process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Initialize
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcfile="$1"
-    e_header "Sourcing ${srcfile}"
-    source "$srcfile"
-}
+    local optype_file="$1"
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-copy_header () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Copying files into ${DOTFILES_DESTDIR}"
-}
+    source "$optype_file"
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-copy_test () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Ensures that files in the destination aren't overwritten if either
-#   - The destination file is exactly the same as the source file; or
-#   - The destination file is newer than the source file.
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcfile="$1"
-    local destfile="$2"
-
-    if [[ -e "${destfile}" && ! "$(cmp "${srcfile}" "${destfile}" 2> /dev/null)" ]]; then
-        echo "same file"
-        return 1
-    elif [[ "$1" -ot "$2" ]]; then
-        echo "destination file newer"
-        return 1
-    fi
-
-    return 0
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-copy_do () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Attempts to copy a file, printing pretty output
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcfile="$1"
-    local destfile="$2"
-    local destdir="${destfile%/*}"
-
-    if ! mkdir -p "$destdir" >/dev/null; then
-        e_error "Can't copy ${srcfile} to ${destfile}"
-        return 1
-    fi
-
-    if ! cp "$srcfile" "$destfile"; then
-        e_error "Failed to copy ${srcfile} to ${destfile}"
-        return 1
-    else
-        e_success "Copied ${srcfile} to ${destfile}"
-        return 0
-    fi
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-skel_header () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Copying skeleton files into ${DOTFILES_DESTDIR}";
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-skel_test () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# More restrictive than copy_test: if the destination file exists at all, don't
-# overwrite it.
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcfile="$1"
-    local destfile="$2"
-
-    if [[ -e "$destfile" ]]; then
-        echo "destination file already exists"
-        return 1
-    fi
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-skel_do () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Just another name for copy_do
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    copy_do "$@"
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-link_header () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Linking files into ${DOTFILES_DESTDIR}";
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-link_test () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcfile="$1"
-    local destfile="$2"
-
-    if [[ "${srcfile}" -ef "${destfile}" ]]; then
-        echo "link already exists"
-        return 0
-    fi
-
-    return 1
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-link_do () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcfile="$1"
-    local destfile="$2"
-    local destdir="${destfile%/*}"
-
-    if ! mkdir -p "$destdir" >/dev/null; then
-        e_error "Can't link ${destfile} to ${srcfile}"
-        return 1
-    fi
-
-    ln -sf "$srcfile" "$destfile"
-    e_success "Linking ${srcfile} to ${destfile}"
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ansible_header () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Running ansible-playbook in local mode"
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ansible_test () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local playbook_path="$1"
-
-    local python2_bin=python
-    if [[ "$DOTFILES_OSTYPE" == arch ]]; then
-        python2_bin=python2
-    fi
-
-    for bin in "$python2_bin" ansible-playbook; do
-        if ! type -P "$bin" &>/dev/null; then
-            echo "Can't run ${bin}; system configuration will be incomplete"
-            return
-        fi
-    done
-
-    if ! "$python2_bin" -c 'import ansible'; then
-        echo "ansible-playbook is installed, but there's a problem with the" \
-            " ansible python package.  System configuration will be incomplete"
-    fi
-
-    if ! [[ -f "$playbook_path" ]] \
-      || ! [[ "$playbook_path" =~ playbook.yml$ ]]; then
-        echo "$playbook_path is not a valid path to a playbook"
-    fi
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ansible_do () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local playbook_path="$1"
-    local python2_path
-
-    if [[ "$DOTFILES_OSTYPE" == arch ]]; then
-        python2_path=/usr/bin/python2
-    fi
-
-    ansible-playbook -c local -i localhost, \
-        ${python2_path:+-e ansible_python_interpreter="$python2_path"} \
-        -e git_vendor_path="${DOTFILES_ROOT}/vendor" \
-        "$playbook_path"
-
-    exit
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-do_stuff () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Copy, link, init, etc.
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local optype srcdir_relpath srcdir
-
-    # Little trick: this makes both 'do_stuff "link"' and 'do_stuff "opt/link"'
-    # work as expected.
-    srcdir_relpath="$1"
-    optype="${srcdir_relpath##*/}"
+    optype_file_basename="${optype_file##*/}"
+    optype="${optype_file_basename%.sh}"
     if [[ -z "$optype" ]]; then
         e_error "No optype specified" 1>&2
         return 1
     fi
 
-    local optype_do="${optype}_do"
     # Silently ignore any operation types that haven't been declared.
-    if ! declare -F "$optype_do" &>/dev/null; then
+    if ! declare -F run &>/dev/null; then
         return 0
     fi
 
-    srcdir="${DOTFILES_ROOT}/${srcdir_relpath}"
+    srcdir="${DOTFILES_ROOT}/${optype}"
     if ! [[ -d "$srcdir" ]]; then
         e_error "No such directory: $srcdir" 1>&2
         return 1
     fi
 
     # Run _header function only if declared.
-    local optype_header="${optype}_header"
-    declare -F "$optype_header" &>/dev/null && "$optype_header"
-
-    local test_func="${optype}_test"
+    declare -F header &>/dev/null && header
 
     # Iterate over files.
     local skip_reason srcfile srcstem destfile backup_subpath
@@ -410,10 +229,10 @@ do_stuff () {
         destfile="$(check_noclobber "$srcfile" "${DOTFILES_DESTDIR}/${srcstem}")"
 
         # Run _test function only if declared.
-        if declare -f "$test_func" &>/dev/null; then
+        if declare -f check &>/dev/null; then
             # If _test function returns a string, skip file and print that
             # message.
-            skip_reason="$("$test_func" "$srcfile" "$destfile")"
+            skip_reason="$(check "$srcfile" "$destfile")"
             if [[ -n "$skip_reason" ]]; then
                 e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
                 continue
@@ -444,10 +263,21 @@ do_stuff () {
         fi
 
         # Do stuff.
-        "$optype_do" "$srcfile" "$destfile"
+        run "$srcfile" "$destfile"
     done < <(find_hierarchical "$srcdir" --prefix "$DOTFILES_ROOT" -xtype f)
 
     [[ $failed -eq 0 ]]
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+process_all () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local rundir="$1"
+    local run_extension="${2:-.sh}"
+    for optype_file in "${rundir}/"*"${run_extension}"; do
+        process "$optype_file"
+    done
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -702,13 +532,7 @@ main () {
     mkdir -p "$DOTFILES_CACHE_PATH"
 
     # Execute code for each file in these subdirectories.
-    local dotfiles_subdir
-    for dotfiles_subdir in "$DOTFILES_ROOT"/*; do
-        optype="${dotfiles_subdir##*/}"
-        declare -F "${optype}_do" &>/dev/null || continue
-        do_stuff "$optype"
-        [[ -d "${DOTFILES_ROOT}/opt/${optype}" ]] && do_opt_stuff "$optype"
-    done
+    process_all "$DOTFILES_RUNDIR"
 
     # Alert if backups were made.
     if (( "$__DOTFILES_BACKUP" > 0 )); then
@@ -739,6 +563,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
     DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:-${DOTFILES_ROOT}/caches}"
     DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
+    DOTFILES_RUNDIR="${DOTFILES_ROOT}/run"
     DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:-false}"
     DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
     DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:-false}"
