@@ -766,7 +766,7 @@ let g:syntastic_perl_perlcritic_thres = 3
 " =============================================================================
 " vim-ansible-yaml settings
 " =============================================================================
-"let g:ansible_use_default_indentation = 0
+let g:ansible_use_default_indentation = 1
 "let g:ansible_shiftwidth = 8
 "let g:ansible_tabstop = 8
 "let g:ansible_expandtab = 0
