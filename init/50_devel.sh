@@ -32,7 +32,7 @@ for spf_13_dir in "${HOME}/.spf13" "${HOME}/.spf13-vim-3"; do
     fi
 done
 
-if [[ $DOTFILES_SKIP_VIM_PLUG == 'true' ]]; then
+if [[ ${DOTFILES_SKIP_VIM_PLUGINS:-false} == 'true' ]]; then
     e_arrow "Skipping installation/update of vim plugins"
     return 0
 fi
