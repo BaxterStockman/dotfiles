@@ -71,6 +71,7 @@ alias shred=' timeout 3 shred -v'
 
 
 # Make Bash error tolerant
+alias :w=' echo "Come again?" ; :'
 alias :q=' exit'
 alias :Q=' exit'
 alias :x=' exit'

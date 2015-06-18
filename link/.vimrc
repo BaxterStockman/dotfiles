@@ -1,33 +1,64 @@
-" .gvimrc
-" See: http://vimdoc.sourceforge.net/htmldoc/options.html for details
-
-"verbose set tabstop
-"verbose set shiftwidth
-"verbose set softtabstop
-"verbose set expandtab
-"verbose set noexpandtab
-
 " =============================================================================
-" Plugins
+" Initialization
 " =============================================================================
+function! SetDefault(varname, default)
+    if !exists(a:varname)
+        let {a:varname} = a:default
+        return 0
+    endif
+    return 1
+endfunction
 
 " Use per-host local vimrc if available
-function! LoadLocal(...)
-    if a:0
-        let rc = fnameescape(a:0)
-    else
-        let rc = "~/.vimrc.local"
-    endif
-    let rc_fullpath = expand(rc)
-    if filereadable(rc_fullpath)
-        execute 'source ' . rc_fullpath
-    endif
-endfunction
+if v:version >= 703
+    function! SourceLocal(...)
+        if a:0
+            let rcdir = fnameescape(a:0)
+        elseif exists('g:rcdir')
+            let rcdir = g:rcdir
+        else
+            let rcdir = "~/.vimrc.d"
+        endif
+
+        for rc in globpath(expand(rcdir), '*', 0, 1)
+            let rc_fullpath = expand(rc)
+            if filereadable(rc_fullpath)
+                execute 'source ' . rc_fullpath
+            endif
+        endfor
+        return 1
+    endfunction
+else
+    function! SourceLocal(...)
+        if a:0
+            let rcdir = fnameescape(a:0)
+        elseif exists('g:rcdir')
+            let rcdir = g:rcdir
+        else
+            let rcdir = "~/.vimrc.d"
+        endif
+
+        for rc in split(globpath(expand(rcdir), '*'), '\n')
+            let rc_fullpath = expand(rc)
+            if filereadable(rc_fullpath)
+                execute 'source ' . rc_fullpath
+            endif
+        endfor
+        return 1
+    endfunction
+endif
+
+command! -nargs=* SourceLocal call SourceLocal(<f-args>)
+
+call SetDefault('g:rcdir', expand('~/.vimrc.d'))
 
 augroup vimrc
     autocmd!
 augroup END
 
+" =============================================================================
+" Plugins
+" =============================================================================
 " Install vim-plug if it isn't already installed
 " From https://github.com/junegunn/vim-plug/wiki/faq
 if empty(glob('~/.vim/autoload/plug.vim'))
@@ -148,6 +179,13 @@ Plug 'tangledhelix/vim-kickstart'
 Plug 'Valloric/YouCompleteMe', {'do': './install.sh'}
 autocmd! User YouCompleteMe call youcompleteme#Enable()
 
+" Support for Perl 5 and Perl 6 in Vim
+Plug 'vim-perl/vim-perl', {
+    \ 'for':
+    \   'perl',
+    \ 'do':
+    \   'make clean carp dancer highlight-all-pragmas moose test-more try-tiny' }
+
 " Create aliases for Vim commands
 Plug 'vim-scripts/cmdalias.vim'
 
@@ -162,8 +200,11 @@ Plug 'vim-scripts/LaTeX-Box'
 " Perform an interactive diff on two blocks of text
 Plug 'vim-scripts/linediff.vim'
 
+" extended % matching for HTML, LaTeX, and many other languages
+Plug 'vim-scripts/matchit.zip'
+
 " Perl IDE
-Plug 'vim-scripts/perl-support.vim'
+Plug 'vim-scripts/perl-support.vim', {'for': 'perl'}
 
 " Edit files using sudo or su or any other tool
 " No longer needed, since it's also in eunuch.vim
@@ -403,9 +444,6 @@ set wildmode=list:longest,full
 " Miscellaneous
 " =============================================================================
 "
-" Change working directory to directory of current file
-autocmd BufEnter * if bufname("") !~ "^\[A-Za-z0-9\]*://" | lcd %:p:h | endif
-
 " Restore cursor position
 function! ResCur()
     if line("'\"") <= line("$")
@@ -420,6 +458,12 @@ augroup resCur
 augroup END
 
 augroup vimrc
+    " Change working directory to directory of current file
+    autocmd BufEnter * if bufname("") !~ "^\[A-Za-z0-9\]*://" | lcd %:p:h | endif
+
+    " Remove any trailing whitespace that is in the file
+    autocmd BufRead,BufWrite * if ! &bin | silent! %s/\s\+$//ge | endif
+
     " Automatically reload vimrc files upon BufWritePost to any of the matching
     " files
     autocmd BufWritePost .vimrc*,_vimrc*,vimrc*,vimrc*,.gvimrc*,_gvimrc*,gvimrc* SourceAll
@@ -428,13 +472,8 @@ augroup END
 " =============================================================================
 " Command-related settings
 " =============================================================================
-
 " Set options for the :grep command
 set grepprg=grep\ -nH\ $*
-
-" Remove any trailing whitespace that is in the file
-autocmd BufRead,BufWrite * if ! &bin | silent! %s/\s\+$//ge | endif
-
 
 " Maybe fixes BundleSearch errors?
 set shell=/bin/bash
@@ -442,21 +481,24 @@ set shell=/bin/bash
 " =============================================================================
 " Filetype mappings and related settings
 " =============================================================================
+augroup vimrc
+    " Automatically detect filetype upon :w
+    autocmd BufRead,BufWrite,BufWritePost * :filetype detect
 
-" Automatically detect filetype upon :w
-autocmd BufRead,BufWrite,BufWritePost * :filetype detect
+    " Set Rexfiles to use Perl syntax
+    autocmd BufRead,BufWrite,BufWritePost,BufNewFile Rexfile set filetype=perl
 
-" Set Rexfiles to use Perl syntax
-autocmd BufRead,BufWrite,BufWritePost,BufNewFile Rexfile set filetype=perl
+    " Set Vimperator configuration file to use Vim syntax
+    autocmd BufRead,BufNewFile *.vimperatorrc set filetype=vim
 
-" Set Vimperator configuration file to use Vim syntax
-autocmd BufRead,BufNewFile *.vimperatorrc set filetype=vim
+    " Set files in g:rcdir to use Vim syntax
+    autocmd BufRead,BufNewFile * if bufname("%") =~ "^" . expand(g:rcdir) | set filetype=vim | endif
+augroup END
 
 " =============================================================================
 " Key mappings
 " =============================================================================
-
-let mapleader=','
+let g:mapleader=','
 
 " Map Y to work like D and C, i.e. to yank until EOL, rather than to act as yy,
 " which is the default.
@@ -516,7 +558,6 @@ cmap w!! w !sudo tee % >/dev/null
 " =============================================================================
 " Functions
 " =============================================================================
-
 function! s:ETW(what, ...)
   for f1 in a:000
     let files = glob(fnamemodify(f1, ":p"))
@@ -565,14 +606,10 @@ function! IndentConvert(line1, line2, what, cols)
   call histdel('search', -1)
   call setpos('.', savepos)
 endfunction
-command! -nargs=? -range=% Space2Tab call IndentConvert(<line1>,<line2>,0,<q-args>)
-command! -nargs=? -range=% Tab2Space call IndentConvert(<line1>,<line2>,1,<q-args>)
-command! -nargs=? -range=% RetabIndent call IndentConvert(<line1>,<line2>,&et,<q-args>)
 
 function! CommandCabbrev(abbreviation, expansion)
   execute 'cabbr ' . a:abbreviation . ' <c-r>=getcmdpos() == 1 && getcmdtype() == ":" ? "' . a:expansion . '" : "' . a:abbreviation . '"<CR>'
 endfunction
-command! -nargs=+ CommandCabbrev call CommandCabbrev(<f-args>)
 
 " Copied from spf13: https://github.com/spf13/spf13-vim/blob/3.0/.vimrc
 function! InitializeDirectories()
@@ -615,11 +652,9 @@ function! InitializeDirectories()
 endfor
 endfunction
 
-
 " =============================================================================
 " Commands
 " =============================================================================
-
 " Syntax: [:Etabs | :Ewindows | :Evwindows] file1 [, file2, ... , fileN]
 " Opens a list of files in different tabs/windows/vertical windows
 command! -complete=file -nargs=+ Etabs call s:ETW('tabnew', <f-args>)
@@ -629,6 +664,12 @@ command! -complete=file -nargs=+ Evwindows call s:ETW('vnew', <f-args>)
 command! -nargs=+ Tabposition call s:Tabposition(<f-args>)
 command! -nargs=? Tabfirst call s:Tabposition(0, <f-args>)
 
+command! -nargs=? -range=% Space2Tab call IndentConvert(<line1>,<line2>,0,<q-args>)
+command! -nargs=? -range=% Tab2Space call IndentConvert(<line1>,<line2>,1,<q-args>)
+command! -nargs=? -range=% RetabIndent call IndentConvert(<line1>,<line2>,&et,<q-args>)
+
+command! -nargs=+ CommandCabbrev call CommandCabbrev(<f-args>)
+
 command! -range=% -nargs=* PerlTidy if &filetype ==? 'perl' | <line1>,<line2> !perltidy -q -nst -b <args> <NL>| endif
 
 " Source all vimrc files
@@ -637,7 +678,6 @@ command! SourceAll if filereadable($MYVIMRC) | source $MYVIMRC | endif | if has(
 " =============================================================================
 " Abbreviations
 " =============================================================================
-
 " Abbreviate CommandCabbrev to a lowercase abbreviation
 CommandCabbrev ccab CommandCabbrev
 CommandCabbrev sw SudoWrite
@@ -648,9 +688,8 @@ CommandCabbrev chk SyntasticCheck
 " =============================================================================
 " Plugin-specific settings
 " =============================================================================
-
 " haskellmode-vim
-let g:haddock_browser = 'dwb'
+let g:haddock_browser = 'firefox'
 
 " Try to stop autoclose from closing  comment characters in Vim files
 let g:autoclose_vim_commentmode = 1
@@ -680,7 +719,6 @@ nmap ga <Plug>(EasyAlign)
 " =============================================================================
 " Backups and swap files
 " =============================================================================
-
 set backup
 if has('persistent_undo')
   set undofile
@@ -693,7 +731,6 @@ call InitializeDirectories()
 " =============================================================================
 " Syntastic settings
 " =============================================================================
-
 " Options that apply to all filetypes
 let g:syntastic_check_on_open = 1
 
@@ -707,7 +744,6 @@ let g:syntastic_enable_perl_checker = 1
 " =============================================================================
 " perlcritic.vim settings
 " =============================================================================
-
 " perlcritic.vim has a slight but important bug/flaw: it doesn't pass any
 " '-12345'/'--brutal'/etc. flags to the perlcritic executable, so only
 " registers policy violations of level 5, perlcritic's default severity level.
@@ -722,7 +758,6 @@ let g:syntastic_perl_perlcritic_thres = 3
 " =============================================================================
 " vim-ansible-yaml settings
 " =============================================================================
-
 "let g:ansible_use_default_indentation = 0
 "let g:ansible_shiftwidth = 8
 "let g:ansible_tabstop = 8
@@ -731,7 +766,8 @@ let g:syntastic_perl_perlcritic_thres = 3
 " =============================================================================
 " Sourcing further vim configurations
 " =============================================================================
-
 augroup vimrc
-	autocmd VimEnter call LoadLocal()
+	autocmd VimEnter,BufEnter,BufNewFile call SourceLocal()
 augroup END
+
+call SourceLocal()
