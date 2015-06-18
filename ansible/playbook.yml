@@ -1,10 +1,12 @@
 - hosts: all
+  vars:
+    - git_vendor_path: "{{ lookup('env', 'DOTFILES_ROOT') }}/vendor"
   tasks:
     - name: install git modules
       git:
         accept_hostkey: yes
-        #dest: "{{ git_vendor_path }}"
-        dest: "{{ git_vendor_path }}/{{ item | basename | regex_replace('\.git', '') }}"
+        #dest: "{{ git_vendor_path }}/{{ item | basename | regex_replace('\.git', '') }}"
+        dest: "{{ git_vendor_path }}/{{ item | basename }}"
         repo: "{{ item }}"
         update: yes
       with_items:
