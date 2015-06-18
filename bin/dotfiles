@@ -8,6 +8,10 @@ declare -r SCRIPT_PATH="${BASH_SOURCE[0]}"
 declare -r SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
 declare -r SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
 
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    DOTFILES_VERSION=1.0.0.0
+fi
+
 declare -x DOTFILES_ROOT="${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/..")}"
 
 if [[ -z "${DOTFILES_ROOT}" ]]; then
@@ -150,11 +154,15 @@ check_noclobber () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-explode_bash_version () {
+explode_version () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local version_string="$1"
+    shift
+
     local major_ver minor_ver trailing build revision
-    IFS=$'.' read -r major_ver minor_ver trailing <<<"$BASH_VERSION"
-    if [[ "$trailing" =~ ([[:digit:]]+)\(([[:digit:]]+)\) ]]; then
+    IFS=$'.' read -r major_ver minor_ver trailing <<<"$version_string"
+    echo "trailing: $trailing"
+    if [[ "$trailing" =~ ([[:digit:]]+)\([.(][[:digit:]]+)*\) ]]; then
         build="${BASH_REMATCH[1]}"
         revision="${BASH_REMATCH[2]}"
     fi
@@ -578,7 +586,7 @@ main () {
     fi
 
     local bash_major_ver
-    read -r bash_major_ver _ <<<"$(explode_bash_version)"
+    read -r bash_major_ver _ <<<"$(explode_version "$BASH_VERSION")"
 
     if (( $bash_major_ver < 3 )); then
         e_fatal "You are using an ancient Bash version ($BASH_VERSION)." \
@@ -728,7 +736,6 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     shopt -s nullglob
 
     # Globals
-    DOTFILES_VERSION="${DOTFILES_VERSION:-1.0}"
     DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
     DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:-${DOTFILES_ROOT}/caches}"
     DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
