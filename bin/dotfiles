@@ -15,13 +15,12 @@ if [[ -z "${DOTFILES_ROOT}" ]]; then
 fi
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    if [[ -n $DOTFILES_VERSION ]]; then
-        OLD_DOTFILES_VERSION="$DOTFILES_VERSION"
-    else
-        # Fake it -- didn't used to use versioning
-        OLD_DOTFILES_VERSION=0.0.0.0
-    fi
     DOTFILES_VERSION=1.0.0.0
+
+    if [[ -n $DOTFILES_VERSION ]]; then
+        DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
+    fi
+
 fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -427,7 +426,9 @@ Usage: $SCRIPT_BASENAME [-n] [-s] [-c] [-h] [-P FILES] [-B PATH] [-C PATH] [-v] 
     return "$return_code"
 }
 
-check_base_version () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+check_bash_version () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local bash_major_ver
     read -r bash_major_ver _ <<<"$(explode_version "$BASH_VERSION")"
 
@@ -444,16 +445,49 @@ check_base_version () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-main () {
+compare_versions () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local left="$1"
+    local right="$2"
+
+    IFS=$'.' read -ra left_elems <<<"$left"
+    IFS=$'.' read -ra right_elems <<<"$right"
+
+    local left_elem right_elem
+    for i in "${!left_elems[@]}"; do
+        left_elem="${left_elems[$i]}"
+        right_elem="${right_elems[$i]}"
+
+        (( left_elem == right_elem )) && continue
+        if (( left_elem < right_elem )); then
+            echo "-1"
+            return 0
+        fi
+        echo "1"
+        return 0
+    done
+
+    return 0
+}
+
+check_dotfiles_version () {
+    local comparison
+    comparison="$(compare_versions $DOTFILES_VERSION \
+        ${DOTFILES_OLD_VERSION:-$DOTFILES_VERSION})"
+
     # Grab command-line options
-    if [[ -n $DOTFILES_OLD_VERSION ]] \
-        || awk -v n1="$DOTFILES_OLD_VERSION" n2="$DOTFILES_VERSION" \
-        'BEGIN{if(n2<n1)exit 0;exit 1}' &>/dev/null; then
+    if [[ -z "${DOTFILES_OLD_VERSION:-}" ]] || [[ "$comparison" -gt 0 ]]; then
         e_fatal "You are running an old version of dotfiles.  Old options may" \
             "no longer work.  Please run 'dotfiles --help' to view usage."
         exit 1
     fi
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    check_bash_version
+    check_dotfiles_version
 
     local opt_name opt_value
     while (( $# )); do
