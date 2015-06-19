@@ -15,9 +15,13 @@ if [[ -z "${DOTFILES_ROOT}" ]]; then
 fi
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    if [[ -n $DOTFILES_VERSION ]]; then
+        OLD_DOTFILES_VERSION="$DOTFILES_VERSION"
+    else
+        # Fake it -- didn't used to use versioning
+        OLD_DOTFILES_VERSION=0.0.0.0
+    fi
     DOTFILES_VERSION=1.0.0.0
-else
-    unset SCRIPT_PATH SCRIPT_BASENAME SCRIPT_DIRNAME
 fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -187,19 +191,57 @@ skip () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+backup () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local destfile="$1"
+
+    # Destination file already exists. Back it up!
+    if [[ -e "$destfile" ]]; then
+        e_arrow "Backing up ${destfile}."
+        # Set backup flag, so a nice message can be shown at the end.
+        ((__DOTFILES_BACKUP++))
+
+        backup_subpath="${DOTFILES_BACKUP_PATH}/${destfile%/*}"
+        # Create backup dir if it doesn't already exist.
+        if ! [[ -e "$backup_subpath" ]]; then
+            if ! mkdir -p "$backup_subpath" &>/dev/null; then
+                e_fatal "Could not create backup directory" \
+                    "${backup_subpath}; exiting".
+                exit 1
+            fi
+        elif ! [[ -d "$backup_subpath" ]]; then
+            e_error "${backup_subpath} exists but is not a directory" 1>&2
+            ((failed++))
+            ((__DOTFILES_FAILED++))
+        fi
+
+        cp "$destfile" "$backup_subpath"
+    else
+        e_error "No such file: ${destfile}"
+    fi
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local optype_file="$1"
 
-    source "$optype_file"
+    local optype_file_basename="${optype_file##*/}"
+    local optype="${optype_file_basename%.*}"
 
-    optype_file_basename="${optype_file##*/}"
-    optype="${optype_file_basename%.sh}"
     if [[ -z "$optype" ]]; then
-        e_error "No optype specified" 1>&2
+        e_error "No operation specified" 1>&2
         return 1
     fi
+
+    # Unset these functions in case the sourced file doesn't define them.
+    # Otherwise, some previously-defined function could run.
+    unset -f check run
+    header () { e_header "Processing '$optype' directory" ; }
+
+    source "$optype_file"
 
     # Silently ignore any operation types that haven't been declared.
     if ! declare -F run &>/dev/null; then
@@ -212,21 +254,22 @@ process () {
         return 1
     fi
 
-    # Run _header function only if declared.
-    declare -F header &>/dev/null && header
+    # Print a pretty header :)
+    header
 
     # Iterate over files.
     local skip_reason srcfile srcstem destfile backup_subpath
     local -i failed=0
     while read -r srcfile; do
         # Don't quite know why this is necessary -- 'find' sometimes strips the
-        # leading slash when called using process substitution...
-        # Because find returns absolute paths, it's probably (?) safe to just
-        # append a leading slash.
+        # leading slash when called using process substitution...  Because find
+        # returns absolute paths, it's probably (?) safe to just append a
+        # leading slash.
         [[ "$srcfile" =~ ^/ ]] || srcfile="/${srcfile}"
 
         srcstem="${srcfile#$srcdir/}"
-        destfile="$(check_noclobber "$srcfile" "${DOTFILES_DESTDIR}/${srcstem}")"
+        destfile="$(check_noclobber "$srcfile" \
+            "${DOTFILES_DESTDIR}/${srcstem}")"
 
         # Run _test function only if declared.
         if declare -f check &>/dev/null; then
@@ -238,29 +281,10 @@ process () {
                 continue
             fi
 
-            # Destination file already exists in ~/. Back it up!
-            if [[ -e "$destfile" ]]; then
-                e_arrow "Backing up ${destfile}."
-                # Set backup flag, so a nice message can be shown at the end.
-                ((__DOTFILES_BACKUP++))
-
-                backup_subpath="${DOTFILES_BACKUP_PATH}/${destfile%/*}"
-                # Create backup dir if it doesn't already exist.
-                if ! [[ -e "$backup_subpath" ]]; then
-                    if ! mkdir -p "$backup_subpath" &>/dev/null; then
-                        e_fatal "Could not create backup directory" \
-                            "${backup_subpath}; exiting".
-                        exit 1
-                    fi
-                elif ! [[ -d "$backup_subpath" ]]; then
-                    e_error "${backup_subpath} exists but is not a directory" 1>&2
-                    ((failed++))
-                    ((__DOTFILES_FAILED++))
-                fi
-
-                cp "$destfile" "$backup_subpath"
-            fi
         fi
+
+        # Only back up the file if we're going to replace it
+        backup "$destfile"
 
         # Do stuff.
         run "$srcfile" "$destfile"
@@ -403,18 +427,7 @@ Usage: $SCRIPT_BASENAME [-n] [-s] [-c] [-h] [-P FILES] [-B PATH] [-C PATH] [-v] 
     return "$return_code"
 }
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-main () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Grab command-line options
-    if [[ -z $DOTFILES_VERSION ]] \
-        || awk -v n1="$DOTFILES_VERSION" n2='1.0' \
-        'BEGIN{if(n2<n1)exit 0;exit 1}' &>/dev/null; then
-        e_fatal "You are running an old version of dotfiles.  Old options may" \
-            "nolonger work.  Please run 'dotfiles --help' to view usage."
-        exit 1
-    fi
-
+check_base_version () {
     local bash_major_ver
     read -r bash_major_ver _ <<<"$(explode_version "$BASH_VERSION")"
 
@@ -423,8 +436,22 @@ main () {
             "Please upgrade."
         exit 1
     elif (( $bash_major_ver < 4 )); then
-        e_fatal "Your Bash version ($BASH_VERSION) doesn't support associative arrays." \
-            "Please upgrade."
+        e_fatal "Your Bash version ($BASH_VERSION) doesn't support" \
+            "associative arrays. Please upgrade."
+        exit 1
+    fi
+
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Grab command-line options
+    if [[ -n $DOTFILES_OLD_VERSION ]] \
+        || awk -v n1="$DOTFILES_OLD_VERSION" n2="$DOTFILES_VERSION" \
+        'BEGIN{if(n2<n1)exit 0;exit 1}' &>/dev/null; then
+        e_fatal "You are running an old version of dotfiles.  Old options may" \
+            "no longer work.  Please run 'dotfiles --help' to view usage."
         exit 1
     fi
 
@@ -614,4 +641,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
     # Enough with the functions, let's do stuff.
     main "$@"
+else
+    unset SCRIPT_PATH SCRIPT_BASENAME SCRIPT_DIRNAME
+    unset -f intro usage
 fi
