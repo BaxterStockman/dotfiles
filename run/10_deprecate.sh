@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-header () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Running deprecation checks"
-}
+header="Running deprecation checks"
 
 check () {
     if [[ -z "$DOTFILES_OLD_VERSION" ]]; then

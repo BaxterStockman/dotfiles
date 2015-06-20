@@ -1,11 +1,9 @@
+#!/usr/bin/env bash
+
 # Uses copy.sh's run()
 source "${DOTFILES_RUNDIR}/copy.sh"
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-header () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Copying skeleton files into ${DOTFILES_DESTDIR}";
-}
+header="Copying skeleton files into ${DOTFILES_DESTDIR}";
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 check () {

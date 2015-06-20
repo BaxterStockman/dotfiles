@@ -234,7 +234,7 @@ process () {
     # Unset these functions in case the sourced file doesn't define them.
     # Otherwise, some previously-defined function could run.
     unset -f check run
-    header () { e_header "Processing '$optype' directory" ; }
+    local header="${header:-"Processing '$optype' directory"}"
 
     source "$optype_file"
 
@@ -250,7 +250,7 @@ process () {
     fi
 
     # Print a pretty header :)
-    header
+    e_header "$header"
 
     # Iterate over files.
     local skip_reason srcfile srcstem destfile backup_subpath
