@@ -14,13 +14,22 @@ if [[ -z "${DOTFILES_ROOT}" ]]; then
     export DOTFILES_ROOT="${HOME}/.dotfiles"
 fi
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    DOTFILES_VERSION=1.0.0.0
-
+if [[ -z "${BASH_SOURCE[@]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     if [[ -n $DOTFILES_VERSION ]]; then
         DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
     fi
 
+    DOTFILES_VERSION=1.0.0.0
+
+    # If DOTFILES_SKIP_INIT != 'true' at this point, we know that we haven't
+    # yet been exec'd with an updated version.  Therefore, if DOTFILES_VERSION
+    # was unset until just before now, it's because the script just started
+    # running and not because we were exec'd from an old version that didn't
+    # yet use DOTFILES_VERSION.  So, set the value of DOTFILES_OLD_VERSION to
+    # DOTFILES_VERSION so that check_dotfiles_version doesn't complain.
+    if [[ "$DOTFILES_SKIP_INIT" != 'true' ]]; then
+        DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
+    fi
 fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -156,21 +165,6 @@ check_noclobber () {
     fi
 
     echo "$real_destfile"
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-explode_version () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local version_string="$1"
-    shift
-
-    local major_ver minor_ver trailing build revision
-    IFS=$'.' read -r major_ver minor_ver trailing <<<"$version_string"
-    if [[ "$trailing" =~ ([[:digit:]]+)\(([[:digit:]]+)*\) ]]; then
-        build="${BASH_REMATCH[1]}"
-        revision="${BASH_REMATCH[2]}"
-    fi
-    echo "$major_ver" "$minor_ver" "$build" "$revision"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -427,24 +421,6 @@ Usage: $SCRIPT_BASENAME [-n] [-s] [-c] [-h] [-P FILES] [-B PATH] [-C PATH] [-v] 
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-check_bash_version () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local bash_major_ver
-    read -r bash_major_ver _ <<<"$(explode_version "$BASH_VERSION")"
-
-    if (( $bash_major_ver < 3 )); then
-        e_fatal "You are using an ancient Bash version ($BASH_VERSION)." \
-            "Please upgrade."
-        exit 1
-    elif (( $bash_major_ver < 4 )); then
-        e_fatal "Your Bash version ($BASH_VERSION) doesn't support" \
-            "associative arrays. Please upgrade."
-        exit 1
-    fi
-
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 compare_versions () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local left="$1"
@@ -470,7 +446,9 @@ compare_versions () {
     return 0
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 check_dotfiles_version () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local comparison
     comparison="$(compare_versions $DOTFILES_VERSION \
         ${DOTFILES_OLD_VERSION:-$DOTFILES_VERSION})"
@@ -481,6 +459,39 @@ check_dotfiles_version () {
             "no longer work.  Please run 'dotfiles --help' to view usage."
         exit 1
     fi
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+explode_bash_version () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local version_string="$1"
+    shift
+
+    local major_ver minor_ver trailing build revision
+    IFS=$'.' read -r major_ver minor_ver trailing <<<"$version_string"
+    if [[ "$trailing" =~ ([[:digit:]]+)\(([[:digit:]]+)*\) ]]; then
+        build="${BASH_REMATCH[1]}"
+        revision="${BASH_REMATCH[2]}"
+    fi
+    echo "$major_ver" "$minor_ver" "$build" "$revision"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+check_bash_version () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local bash_major_ver
+    read -r bash_major_ver _ <<<"$(explode_bash_version "$BASH_VERSION")"
+
+    if (( $bash_major_ver < 3 )); then
+        e_fatal "You are using an ancient Bash version ($BASH_VERSION)." \
+            "Please upgrade."
+        exit 1
+    elif (( $bash_major_ver < 4 )); then
+        e_fatal "Your Bash version ($BASH_VERSION) doesn't support" \
+            "associative arrays. Please upgrade."
+        exit 1
+    fi
+
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
