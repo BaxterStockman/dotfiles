@@ -264,6 +264,7 @@ process () {
         [[ "$srcfile" =~ ^/ ]] || srcfile="/${srcfile}"
 
         srcstem="${srcfile#$srcdir/}"
+
         destfile="$(check_noclobber "$srcfile" \
             "${DOTFILES_DESTDIR}/${srcstem}")"
 
@@ -276,7 +277,6 @@ process () {
                 e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
                 continue
             fi
-
         fi
 
         # Only back up the file if we're going to replace it
