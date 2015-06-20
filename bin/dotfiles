@@ -162,7 +162,7 @@ check_noclobber () {
         if [[ "$noclobber" == true ]]; then
             local noclobber_message
             printf -v noclobber_message %s "Not clobbering ${destfile};" \
-                "${srcfile} will be appended with '${DOTFILES_NOCLOBBER_EXT}'"
+                " ${srcfile} will be appended with '${DOTFILES_NOCLOBBER_EXT}'"
             e_arrow "$noclobber_message" 1>&2
             real_destfile="${destfile}${DOTFILES_NOCLOBBER_EXT}"
         fi
@@ -224,7 +224,8 @@ process () {
     local optype_file="$1"
 
     local optype_file_basename="${optype_file##*/}"
-    local optype="${optype_file_basename%.*}"
+    local optype_file_noext="${optype_file_basename%.*}"
+    local optype="${optype_file_noext#[[:digit:]]*_}"
 
     if [[ -z "$optype" ]]; then
         e_error "No operation specified" 1>&2

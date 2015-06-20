@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Uses copy.sh's run()
-source "${DOTFILES_RUNDIR}/copy.sh"
+source "${DOTFILES_RUNDIR}/"*"_copy.sh"
 
 header="Copying skeleton files into ${DOTFILES_DESTDIR}";
 
