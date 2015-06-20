@@ -6,7 +6,7 @@
 [[ $- != *i* ]] && return
 
 ## Environmental variables
-export DOTFILES_ROOT=$HOME/.dotfiles
+export DOTFILES_ROOT="${DOTFILES_ROOT:-"${HOME}/.dotfiles"}"
 export CONFIG_PATH=$DOTFILES_ROOT/source
 PATH=$DOTFILES_ROOT/bin:$PATH
 
@@ -18,8 +18,6 @@ export PATH
 [[ -d $HOME/lib ]] && LD_LIBRARY_PATH=$HOME/lib:$LD_LIBRARY_PATH
 [[ -d $HOME/lib64 ]] && LD_LIBRARY_PATH=$HOME/lib64:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH
-
-LOGFILE=$HOME/.log/bash_err.log
 
 # Source file if it exists
 # First argument = directory
@@ -52,9 +50,9 @@ function exists() {
 # Syntax: alias_if <alias name>=<program name>
 function alias_if() {
     OIFS="$IFS"
-    IFS='=' read -a args <<< "$1"
+    IFS='=' read -a args <<<"$1"
     exists ${args[1]} && alias ${args[0]}="${args[1]}"
     IFS="$OIFS"
 }
 
-src_all $CONFIG_PATH
+src_all "$CONFIG_PATH"
