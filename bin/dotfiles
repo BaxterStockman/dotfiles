@@ -15,6 +15,8 @@ if [[ -z "${DOTFILES_ROOT}" ]]; then
 fi
 
 if [[ -z "${BASH_SOURCE[@]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    DOTFILES_SOURCED=false
+
     if [[ -n $DOTFILES_VERSION ]]; then
         DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
     fi
@@ -30,6 +32,8 @@ if [[ -z "${BASH_SOURCE[@]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     if [[ "$DOTFILES_SKIP_INIT" != 'true' ]]; then
         DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
     fi
+else
+    DOTFILES_SOURCED=true
 fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -210,8 +214,6 @@ backup () {
         fi
 
         cp "$destfile" "$backup_subpath"
-    else
-        e_error "No such file: ${destfile}"
     fi
 }
 
@@ -623,7 +625,7 @@ main () {
     return 0
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+if [[ "$DOTFILES_SOURCED" != 'true' ]]; then
     # Don't allow unset variables or uncaught errors
     set -o nounset
 
@@ -684,9 +686,9 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
         unset IFS
     fi
 
-    # Enough with the functions, let's do stuff.
     main "$@"
 else
     unset SCRIPT_PATH SCRIPT_BASENAME SCRIPT_DIRNAME
+    unset DOTFILES_SOURCED
     unset -f intro usage
 fi
