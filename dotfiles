@@ -336,7 +336,8 @@ init_dotfiles() {
         # installation.
         export DOTFILES_NEW_INSTALL=true
         e_header "Downloading dotfiles"
-        git clone --recursive "$DOTFILES_REPO" "$DOTFILES_ROOT"
+        git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"
+        git clone --recursive "$DOTFILES_REPO" "$DOTFILES_ROOT/bin"
     else
         # Make sure we have the latest files.
         e_header "Updating dotfiles"
