@@ -4,17 +4,19 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
 SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
 SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
 
-declare -x DOTFILES_ROOT="${DOTFILES_ROOT:=$(readlink -e "${SCRIPT_DIRNAME}/..")}"
+# Use readlink's -m option (--canonicalize-missing) since we might be on a
+# bootstrap run where SCRIPT_DIRNAME doesn't actually exist yet.
+export DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${SCRIPT_DIRNAME}/..")}"
 
 if [[ -z "${DOTFILES_ROOT}" ]]; then
     export DOTFILES_ROOT="${HOME}/.dotfiles"
 fi
 
-if [[ -z "${BASH_SOURCE[@]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+if [[ -z "${BASH_SOURCE[*]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     __DOTFILES_SOURCED=false
 
     if [[ -n $DOTFILES_VERSION ]]; then
@@ -121,36 +123,6 @@ find_hierarchical () {
     done < <(sort -n < <(while read -r target; do
         splitfile "$target" "$prefix"
     done < <(find "$targetdir" "$@")))
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-to_install () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Given a list of desired items and installed items, return a list
-# of uninstalled items. Arrays in bash are insane (not in a good way).
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local debug desired installed i desired_s installed_s remain
-    if [[ "$1" == 1 ]]; then debug=1; shift; fi
-    # Convert args to arrays, handling both space- and newline-separated lists.
-    local -a desired=("$1")
-    local -a installed=("$2")
-    #read -ra desired < <(echo "$1" | tr '\n' ' ')
-    #read -ra installed < <(echo "$2" | tr '\n' ' ')
-    # Sort desired and installed arrays.
-    unset i; while read -r; do desired_s[i++]=$REPLY; done < <(
-        printf "%s\n" "${desired[@]}" | sort
-    )
-    unset i; while read -r; do installed_s[i++]=$REPLY; done < <(
-        printf "%s\n" "${installed[@]}" | sort
-    )
-    # Get the difference. comm is awesome.
-    unset i; while read -r; do remain[i++]=$REPLY; done < <(
-        comm -13 <(printf "%s\n" "${installed_s[@]}") <(printf "%s\n" "${desired_s[@]}")
-    )
-    [[ "$debug" ]] && for v in desired desired_s installed installed_s remain; do
-        echo "$v ($(eval echo "\${#$v[*]}")) $(eval echo "\${$v[*]}")"
-    done
-    echo "${remain[@]}"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -350,11 +322,6 @@ init_dotfiles() {
 
         git pull
 
-        if ! git submodule update --init --recursive --quiet; then
-        e_error "Failed to update git submodules." \
-            "This probably requires your intervention." 1>&2
-        fi
-
         local current_head
         current_head="$(git rev-parse HEAD)"
 
@@ -362,7 +329,7 @@ init_dotfiles() {
 
         if [[ "$current_head" != "$prev_head" ]]; then
             e_header "Executing updated ${SCRIPT_BASENAME} script"
-            exec "${SCRIPT_PATH}"
+            exec "${DOTFILES_ROOT}/bin/dotfiles"
         fi
     fi
 }
@@ -385,7 +352,7 @@ usage () {
 
     if (( $return_code != 0 )); then
         printf '%s' "
-Usage: $SCRIPT_BASENAME [-n] [-s] [-c] [-h] [-P FILES] [-B PATH] [-C PATH] [-v] [-V] [-q] [-h]
+Usage: $SCRIPT_BASENAME [-n] [-s] [-c] [-h] [-P FILES] [-B PATH] [-R PATH] [-C PATH] [-v] [-V] [-q] [-h]
 "
 
         return "$return_code"
@@ -402,17 +369,22 @@ Usage: $SCRIPT_BASENAME [-n] [-s] [-c] [-h] [-P FILES] [-B PATH] [-C PATH] [-v] 
                         dotfiles to break in hilarious ways.
 
 -c, --clobber           Tell dotfiles to overwrite configuration files that
-                        would otherwise have been preserved.  By default,
-                        dotfiles doesn't clobber:
+                        would otherwise have been preserved.  Under the current
+                        settings, dotfiles doesn't clobber:
                         ${DOTFILES_NOCLOBBER_RCS[@]}
 
 -P, --preserve FILES    Tell dotfiles to preserve a list of files passed as a
                         comma-separated argument.
 
 -B, --backup-path PATH  Tell dotfiles where to store backups of existing
-                        configurations.
+                        configurations (currently: ${DOTFILES_BACKUP_PATH}).
 
--C, --cache-path PATH   Cache path for use with certain git submodules.
+-C, --cache-path PATH   Cache path for use with certain git submodules
+                        (currently: ${DOTFILES_CACHE_PATH}).
+
+-R, --rundir PATH       The directory in which dotfiles will search for its
+                        marching orders (currently: ${DOTFILES_RUNDIR}).  See
+                        README.md for details.
 
 -v, --verbose           Tell dotfiles to be chatty.
 
@@ -462,8 +434,8 @@ check_dotfiles_version () {
 
     # Grab command-line options
     if [[ -z "${DOTFILES_OLD_VERSION:-}" ]] || [[ "$comparison" -gt 0 ]]; then
-        e_fatal "You are running an old version of dotfiles.  Old options may" \
-            "no longer work.  Please run 'dotfiles --help' to view usage."
+        e_fatal "You are running an old version of dotfiles.  Old options " \
+            "may no longer work.  Please run 'dotfiles --help' to view usage."
         exit 1
     fi
 }
