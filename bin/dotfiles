@@ -198,36 +198,56 @@ process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local optype_file="$1"
+    local optype
 
-    local optype_file_basename="${optype_file##*/}"
-    local optype_file_noext="${optype_file_basename%.*}"
-    local optype="${optype_file_noext#[[:digit:]]*_}"
+    # Unset these functions in case the sourced file doesn't define them.
+    # Otherwise, some previously-defined function could run.
+    unset
+    unset -f check run
+
+    if [[ -f "$optype_file" ]]; then
+        source "$optype_file"
+    else
+        e_error "No such file: $optype_file" 1>&2
+        return 1
+    fi
+
+    local srcdir
+    if [[ -n "${processdir:-}" ]]; then
+        optype="${processdir##*/}"
+    else
+        local optype_file_basename="${optype_file##*/}"
+        local optype_file_noext="${optype_file_basename%.*}"
+
+        optype="${optype_file_noext#[[:digit:]]*_}"
+    fi
 
     if [[ -z "$optype" ]]; then
         e_error "No operation specified" 1>&2
         return 1
     fi
 
-    # Unset these functions in case the sourced file doesn't define them.
-    # Otherwise, some previously-defined function could run.
-    unset -f check run
-    local header="${header:-"Processing '$optype' directory"}"
-
-    source "$optype_file"
+    # If processdir contains a leading slash, treat it as an absolute path.
+    # Otherwise, assume we're looking for a relative path in DOTFILES_ROOT.
+    if [[ "${processdir:-}" =~ ^/ ]]; then
+        srcdir="$processdir"
+    else
+        srcdir="${DOTFILES_ROOT}/${optype}"
+    fi
 
     # Silently ignore any operation types that haven't been declared.
     if ! declare -F run &>/dev/null; then
         return 0
     fi
 
-    srcdir="${DOTFILES_ROOT}/${optype}"
+    # Print a pretty header :)
+    local header="${header:-"Processing '$optype' directory"}"
+    e_header "$header"
+
     if ! [[ -d "$srcdir" ]]; then
         e_error "No such directory: $srcdir" 1>&2
         return 1
     fi
-
-    # Print a pretty header :)
-    e_header "$header"
 
     # Iterate over files.
     local skip_reason srcfile srcstem destfile backup_subpath
@@ -590,7 +610,8 @@ main () {
     if [[ -d "$DOTFILES_RUNDIR" ]]; then
         process_all "$DOTFILES_RUNDIR"
     else
-        e_fatal "No such directory: ${DOTFILES_RUNDIR}" 1>&2
+        e_fatal "No such directory: ${DOTFILES_RUNDIR}" \
+            "${SCRIPT_BASENAME} cannot proceed." 1>&2
         exit 1
     fi
 
