@@ -15,7 +15,7 @@ if [[ -z "${DOTFILES_ROOT}" ]]; then
 fi
 
 if [[ -z "${BASH_SOURCE[@]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    DOTFILES_SOURCED=false
+    __DOTFILES_SOURCED=false
 
     if [[ -n $DOTFILES_VERSION ]]; then
         DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
@@ -33,21 +33,25 @@ if [[ -z "${BASH_SOURCE[@]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
         DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
     fi
 else
-    DOTFILES_SOURCED=true
+    __DOTFILES_SOURCED=true
 fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Logging stuff
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if [[ "$(locale charmap)" =~ UTF-8 ]] && [[ "$TERM" != 'linux' ]] ; then
-    e_header ()   { printf "\n\033[1;35m★★★★★\033[0m %b \033[1;35m★★★★★\033[0m\n\n" "$@"; }
+    e_header ()   {
+        printf "\n\033[1;35m★★★★★\033[0m %b \033[1;35m★★★★★\033[0m\n\n" "$@"
+    }
     e_prompt ()   { printf "\n \033[1;37m☛\033[0m %b " "$@"; }
     e_success ()  { printf " \033[1;32m✔\033[0m %b\n" "$@"; }
     e_error ()    { printf " \033[1;31m✖\033[0m %b\n" "$@"; }
     e_fatal ()    { printf " \033[1;31m☠\033[0m %b\n" "$@"; }
     e_arrow ()    { printf " \033[1;33m➜\033[0m %b\n" "$@"; }
 else
-    e_header ()   { printf "\n\033[1;35m=====\033[0m %b \033[1;35m=====\033[0m\n\n" "$@"; }
+    e_header ()   {
+        printf "\n\033[1;35m=====\033[0m %b \033[1;35m=====\033[0m\n\n" "$@"
+    }
     e_prompt ()   { printf "\n \037[1;35m?\033[0m %b " "$@"; }
     e_success ()  { printf " \033[1;32m:)\033[0m %b\n" "$@"; }
     e_error ()    { printf " \033[1;31m:(\033[0m %b\n" "$@"; }
@@ -523,6 +527,10 @@ main () {
                 DOTFILES_NOCLOBBER_RCS="$opt_value"
                 shift 2
                 ;;
+            -R|--rundir)
+                DOTFILES_RUNDIR="$opt_value"
+                shift 2
+                ;;
             -B|--backup-path)
                 DOTFILES_BACKUP_PATH="$opt_value"
                 shift 2
@@ -556,7 +564,7 @@ main () {
     done
 
     # Initial stuff; do only if we haven't updated to the newest version
-    if ! [[ "$DOTFILES_SKIP_INIT" == true ]]; then
+    if [[ "$DOTFILES_SKIP_INIT" != true ]]; then
         intro
 
         e_header "Performing initial configuration"
@@ -607,7 +615,12 @@ main () {
     mkdir -p "$DOTFILES_CACHE_PATH"
 
     # Execute code for each file in these subdirectories.
-    process_all "$DOTFILES_RUNDIR"
+    if [[ -d "$DOTFILES_RUNDIR" ]]; then
+        process_all "$DOTFILES_RUNDIR"
+    else
+        e_fatal "No such directory: ${DOTFILES_RUNDIR}" 1>&2
+        exit 1
+    fi
 
     # Alert if backups were made.
     if (( "$__DOTFILES_BACKUP" > 0 )); then
@@ -626,7 +639,7 @@ main () {
     return 0
 }
 
-if [[ "$DOTFILES_SOURCED" != 'true' ]]; then
+if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     # Don't allow unset variables or uncaught errors
     set -o nounset
 
@@ -635,18 +648,18 @@ if [[ "$DOTFILES_SOURCED" != 'true' ]]; then
     shopt -s nullglob
 
     # Globals
-    DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
-    DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:-${DOTFILES_ROOT}/caches}"
-    DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
-    DOTFILES_RUNDIR="${DOTFILES_ROOT}/run"
-    DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:-false}"
-    DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
-    DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:-false}"
-    DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
-    DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
-    DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
-    DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
-    DOTFILES_SKIP_VIM_PLUGINS=false
+    export DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
+    export DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:-${DOTFILES_ROOT}/caches}"
+    export DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
+    export DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
+    export DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:-false}"
+    export DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
+    export DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:-false}"
+    export DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
+    export DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
+    export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
+    export DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
+    export DOTFILES_SKIP_VIM_PLUGINS=false
 
     if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
         declare -r DOTFILES_OSTYPE='arch'
@@ -655,6 +668,7 @@ if [[ "$DOTFILES_SOURCED" != 'true' ]]; then
     else
         declare -r DOTFILES_OSTYPE='linux'
     fi
+    export DOTFILES_OSTYPE
 
     declare -i __DOTFILES_BACKUP=0
     declare -i __DOTFILES_FAILED=0
@@ -690,6 +704,6 @@ if [[ "$DOTFILES_SOURCED" != 'true' ]]; then
     main "$@"
 else
     unset SCRIPT_PATH SCRIPT_BASENAME SCRIPT_DIRNAME
-    unset DOTFILES_SOURCED
+    unset __DOTFILES_SOURCED
     unset -f intro usage
 fi
