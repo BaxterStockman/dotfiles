@@ -664,6 +664,7 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     export DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
     export DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:-false}"
     export DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
+    export DOTFILES_CONFIG_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles-config.git}"
     export DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:-false}"
     export DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
     export DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
