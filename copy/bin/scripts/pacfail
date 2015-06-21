@@ -1,8 +1,0 @@
-#!/bin/bash
-
-outfile=$1
-existing=($(pacman -Su | grep 'exists in filesystem' | perl -pe 's|\A.*\s(/.*?)\s.*\Z|$1|'))
-
-for file in existing; do
-    pacman -Qo $file
-done
