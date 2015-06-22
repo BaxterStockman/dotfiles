@@ -340,7 +340,7 @@ init_dotfiles() {
     else
         # Make sure we have the latest files.
         e_header "Updating dotfiles configuration"
-        pushd "$DOTFILES_CONFIG_ROOT" >/dev/null
+        pushd "$DOTFILES_ROOT" >/dev/null
         git pull
     fi
 
