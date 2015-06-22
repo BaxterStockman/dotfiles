@@ -332,6 +332,7 @@ init_dotfiles() {
         e_fatal "git should be installed.  It isn't"
         exit 1
     fi
+
     # Initialize.
     e_header "Pulling in updated dotfiles repo"
 
@@ -639,10 +640,10 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     shopt -s nullglob
 
     # Globals
-    export DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
     export DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
     export DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:-${DOTFILES_ROOT}/caches}"
     export DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
+    export DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
     export DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
     export DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:-false}"
     export DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"

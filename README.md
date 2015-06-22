@@ -18,6 +18,26 @@ described below in the Usage section.
 Usage
 -----
 
+Scripts sourced by `dotfiles` should conform to the following conventions:
+
+#### Variables
+
+- `header`: `dotfiles` will print this message as a preamble to executing the
+  functions defined in the sourced file.  `dotfiles` prints a generic method if
+  this variable is unset.
+- `processdir`: where `dotfiles` should look for files to process.  If it is a
+  relative path, it is assumed to be relative to `DOTFILES_ROOT`.  If this
+  variable is unset, `dotfiles` tries to infer which directory to process based
+  on the name of the sourced file.  Whatever is left over after removing
+  anything of the form [0-9]*_ from the beginning of the file and removing
+  '.sh' from the end is treated as a path relative to `DOTFILES_ROOT`.  So, for
+  instance, `20_something.sh` would be converted to `$DOTFILES_ROOT/something`.
+
+#### Functions
+
+Environment
+-----------
+
 `dotfiles` respects the following environment variables:
 
 
