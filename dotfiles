@@ -431,6 +431,8 @@ Please run 'dotfiles --help' for detailed usage.
                         the path is relative, it's assumed to be relative to
                         DOTFILES_ROOT. See README.md for details.
 
+-X, --bindir PATH       The directory where dotfiles itself will be checked out
+
 -v, --verbose           Tell dotfiles to be chatty.
 
 -V, --skip-vim-plugins  Tell dotfiles to skip installing and updating vim
@@ -558,6 +560,10 @@ main () {
                     DOTFILES_RUNDIR="${DOTFILES_ROOT}/$opt_value"
                 fi
 
+                shift 2
+                ;;
+            -X|--bindir)
+                DOTFILES_BINDIR="$opt_value"
                 shift 2
                 ;;
             -B|--backup-path)
