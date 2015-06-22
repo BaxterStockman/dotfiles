@@ -23,21 +23,34 @@ Usage
 `dotfiles` respects the following environment variables, which are also passed
 through to sourced scripts:
 
-- `DOTFILES_BACKUP_PATH`: where `dotfiles` should store backups.
-- `DOTFILES_CACHE_PATH`: used for... I dunno.
-- `DOTFILES_DESTDIR`: the root of the tree where `dotfiles` will place your
-  configuration files.
-- `DOTFILES_BINDIR`: where the `dotfiles` script will be checked out from git.
-- `DOTFILES_RUNDIR`: where `dotfiles` will search for scripts to source.
-- `DOTFILES_NEW_INSTALL`: whether this is a new `dotfiles` installation.
-- `DOTFILES_REPO`: the git repository hosting the `dotfiles` script.
+- `DOTFILES_ROOT`: the filesystem path where `dotfiles` will look for
+  configuration files and instructions.  By default, `~/.dotfiles`.
+- `DOTFILES_REPO`: the git repository hosting the `dotfiles` script.  By
+  default, [my `dotfiles-config`
+  repository](https://github.com/BaxterStockman/dotfiles-config).
 - `DOTFILES_CONFIG_REPO`: the git repository hosting your configuration files.
-- `DOTFILES_SKIP_INIT`: whether to skip certain installation steps.
+  By default, this repository.
+- `DOTFILES_BACKUP_PATH`: where `dotfiles` should store backups.  By default,
+  `$DOTFILES_ROOT/backup`.
+- `DOTFILES_CACHE_PATH`: used for... I dunno.  May go away.  By default,
+  `$DOTFILES_ROOT/caches`
+- `DOTFILES_DESTDIR`: the root of the tree where `dotfiles` will place your
+  configuration files.  By default, `$HOME`.
+- `DOTFILES_BINDIR`: where the `dotfiles` script will be cloned to.  By
+  default, `$DOTFILES_ROOT/bin`.  *CAUTION* -- because this location will be
+  under version control, you may want to avoid placing anything else there
+  besides the `dotfiles` script (and `README`, etc.).
+- `DOTFILES_RUNDIR`: where `dotfiles` will search for scripts to source.  By
+  default, `$DOTFILES_ROOT/run`.
+- `DOTFILES_NEW_INSTALL`: whether this is a new `dotfiles` installation.  True
+  by default.
+- `DOTFILES_SKIP_INIT`: whether to skip certain installation steps.  False by
+  default.
 - `DOTFILES_NOCLOBBER`: whether `dotfiles` should preserve or clobber existing
   configuration files.  True by default.
 - `DOTFILES_VERBOSE`: Doesn't actually do anything right now :).
 - `DOTFILES_NOCLOBBER_EXT`: If `DOTFILES_NOCLOBBER` is true, this value will be
-  appended to any files that shouldn't be clobbered.
+  appended to any files that shouldn't be clobbered.  `.custom` by default.
 - `DOTFILES_NOCLOBBER_RCS`: A Bash array containing files that should not be
   clobbered.
 
@@ -61,15 +74,17 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
 
 - `parseopts`: `dotfiles` passes through all command line options after a
   literal `--` to this function.  If you'd like to handle command line options,
-  this is the place to do it -- they'll come through in good old `$@`.
+  this is the place to do it -- they'll come through in good old `$@`.  This
+  function is optional.
 - `run`: This is where the bulk of the work is done.  `run` receives two
   arguments: `$1` contains a source file somewhere in `processdir`, and `$2`
   contains the (putative) destination file -- i.e., somewhere in
-  `DOTFILES_DESTDIR`.
+  `DOTFILES_DESTDIR`.  This function is mandatory, and `dotfiles` will silently
+  ignore any sourced file that doesn't contain it.
 - `check`: this function is passed the same arguments as `run`.  If `run`
   should not be executed for a given input set, `check` should ouput a string
   (preferably containing the reason why these inputs should be skipped, since
-  `dotfiles` is going to print the echoed message).
+  `dotfiles` is going to print the echoed message).  This function is optional.
 
 
 
