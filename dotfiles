@@ -250,7 +250,7 @@ process () {
         return 1
     fi
 
-    parseopts "$@"
+    declare -f parseopts &>/dev/null && parseopts "$@"
 
     # Iterate over files.
     local skip_reason srcfile srcstem destfile backup_subpath
@@ -336,16 +336,19 @@ init_dotfiles() {
         # installation.
         export DOTFILES_NEW_INSTALL=true
         e_header "Downloading dotfiles configuration"
+	mkdir -p "$DOTFILES_ROOT" 
         git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"
     else
         # Make sure we have the latest files.
         e_header "Updating dotfiles configuration"
         pushd "$DOTFILES_ROOT" >/dev/null
         git pull
+        popd >/dev/null
     fi
 
     if [[ ! -d "$DOTFILES_BINDIR" ]]; then
-        e_header "Downloading dotfiles configuration"
+        e_header "Downloading dotfiles"
+	mkdir -p "$DOTFILES_BINDIR"
         git clone --recursive "$DOTFILES_REPO" "$DOTFILES_BINDIR"
     else
         # Make sure we have the latest dotfiles script
