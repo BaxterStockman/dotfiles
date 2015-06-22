@@ -626,7 +626,7 @@ main () {
         && e_header "Preserving some existing configurations"
 
     # Add binaries into the path
-    PATH="${DOTFILES_ROOT}/bin${PATH:+:}${PATH}"
+    PATH="${DOTFILES_BINDIR}${PATH:+:}${PATH}"
     export PATH
 
     # Create caches directory, if it doesn't already exist.
