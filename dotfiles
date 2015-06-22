@@ -331,18 +331,26 @@ init_dotfiles() {
     # Skip this function after we exec the updated version of this script.
     export DOTFILES_SKIP_INIT=true
 
-    if ! [[ -d $DOTFILES_ROOT ]]; then
+    if [[ ! -d $DOTFILES_ROOT ]]; then
         # If the root directory doesn't exist, treat this as a new
         # installation.
         export DOTFILES_NEW_INSTALL=true
-        e_header "Downloading dotfiles"
+        e_header "Downloading dotfiles configuration"
         git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"
-        git clone --recursive "$DOTFILES_REPO" "$DOTFILES_ROOT/bin"
     else
         # Make sure we have the latest files.
-        e_header "Updating dotfiles"
+        e_header "Updating dotfiles configuration"
+        pushd "$DOTFILES_CONFIG_ROOT" >/dev/null
+        git pull
+    fi
 
-        pushd "$DOTFILES_ROOT" >/dev/null
+    if [[ ! -d "$DOTFILES_BINDIR" ]]; then
+        e_header "Downloading dotfiles configuration"
+        git clone --recursive "$DOTFILES_REPO" "$DOTFILES_BINDIR"
+    else
+        # Make sure we have the latest dotfiles script
+        e_header "Updating dotfiles"
+        pushd "$DOTFILES_BINDIR" >/dev/null
 
         local prev_head
         prev_head="$(git rev-parse HEAD)"
@@ -356,7 +364,7 @@ init_dotfiles() {
 
         if [[ "$current_head" != "$prev_head" ]]; then
             e_header "Executing updated ${SCRIPT_BASENAME} script"
-            exec "${DOTFILES_ROOT}/bin/dotfiles"
+            exec "${DOTFILES_BINDIR}/dotfiles"
         fi
     fi
 }
@@ -659,6 +667,7 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     shopt -s nullglob
 
     # Globals
+    export DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
     export DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
     export DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:-${DOTFILES_ROOT}/caches}"
     export DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
