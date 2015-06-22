@@ -653,7 +653,6 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     export DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
     export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
     export DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
-    export DOTFILES_SKIP_VIM_PLUGINS=false
 
     if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
         declare -r DOTFILES_OSTYPE='arch'
