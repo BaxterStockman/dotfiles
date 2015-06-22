@@ -18,6 +18,29 @@ described below in the Usage section.
 Usage
 -----
 
+#### Environment
+
+`dotfiles` respects the following environment variables, which are also passed
+through to sourced scripts:
+
+- `DOTFILES_BACKUP_PATH`: where `dotfiles` should store backups.
+- `DOTFILES_CACHE_PATH`: used for... I dunno.
+- `DOTFILES_DESTDIR`: the root of the tree where `dotfiles` will place your
+  configuration files.
+- `DOTFILES_BINDIR`: where the `dotfiles` script will be checked out from git.
+- `DOTFILES_RUNDIR`: where `dotfiles` will search for scripts to source.
+- `DOTFILES_NEW_INSTALL`: whether this is a new `dotfiles` installation.
+- `DOTFILES_REPO`: the git repository hosting the `dotfiles` script.
+- `DOTFILES_CONFIG_REPO`: the git repository hosting your configuration files.
+- `DOTFILES_SKIP_INIT`: whether to skip certain installation steps.
+- `DOTFILES_NOCLOBBER`: whether `dotfiles` should preserve or clobber existing
+  configuration files.  True by default.
+- `DOTFILES_VERBOSE`: Doesn't actually do anything right now :).
+- `DOTFILES_NOCLOBBER_EXT`: If `DOTFILES_NOCLOBBER` is true, this value will be
+  appended to any files that shouldn't be clobbered.
+- `DOTFILES_NOCLOBBER_RCS`: A Bash array containing files that should not be
+  clobbered.
+
 Scripts sourced by `dotfiles` should conform to the following conventions:
 
 #### Variables
@@ -32,7 +55,7 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
   anything of the form [0-9]\*\_ from the beginning of the file and removing
   '.sh' from the end is treated as a path relative to `DOTFILES_ROOT`.  So, for
   instance, `20_something.sh` would be converted to
-  `$DOTFILES_ROOT/something`.j
+  `$DOTFILES_ROOT/something`.
 
 #### Functions
 
@@ -43,11 +66,10 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
   arguments: `$1` contains a source file somewhere in `processdir`, and `$2`
   contains the (putative) destination file -- i.e., somewhere in
   `DOTFILES_DESTDIR`.
-- `check`: a function that
+- `check`: this function is passed the same arguments as `run`.  If `run`
+  should not be executed for a given input set, `check` should ouput a string
+  (preferably containing the reason why these inputs should be skipped, since
+  `dotfiles` is going to print the echoed message).
 
-Environment
------------
-
-`dotfiles` respects the following environment variables:
 
 
