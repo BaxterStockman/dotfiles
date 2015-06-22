@@ -36,6 +36,15 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
 
 #### Functions
 
+- `parseopts`: `dotfiles` passes through all command line options after a
+  literal `--` to this function.  If you'd like to handle command line options,
+  this is the place to do it -- they'll come through in good old `$@`.
+- `run`: This is where the bulk of the work is done.  `run` receives two
+  arguments: `$1` contains a source file somewhere in `processdir`, and `$2`
+  contains the (putative) destination file -- i.e., somewhere in
+  `DOTFILES_DESTDIR`.
+- `check`: a function that
+
 Environment
 -----------
 
