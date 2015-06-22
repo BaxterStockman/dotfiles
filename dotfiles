@@ -250,7 +250,7 @@ process () {
         return 1
     fi
 
-    parseopts "$@"
+    declare -F parseopts &>/dev/null && parseopts "$@"
 
     # Iterate over files.
     local skip_reason srcfile srcstem destfile backup_subpath
