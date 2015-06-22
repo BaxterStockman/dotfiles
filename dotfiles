@@ -80,7 +80,6 @@ md5cmp () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 splitfile () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local file="$1"
     local prefix="$2"
     local relpath="${file##$prefix}"
@@ -94,7 +93,6 @@ splitfile () {
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_hierarchical () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local targetdir="$1"
     shift
@@ -166,7 +164,6 @@ skip () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 backup () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local destfile="$1"
 
     # Destination file already exists. Back it up!
@@ -196,6 +193,8 @@ backup () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# The center of it all.  Runs through the files in DOTFILES_RUNDIR looking for
+# stuff to do.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local optype_file="$1"
     shift
@@ -291,7 +290,6 @@ process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 process_all () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local rundir="$1"
     shift
 
@@ -305,8 +303,8 @@ process_all () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 do_opt_stuff () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Iterate through directories in .dotfiles/opt,
-# prompting user whether or not to process them.
+# Iterate through directories in .dotfiles/opt, prompting user whether or not
+# to process them.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcdir_relpath="$1"
 
@@ -326,7 +324,16 @@ do_opt_stuff () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_dotfiles() {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    [[ $DOTFILES_SKIP_INIT == true ]] && return 0
+    intro
+
+    e_header "Performing initial configuration"
+
+    if ! type -P git &>/dev/null; then
+        e_fatal "git should be installed.  It isn't"
+        exit 1
+    fi
+    # Initialize.
+    e_header "Pulling in updated dotfiles repo"
 
     # Skip this function after we exec the updated version of this script.
     export DOTFILES_SKIP_INIT=true
@@ -583,40 +590,6 @@ main () {
 
     # Initial stuff; do only if we haven't updated to the newest version
     if [[ "$DOTFILES_SKIP_INIT" != true ]]; then
-        intro
-
-        e_header "Performing initial configuration"
-
-        # Ensure that we can actually, like, compile anything.
-        if ! command -v gcc >/dev/null 2>&1  \
-        && [[ "$DOTFILES_OSTYPE" =~ ^darwin ]]; then
-            e_fatal "XCode or the Command Line Tools for XCode must be installed first." 1>&2
-            exit 1
-        fi
-
-        # Check that certain programs are installed
-        local -A dependency_map=(
-            [git]="git should be installed.  It isn't"
-            [gcc]="XCode or the XCode CLI Tools must be installed"
-        )
-
-        local dependency
-        for dependency in "${!dependency_map[@]}"; do
-            if ! type -P "$dependency" &>/dev/null; then
-                e_error "${dependency_map[$dependency]}" 1>&2
-                exit 1
-            fi
-        done
-
-        # Update existing sudo time stamp if set, otherwise do nothing.
-        while true; do
-            sudo -n true
-            sleep 60
-            kill -0 "$$" || exit
-        done 2>/dev/null &
-
-        # Initialize.
-        e_header "Pulling in updated dotfiles repo"
         init_dotfiles
     else
         e_header "Skipping initialization"
@@ -644,13 +617,6 @@ main () {
     # Alert if backups were made.
     if (( "$__DOTFILES_BACKUP" > 0 )); then
         e_arrow "Backups were moved to ${DOTFILES_BACKUP_PATH}"
-    fi
-
-    # Lest I forget to do a few additional things...
-    if "${DOTFILES_NEW_INSTALL}" && [[ -f "conf/firsttime_reminder.sh" ]]; then
-        e_header "This is a new installation"
-        e_header "First-Time Reminders"
-        source "conf/firsttime_reminder.sh"
     fi
 
     # All done!
