@@ -172,7 +172,7 @@ backup () {
         # Set backup flag, so a nice message can be shown at the end.
         ((__DOTFILES_BACKUP++))
 
-        backup_subpath="${DOTFILES_BACKUP_PATH}/${destfile%/*}"
+        backup_subpath="${DOTFILES_BACKUPDIR}/${destfile%/*}"
         # Create backup dir if it doesn't already exist.
         if ! [[ -e "$backup_subpath" ]]; then
             if ! mkdir -p "$backup_subpath" &>/dev/null; then
@@ -426,10 +426,10 @@ Please run 'dotfiles --help' for detailed usage.
                         comma-separated argument.
 
 -B, --backup-path PATH  Tell dotfiles where to store backups of existing
-                        configurations (currently: ${DOTFILES_BACKUP_PATH}).
+                        configurations (currently: ${DOTFILES_BACKUPDIR}).
 
 -C, --cache-path PATH   Cache path for use with certain git submodules
-                        (currently: ${DOTFILES_CACHE_PATH}).
+                        (currently: ${DOTFILES_CACHEDIR}).
 
 -R, --rundir PATH       The directory in which dotfiles will search for its
                         marching orders (currently: ${DOTFILES_RUNDIR}).  If
@@ -572,11 +572,11 @@ main () {
                 shift 2
                 ;;
             -B|--backup-path)
-                DOTFILES_BACKUP_PATH="$opt_value"
+                DOTFILES_BACKUPDIR="$opt_value"
                 shift 2
                 ;;
             -C|--cache-path)
-                DOTFILES_CACHE_PATH="$opt_value"
+                DOTFILES_CACHEDIR="$opt_value"
                 shift 2
                 ;;
             -v|--verbose)
@@ -614,7 +614,7 @@ main () {
     export PATH
 
     # Create caches directory, if it doesn't already exist.
-    mkdir -p "$DOTFILES_CACHE_PATH"
+    mkdir -p "$DOTFILES_CACHEDIR"
 
     # Execute code for each file in these subdirectories.
     if [[ -d "$DOTFILES_RUNDIR" ]]; then
@@ -627,7 +627,7 @@ main () {
 
     # Alert if backups were made.
     if (( "$__DOTFILES_BACKUP" > 0 )); then
-        e_arrow "Backups were moved to ${DOTFILES_BACKUP_PATH}"
+        e_arrow "Backups were moved to ${DOTFILES_BACKUPDIR}"
     fi
 
     # All done!
@@ -644,8 +644,8 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     shopt -s nullglob
 
     # Globals
-    export DOTFILES_BACKUP_PATH="${DOTFILES_BACKUP_PATH:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
-    export DOTFILES_CACHE_PATH="${DOTFILES_CACHE_PATH:-${DOTFILES_ROOT}/caches}"
+    export DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
+    export DOTFILES_CACHEDIR="${DOTFILES_CACHEDIR:-${DOTFILES_ROOT}/caches}"
     export DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
     export DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
     export DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"

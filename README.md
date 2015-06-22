@@ -15,6 +15,14 @@ functions from files defined by the user, permitting more or less arbitrarily
 customizations.  The conventions that these sourced files must follow is
 described below in the Usage section.
 
+Requirements
+------------
+
+`dotfiles` needs a relatively recent version of Bash -- something that supports
+associative arrays and regular expressions.  It also require `git`, but you
+probably knew that already :).  Also `coreutils`, or at least an `md5` utility
+that presents the same interface as the version in `coreutils`.
+
 Usage
 -----
 
@@ -30,18 +38,18 @@ through to sourced scripts:
   repository](https://github.com/BaxterStockman/dotfiles-config).
 - `DOTFILES_CONFIG_REPO`: the git repository hosting your configuration files.
   By default, this repository.
-- `DOTFILES_BACKUP_PATH`: where `dotfiles` should store backups.  By default,
-  `$DOTFILES_ROOT/backup`.
-- `DOTFILES_CACHE_PATH`: used for... I dunno.  May go away.  By default,
-  `$DOTFILES_ROOT/caches`
-- `DOTFILES_DESTDIR`: the root of the tree where `dotfiles` will place your
-  configuration files.  By default, `$HOME`.
 - `DOTFILES_BINDIR`: where the `dotfiles` script will be cloned to.  By
   default, `$DOTFILES_ROOT/bin`.  *CAUTION* -- because this location will be
   under version control, you may want to avoid placing anything else there
   besides the `dotfiles` script (and `README`, etc.).
 - `DOTFILES_RUNDIR`: where `dotfiles` will search for scripts to source.  By
   default, `$DOTFILES_ROOT/run`.
+- `DOTFILES_DESTDIR`: the root of the tree where `dotfiles` will place your
+  configuration files.  By default, `$HOME`.
+- `DOTFILES_BACKUPDIR`: where `dotfiles` should store backups.  By default,
+  `$DOTFILES_ROOT/backup`.
+- `DOTFILES_CACHEDIR`: used for... I dunno.  May go away.  By default,
+  `$DOTFILES_ROOT/caches`
 - `DOTFILES_NEW_INSTALL`: whether this is a new `dotfiles` installation.  True
   by default.
 - `DOTFILES_SKIP_INIT`: whether to skip certain installation steps.  False by
@@ -53,6 +61,14 @@ through to sourced scripts:
   appended to any files that shouldn't be clobbered.  `.custom` by default.
 - `DOTFILES_NOCLOBBER_RCS`: A Bash array containing files that should not be
   clobbered.
+
+`dotfiles` runs with several other variables which can't be set from the
+controlling terminal:
+- `SCRIPT_PATH`: whatever is in `${BASH_SOURCE[0]}`.
+- `SCRIPT_DIRNAME`: `$SCRIPT_NAME` minus the last forward slash and everything
+  that follows it.
+- `SCRIPT_BASENAME`: `$SCRIPT_NAME` minus the last slash and everything
+  preceeding it.
 
 Scripts sourced by `dotfiles` should conform to the following conventions:
 
@@ -85,6 +101,3 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
   should not be executed for a given input set, `check` should ouput a string
   (preferably containing the reason why these inputs should be skipped, since
   `dotfiles` is going to print the echoed message).  This function is optional.
-
-
-
