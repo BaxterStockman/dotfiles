@@ -192,6 +192,30 @@ backup () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+call_conditional () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    declare -F "$1" &>/dev/null && "$@"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+copy_function () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    test -n "$(declare -f "$1")" || return 1
+    eval "${_/$1/$2}"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rename_function () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    copy_function "$@" || return
+    unset -f "$1"
+}
+
+prep_process () {
+
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # The center of it all.  Runs through the files in DOTFILES_RUNDIR looking for
@@ -238,7 +262,8 @@ process () {
     if [[ "${processdir:-}" =~ ^/ ]]; then
         srcdir="$processdir"
     else
-        srcdir="${DOTFILES_ROOT}/${optype}"
+        local prefix_path=${DOTFILES_PREFIX:-}${DOTFILES_PREFIX:+/}
+        srcdir="${DOTFILES_ROOT}/${prefix_path}${optype}"
     fi
 
     # Print a pretty header :)
@@ -250,7 +275,9 @@ process () {
         return 1
     fi
 
-    declare -F parseopts &>/dev/null && parseopts "$@"
+    call_conditional pre
+
+    call_conditional parseopts "$@"
 
     # Iterate over files.
     local skip_reason srcfile srcstem destfile backup_subpath
@@ -267,15 +294,12 @@ process () {
         destfile="$(check_noclobber "$srcfile" \
             "${DOTFILES_DESTDIR}/${srcstem}")"
 
-        # Run _test function only if declared.
-        if declare -f check &>/dev/null; then
-            # If _test function returns a string, skip file and print that
-            # message.
-            skip_reason="$(check "$srcfile" "$destfile")"
-            if [[ -n "$skip_reason" ]]; then
-                e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
-                continue
-            fi
+        # If _test function returns a string, skip file and print that
+        # message.
+        skip_reason="$(call_conditional check "$srcfile" "$destfile")"
+        if [[ -n "$skip_reason" ]]; then
+            e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
+            continue
         fi
 
         # Only back up the file if we're going to replace it
@@ -284,6 +308,8 @@ process () {
         # Do stuff.
         run "$srcfile" "$destfile"
     done < <(find_hierarchical "$srcdir" --prefix "$DOTFILES_ROOT" -xtype f)
+
+    call_conditional post
 
     (( failed == 0 ))
 }
@@ -299,27 +325,6 @@ process_all () {
     for optype_file in "${rundir}/"*"${run_extension}"; do
         process "$optype_file" "$@"
     done
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-do_opt_stuff () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Iterate through directories in .dotfiles/opt, prompting user whether or not
-# to process them.
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcdir_relpath="$1"
-
-    if [[ -d "${DOTFILES_ROOT}/${srcdir_relpath}" ]]; then
-        local do_process
-        read -N 1 -t 15 -p "$(e_prompt "Process optional ${srcdir_relpath##*/} files? [y/N]") " do_process
-        echo
-
-        if [[ "$do_process" =~ [Yy] ]]; then
-            do_stuff "$srcdir_relpath"
-        fi
-    fi
-
-    return 0
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
