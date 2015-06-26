@@ -250,9 +250,6 @@ prep_process () {
                 return 1
             fi
         done
-    else
-        echo NOPE 1>&2
-        exit
     fi
 
 
