@@ -70,6 +70,14 @@ controlling terminal:
 - `SCRIPT_BASENAME`: `$SCRIPT_NAME` minus the last slash and everything
   preceeding it.
 
+#### Positional Parameters
+
+- `dotfiles` passes through all command line options after a
+  literal `--` to sourced scripts.  If you'd like to handle command line
+  options, they'll come through in good old `$@`.
+
+### Conventions
+
 Scripts sourced by `dotfiles` should conform to the following conventions:
 
 #### Variables
@@ -88,15 +96,13 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
 
 #### Functions
 
-- `parseopts`: `dotfiles` passes through all command line options after a
-  literal `--` to this function.  If you'd like to handle command line options,
-  this is the place to do it -- they'll come through in good old `$@`.  This
-  function is optional.
-- `run`: This is where the bulk of the work is done.  `run` receives two
-  arguments: `$1` contains a source file somewhere in `processdir`, and `$2`
-  contains the (putative) destination file -- i.e., somewhere in
-  `DOTFILES_DESTDIR`.  This function is mandatory, and `dotfiles` will silently
-  ignore any sourced file that doesn't contain it.
+- `pre`: This is called once per sourced file prior to the `run`
+- `run`: This is where the bulk of the work is done.  `run` is called once for
+  each file located in `processdir`.  It receives two arguments: `$1` contains
+  a source file somewhere in `processdir`, and `$2` contains the (putative)
+  destination file -- i.e., somewhere in `DOTFILES_DESTDIR`.  This function is
+  mandatory, and `dotfiles` will silently ignore any sourced file that doesn't
+  contain it.
 - `check`: this function is passed the same arguments as `run`.  If `run`
   should not be executed for a given input set, `check` should ouput a string
   (preferably containing the reason why these inputs should be skipped, since
