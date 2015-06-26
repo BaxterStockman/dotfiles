@@ -132,7 +132,7 @@ check_noclobber () {
     local real_destfile="$destfile"
 
     if "${DOTFILES_NOCLOBBER}"; then
-        local noclobber="${DOTFILES_NOCLOBBER_RC_MAP[$destfile]:-false}"
+        local noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-false}"
 
         if [[ "$noclobber" == true ]]; then
             local noclobber_message
@@ -234,15 +234,27 @@ prep_process () {
     fi
 
     local filter
-    for filter in "${DOTFILES_FILTERS[@]}"; do
-        if [[ "$srcdir" =~ $filter ]]; then
-            e_arrow "Directory ${srcdir} matches filter; skipping..." 1>&2
-            return 1
-        elif [[ "$optype" =~ $filter ]]; then
-            e_arrow "Operation ${optype} matches filter; skipping..." 1>&2
-            return 1
-        fi
-    done
+    if [[ -n "${DOTFILES_DIR_FILTERS[*]:-}" ]]; then
+        for filter in "${DOTFILES_DIR_FILTERS[@]}"; do
+            if [[ "$srcdir" =~ $filter ]]; then
+                e_arrow "Directory ${srcdir} matches filter; skipping..." 1>&2
+                return 1
+            fi
+        done
+    fi
+
+    if [[ -n "${DOTFILES_OPTYPE_FILTERS[*]:-}" ]]; then
+        for filter in "${DOTFILES_OPTYPE_FILTERS[@]}"; do
+            if [[ "$optype" =~ $filter ]]; then
+                e_arrow "Operation ${optype} matches filter; skipping..." 1>&2
+                return 1
+            fi
+        done
+    else
+        echo NOPE 1>&2
+        exit
+    fi
+
 
     echo "$srcdir" "$optype"
 }
@@ -573,8 +585,12 @@ main () {
                 DOTFILES_NOCLOBBER_RCS[$opt_value]=true
                 shift 2
                 ;;
-            -f|--filter)
-                DOTFILES_FILTERS+=("$opt_value")
+            -D|--filter-dir)
+                DOTFILES_DIR_FILTERS+=("$opt_value")
+                shift 2
+                ;;
+            -O|--filter-operation)
+                DOTFILES_OPTYPE_FILTERS+=("$opt_value")
                 shift 2
                 ;;
             -R|--rundir)
@@ -690,20 +706,10 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     declare -i __DOTFILES_BACKUP=0
     declare -i __DOTFILES_FAILED=0
 
-    declare -A DOTFILES_NOCLOBBER_RC_MAP
+    declare -A DOTFILES_NOCLOBBER_RCS
     # RC files to not clobber when linking
-    if [[ -n "${DOTFILES_NOCLOBBER_RCS:-}" ]]; then
-        IFS=$','
-        for rc in $DOTFILES_NOCLOBBER_RCS; do
-            local real_rc="$rc"
-            if ! [[ "$rc" =~ ^/ ]]; then
-                real_rc="${DOTFILES_DESTDIR}/${rc}"
-            fi
-            DOTFILES_NOCLOBBER_RC_MAP["$real_rc"]=true
-        done
-        unset IFS rc
-    else
-        DOTFILES_NOCLOBBER_RC_MAP=(
+    if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 0 )); then
+        DOTFILES_NOCLOBBER_RCS=(
             ["${DOTFILES_DESTDIR}/.bashrc"]=true
             ["${DOTFILES_DESTDIR}/.bash_login"]=true
             ["${DOTFILES_DESTDIR}/.bash_logout"]=true
@@ -713,17 +719,9 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
             ["${DOTFILES_DESTDIR}/.perlbrew"]=true
             ["${DOTFILES_DESTDIR}/.ssh"]=true
         )
-        IFS=$','
-        export DOTFILES_NOCLOBBER_RCS="${!DOTFILES_NOCLOBBER_RC_MAP[*]}"
-        unset IFS
     fi
 
-    declare -a DOTFILES_FILTER_MAP
-    if [[ -n "${DOTFILES_FILTERS:-}" ]]; then
-        IFS=$','
-        read -r -a DOTFILES_FILTER_MAP <<<"$DOTFILES_FILTERS"
-        unset IFS
-    fi
+    declare -a DOTFILES_DIR_FILTERS DOTFILES_OPTYPE_FILTERS
 
     main "$@"
 else
