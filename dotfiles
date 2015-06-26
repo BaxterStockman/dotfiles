@@ -246,7 +246,7 @@ prep_process () {
     if [[ -n "${DOTFILES_OPTYPE_FILTERS[*]:-}" ]]; then
         for filter in "${DOTFILES_OPTYPE_FILTERS[@]}"; do
             if [[ "$optype" =~ $filter ]]; then
-                e_arrow "Operation ${optype} matches filter; skipping..." 1>&2
+                e_arrow "Operation '${optype}' matches filter; skipping..." 1>&2
                 return 1
             fi
         done
@@ -274,13 +274,13 @@ process () {
         return 1
     fi
 
+    # Print a pretty header :)
+    local header="${header:-"Running $optype_file"}"
+    e_header "$header"
+
     read -r srcdir optype _ < <(prep_process "$optype_file")
     local -i prep_exit=$?
     (( prep_exit != 0 )) && return $prep_exit
-
-    # Print a pretty header :)
-    local header="${header:-"Processing '$optype' directory"}"
-    e_header "$header"
 
     if ! [[ -d "$srcdir" ]]; then
         if [[ $DOTFILES_IGNORE_MISSING != 'true' ]]; then
