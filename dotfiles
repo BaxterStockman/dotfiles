@@ -183,8 +183,7 @@ backup () {
             fi
         elif ! [[ -d "$backup_subpath" ]]; then
             e_error "${backup_subpath} exists but is not a directory" 1>&2
-            ((failed++))
-            ((__DOTFILES_FAILED++))
+            exit 1
         fi
 
         cp "$destfile" "$backup_subpath"
@@ -208,19 +207,15 @@ prep_process () {
         return 0
     fi
 
-    local optype
-    if [[ -n "${processdir:-}" ]]; then
-        optype="${processdir##*/}"
-    else
-        local optype_file_basename="${optype_file##*/}"
-        local optype_file_noext="${optype_file_basename%.*}"
+    if [[ -z "${optype:-}" ]]; then
+        if [[ -n "${processdir:-}" ]]; then
+            optype="${processdir##*/}"
+        else
+            local optype_file_basename="${optype_file##*/}"
+            local optype_file_noext="${optype_file_basename%.*}"
 
-        optype="${optype_file_noext#[[:digit:]]*_}"
-    fi
-
-    if [[ -z "$optype" ]]; then
-        e_error "No operation specified" 1>&2
-        return 1
+            optype="${optype_file_noext#[[:digit:]]*_}"
+        fi
     fi
 
     # If processdir contains a leading slash, treat it as an absolute path.
@@ -230,6 +225,10 @@ prep_process () {
     if [[ "${processdir:-}" =~ ^/ ]]; then
         srcdir="${prefix_path}${processdir}"
     else
+        if [[ -z "$optype" ]]; then
+            e_error "No operation specified" 1>&2
+            return 1
+        fi
         srcdir="${DOTFILES_ROOT}/${prefix_path}${optype}"
     fi
 
@@ -252,19 +251,18 @@ prep_process () {
         done
     fi
 
-
     echo "$srcdir" "$optype"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcdir="$1"
+    local optype_file="$1"
     shift
 
     # Unset these functions in case the sourced file doesn't define them.
     # Otherwise, some previously-defined function could run.
-    unset processdir header
+    unset processdir header optype
     unset -f check run pre post
 
     if [[ -f "$optype_file" ]]; then
@@ -319,7 +317,10 @@ process () {
         backup "$destfile"
 
         # Do stuff.
-        run "$srcfile" "$destfile"
+        if ! run "$srcfile" "$destfile"; then
+            ((failed++))
+            ((__DOTFILES_FAILED++))
+        fi
     done < <(find_hierarchical "$srcdir" --prefix "$DOTFILES_ROOT" -xtype f)
 
     call_conditional post
@@ -337,11 +338,15 @@ process_all () {
     shift
 
     local run_extension=".sh"
-    local srcdir optype
 
+    local optype_file
+    local -i exit_code=0
     for optype_file in "${rundir}/"*"${run_extension}"; do
         process "$optype_file" "$@"
+        (( exit_code &= $? ))
     done
+
+    return $exit_code
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -664,7 +669,7 @@ main () {
 
     # All done!
     e_header "All done!"
-    return 0
+    return $__DOTFILES_FAILED
 }
 
 if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then

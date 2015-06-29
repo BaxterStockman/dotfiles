@@ -20,8 +20,8 @@ Requirements
 
 `dotfiles` needs a relatively recent version of Bash -- something that supports
 associative arrays and regular expressions.  It also require `git`, but you
-probably knew that already :).  Also `coreutils`, or at least an `md5` utility
-that presents the same interface as the version in `coreutils`.
+probably knew that already :).  Also `coreutils`, or at least an `md5sum`
+utility that presents the same interface as the version in `coreutils`.
 
 Usage
 -----
@@ -59,8 +59,14 @@ through to sourced scripts:
 - `DOTFILES_VERBOSE`: Doesn't actually do anything right now :).
 - `DOTFILES_NOCLOBBER_EXT`: If `DOTFILES_NOCLOBBER` is true, this value will be
   appended to any files that shouldn't be clobbered.  `.custom` by default.
-- `DOTFILES_NOCLOBBER_RCS`: A Bash array containing files that should not be
-  clobbered.
+- `DOTFILES_NOCLOBBER_RCS`: An associative array whose keys represent file
+  paths and whose values are whether or not those files can clobbered.
+- `DOTFILES_DIR_FILTERS`: An array containing regular expressions against which
+  the processed directories are tested.  If a match occurs, those directories
+  are skipped.
+- `DOTFILES_OPTYPE_FILTERS`: Like `DOTFILES_DIR_FILTERS`, but matches are
+  against the operation type.
+
 
 `dotfiles` runs with several other variables which can't be set from the
 controlling terminal:
@@ -96,7 +102,8 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
 
 #### Functions
 
-- `pre`: This is called once per sourced file prior to the `run`
+- `pre`: This is called once per sourced file prior to loop in which the `run`
+  function, described below, is called.
 - `run`: This is where the bulk of the work is done.  `run` is called once for
   each file located in `processdir`.  It receives two arguments: `$1` contains
   a source file somewhere in `processdir`, and `$2` contains the (putative)
@@ -107,3 +114,4 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
   should not be executed for a given input set, `check` should ouput a string
   (preferably containing the reason why these inputs should be skipped, since
   `dotfiles` is going to print the echoed message).  This function is optional.
+- `post`: Like `pre`, but later.
