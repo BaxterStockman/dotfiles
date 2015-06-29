@@ -292,6 +292,7 @@ process () {
 
     # Iterate over files.
     local skip_reason srcfile srcstem destfile backup_subpath
+    local -i check_exit_code
     local -i failed=0
     while read -r srcfile; do
         # Don't quite know why this is necessary -- 'find' sometimes strips the
@@ -301,17 +302,37 @@ process () {
         [[ "$srcfile" =~ ^/ ]] || srcfile="/${srcfile}"
 
         srcstem="${srcfile#$srcdir/}"
-
-        destfile="$(check_noclobber "$srcfile" \
-            "${DOTFILES_DESTDIR}/${srcstem}")"
+        destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
         # If _test function returns a string, skip file and print that
         # message.
         skip_reason="$(call_conditional check "$srcfile" "$destfile")"
-        if [[ -n "$skip_reason" ]]; then
-            e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
-            continue
-        fi
+        check_exit_code=$?
+        skip_reason="${skip_reason:-unknown error}"
+
+        case "$check_exit_code" in
+            0)
+                destfile="$(check_noclobber "$srcfile" \
+                    "${DOTFILES_DESTDIR}/${srcstem}")"
+
+                ;;
+            1)
+                e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
+                continue
+                ;;
+            2)
+                e_arrow "Skipping ${srcstem}: ${skip_reason}" 1>&2
+                continue
+                ;;
+            *)
+                e_fatal "Invalid exit status; exiting."
+                exit 1
+                ;;
+        esac
+
+        destfile="$(check_noclobber "$srcfile" \
+            "${DOTFILES_DESTDIR}/${srcstem}")"
+
 
         # Only back up the file if we're going to replace it
         backup "$destfile"
