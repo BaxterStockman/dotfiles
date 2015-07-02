@@ -193,7 +193,11 @@ backup () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 call_conditional () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    declare -F "$1" &>/dev/null && "$@"
+    if declare -F "$1" &>/dev/null; then
+        "$@"
+    else
+        return 0
+    fi
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -321,7 +325,7 @@ process () {
                 continue
                 ;;
             2)
-                e_arrow "Skipping ${srcstem}: ${skip_reason}" 1>&2
+                e_arrow "Skipping ${srcstem}: ${skip_reason}"
                 continue
                 ;;
             *)
@@ -332,7 +336,6 @@ process () {
 
         destfile="$(check_noclobber "$srcfile" \
             "${DOTFILES_DESTDIR}/${srcstem}")"
-
 
         # Only back up the file if we're going to replace it
         backup "$destfile"

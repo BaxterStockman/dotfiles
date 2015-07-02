@@ -113,5 +113,8 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
 - `check`: this function is passed the same arguments as `run`.  If `run`
   should not be executed for a given input set, `check` should ouput a string
   (preferably containing the reason why these inputs should be skipped, since
-  `dotfiles` is going to print the echoed message).  This function is optional.
+  `dotfiles` is going to print the echoed message).  `check` should also
+  indicate with the return code whether the reason for skipping was exceptional
+  (return code `1`) or not (return code `2`).  `check` should return `0` for
+  files that should not be skipped.  This function is optional.
 - `post`: Like `pre`, but later.
