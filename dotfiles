@@ -195,7 +195,12 @@ backup () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 call_conditional () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    declare -F "$1" &>/dev/null && "$@"
+    if declare -F "$1" &>/dev/null; then
+        "$@"
+    else
+        # If a submodule doesn't define a function, we don't want to bomb out.
+        return 0
+    fi
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -267,7 +272,6 @@ process_check () {
     local skip_reason
     skip_reason="$(call_conditional check "$srcfile" "$destfile")"
     check_exit_code=$?
-echo "EXIT: $check_exit_code $skip_reason" 1>&2
     skip_reason="${skip_reason:-unknown error}"
 
     case "$check_exit_code" in
@@ -339,14 +343,14 @@ process () {
         srcstem="${srcfile#$srcdir/}"
         destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
-        if ! process_check "$srcfile" "$destfile"; then
+        process_check "$srcfile" "$destfile" || {
             [[ $? == 2 ]] && continue
             destfile="$(check_noclobber "$srcfile" \
                 "${DOTFILES_DESTDIR}/${srcstem}")"
-            if ! process_check "$destfile"; then
+            if ! process_check "$srcfile" "$destfile"; then
                 continue
             fi
-        fi
+        }
 
         # Only back up the file if we're going to replace it
         backup "$destfile"
