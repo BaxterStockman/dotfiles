@@ -132,6 +132,8 @@ check_noclobber () {
     local real_destfile="$destfile"
 
     if "${DOTFILES_NOCLOBBER}"; then
+        [[ -e "$destfile" ]] || return
+
         local noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-false}"
 
         if [[ "$noclobber" == true ]]; then
@@ -254,6 +256,39 @@ prep_process () {
     echo "$srcdir" "$optype"
 }
 
+process_check () {
+    local srcfile="$1"
+    shift
+    local destfile="$1"
+    shift
+
+    # If _test function returns a string, skip file and print that
+    # message.
+    local skip_reason
+    skip_reason="$(call_conditional check "$srcfile" "$destfile")"
+    check_exit_code=$?
+echo "EXIT: $check_exit_code $skip_reason" 1>&2
+    skip_reason="${skip_reason:-unknown error}"
+
+    case "$check_exit_code" in
+        0)
+            return 0
+            ;;
+        1)
+            e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
+            return 1
+            ;;
+        2)
+            e_arrow "Skipping ${srcstem}: ${skip_reason}" 1>&2
+            return 2
+            ;;
+        *)
+            e_fatal "Invalid exit status; exiting."
+            exit 1
+            ;;
+    esac
+}
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -304,35 +339,14 @@ process () {
         srcstem="${srcfile#$srcdir/}"
         destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
-        # If _test function returns a string, skip file and print that
-        # message.
-        skip_reason="$(call_conditional check "$srcfile" "$destfile")"
-        check_exit_code=$?
-        skip_reason="${skip_reason:-unknown error}"
-
-        case "$check_exit_code" in
-            0)
-                destfile="$(check_noclobber "$srcfile" \
-                    "${DOTFILES_DESTDIR}/${srcstem}")"
-
-                ;;
-            1)
-                e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
+        if ! process_check "$srcfile" "$destfile"; then
+            [[ $? == 2 ]] && continue
+            destfile="$(check_noclobber "$srcfile" \
+                "${DOTFILES_DESTDIR}/${srcstem}")"
+            if ! process_check "$destfile"; then
                 continue
-                ;;
-            2)
-                e_arrow "Skipping ${srcstem}: ${skip_reason}" 1>&2
-                continue
-                ;;
-            *)
-                e_fatal "Invalid exit status; exiting."
-                exit 1
-                ;;
-        esac
-
-        destfile="$(check_noclobber "$srcfile" \
-            "${DOTFILES_DESTDIR}/${srcstem}")"
-
+            fi
+        fi
 
         # Only back up the file if we're going to replace it
         backup "$destfile"
@@ -470,7 +484,7 @@ Please run 'dotfiles --help' for detailed usage.
 -c, --clobber           Tell dotfiles to overwrite configuration files that
                         would otherwise have been preserved.  Under the current
                         settings, dotfiles doesn't clobber:
-                        ${DOTFILES_NOCLOBBER_RCS[@]}
+                        ${DOTFILES_NOCLOBBER_RCS[*]}
 
 -P, --preserve FILES    Tell dotfiles to preserve a list of files passed as a
                         comma-separated argument.
@@ -714,7 +728,6 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     export DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
     export DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
     export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
-    export DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
     export DOTFILES_IGNORE_MISSING=false
 
     if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
@@ -729,7 +742,7 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     declare -i __DOTFILES_BACKUP=0
     declare -i __DOTFILES_FAILED=0
 
-    declare -A DOTFILES_NOCLOBBER_RCS
+    declare -A DOTFILES_NOCLOBBER_RCS=()
     # RC files to not clobber when linking
     if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 0 )); then
         DOTFILES_NOCLOBBER_RCS=(
