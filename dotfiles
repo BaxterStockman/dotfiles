@@ -55,7 +55,7 @@ else
     e_header ()   {
         printf "\033[1;35m=====\033[0m %b \033[1;35m=====\033[0m\n" "$@"
     }
-    e_prompt ()   { printf "\n \037[1;35m?\033[0m %b " "$@"; }
+    e_prompt ()   { printf "\n \033[1;37m?\033[0m %b " "$@"; }
     e_success ()  { printf " \033[1;32m:)\033[0m %b\n" "$@"; }
     e_error ()    { printf " \033[1;31m:(\033[0m %b\n" "$@"; }
     e_fatal ()    { printf " \033[1;31m:/\033[0m %b\n" "$@"; }
@@ -132,6 +132,8 @@ check_noclobber () {
     local real_destfile="$destfile"
 
     if "${DOTFILES_NOCLOBBER}"; then
+        [[ -e "$destfile" ]] || return
+
         local noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-false}"
 
         if [[ "$noclobber" == true ]]; then
@@ -183,8 +185,7 @@ backup () {
             fi
         elif ! [[ -d "$backup_subpath" ]]; then
             e_error "${backup_subpath} exists but is not a directory" 1>&2
-            ((failed++))
-            ((__DOTFILES_FAILED++))
+            exit 1
         fi
 
         cp "$destfile" "$backup_subpath"
@@ -194,7 +195,12 @@ backup () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 call_conditional () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    declare -F "$1" &>/dev/null && "$@"
+    if declare -F "$1" &>/dev/null; then
+        "$@"
+    else
+        # If a submodule doesn't define a function, we don't want to bomb out.
+        return 0
+    fi
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -208,19 +214,15 @@ prep_process () {
         return 0
     fi
 
-    local optype
-    if [[ -n "${processdir:-}" ]]; then
-        optype="${processdir##*/}"
-    else
-        local optype_file_basename="${optype_file##*/}"
-        local optype_file_noext="${optype_file_basename%.*}"
+    if [[ -z "${optype:-}" ]]; then
+        if [[ -n "${processdir:-}" ]]; then
+            optype="${processdir##*/}"
+        else
+            local optype_file_basename="${optype_file##*/}"
+            local optype_file_noext="${optype_file_basename%.*}"
 
-        optype="${optype_file_noext#[[:digit:]]*_}"
-    fi
-
-    if [[ -z "$optype" ]]; then
-        e_error "No operation specified" 1>&2
-        return 1
+            optype="${optype_file_noext#[[:digit:]]*_}"
+        fi
     fi
 
     # If processdir contains a leading slash, treat it as an absolute path.
@@ -230,6 +232,10 @@ prep_process () {
     if [[ "${processdir:-}" =~ ^/ ]]; then
         srcdir="${prefix_path}${processdir}"
     else
+        if [[ -z "$optype" ]]; then
+            e_error "No operation specified" 1>&2
+            return 1
+        fi
         srcdir="${DOTFILES_ROOT}/${prefix_path}${optype}"
     fi
 
@@ -246,7 +252,7 @@ prep_process () {
     if [[ -n "${DOTFILES_OPTYPE_FILTERS[*]:-}" ]]; then
         for filter in "${DOTFILES_OPTYPE_FILTERS[@]}"; do
             if [[ "$optype" =~ $filter ]]; then
-                e_arrow "Operation ${optype} matches filter; skipping..." 1>&2
+                e_arrow "Operation '${optype}' matches filter; skipping..." 1>&2
                 return 1
             fi
         done
@@ -255,15 +261,47 @@ prep_process () {
     echo "$srcdir" "$optype"
 }
 
+process_check () {
+    local srcfile="$1"
+    shift
+    local destfile="$1"
+    shift
+
+    # If _test function returns a string, skip file and print that
+    # message.
+    local skip_reason
+    skip_reason="$(call_conditional check "$srcfile" "$destfile")"
+    check_exit_code=$?
+    skip_reason="${skip_reason:-unknown error}"
+
+    case "$check_exit_code" in
+        0)
+            return 0
+            ;;
+        1)
+            e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
+            return 1
+            ;;
+        2)
+            e_arrow "Skipping ${srcstem}: ${skip_reason}" 1>&2
+            return 2
+            ;;
+        *)
+            e_fatal "Invalid exit status; exiting."
+            exit 1
+            ;;
+    esac
+}
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcdir="$1"
+    local optype_file="$1"
     shift
 
     # Unset these functions in case the sourced file doesn't define them.
     # Otherwise, some previously-defined function could run.
-    unset processdir header
+    unset processdir header optype
     unset -f check run pre post
 
     if [[ -f "$optype_file" ]]; then
@@ -303,7 +341,8 @@ process () {
     call_conditional pre
 
     # Iterate over files.
-    local srcfile srcstem destfile backup_subpath
+    local skip_reason srcfile srcstem destfile backup_subpath
+    local -i check_exit_code
     local -i failed=0
     while read -r srcfile; do
         # Don't quite know why this is necessary -- 'find' sometimes strips the
@@ -313,23 +352,25 @@ process () {
         [[ "$srcfile" =~ ^/ ]] || srcfile="/${srcfile}"
 
         srcstem="${srcfile#$srcdir/}"
+        destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
-        destfile="$(check_noclobber "$srcfile" \
-            "${DOTFILES_DESTDIR}/${srcstem}")"
-
-        # If _test function returns a string, skip file and print that
-        # message.
-        skip_reason="$(call_conditional check "$srcfile" "$destfile")"
-        if [[ -n "$skip_reason" ]]; then
-            e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
-            continue
-        fi
+        process_check "$srcfile" "$destfile" || {
+            [[ $? == 2 ]] && continue
+            destfile="$(check_noclobber "$srcfile" \
+                "${DOTFILES_DESTDIR}/${srcstem}")"
+            if ! process_check "$srcfile" "$destfile"; then
+                continue
+            fi
+        }
 
         # Only back up the file if we're going to replace it
         backup "$destfile"
 
         # Do stuff.
-        run "$srcfile" "$destfile"
+        if ! run "$srcfile" "$destfile"; then
+            ((failed++))
+            ((__DOTFILES_FAILED++))
+        fi
     done < <(find_hierarchical "$srcdir" --prefix "$DOTFILES_ROOT" -xtype f)
 
     call_conditional post
@@ -347,11 +388,15 @@ process_all () {
     shift
 
     local run_extension=".sh"
-    local srcdir optype
 
+    local optype_file
+    local -i exit_code=0
     for optype_file in "${rundir}/"*"${run_extension}"; do
         process "$optype_file" "$@"
+        (( exit_code &= $? ))
     done
+
+    return $exit_code
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -454,7 +499,7 @@ Please run 'dotfiles --help' for detailed usage.
 -c, --clobber           Tell dotfiles to overwrite configuration files that
                         would otherwise have been preserved.  Under the current
                         settings, dotfiles doesn't clobber:
-                        ${DOTFILES_NOCLOBBER_RCS[@]}
+                        ${DOTFILES_NOCLOBBER_RCS[*]}
 
 -P, --preserve FILES    Tell dotfiles to preserve a list of files passed as a
                         comma-separated argument.
@@ -674,7 +719,7 @@ main () {
 
     # All done!
     e_header "All done!"
-    return 0
+    return $__DOTFILES_FAILED
 }
 
 if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
@@ -698,7 +743,6 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     export DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
     export DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
     export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
-    export DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
     export DOTFILES_IGNORE_MISSING=false
 
     if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
@@ -713,7 +757,7 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     declare -i __DOTFILES_BACKUP=0
     declare -i __DOTFILES_FAILED=0
 
-    declare -A DOTFILES_NOCLOBBER_RCS
+    declare -A DOTFILES_NOCLOBBER_RCS=()
     # RC files to not clobber when linking
     if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 0 )); then
         DOTFILES_NOCLOBBER_RCS=(
