@@ -44,7 +44,7 @@ fi
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if [[ "$(locale charmap)" =~ UTF-8 ]] && [[ "$TERM" != 'linux' ]] ; then
     e_header ()   {
-        printf "\n\033[1;35m★★★★★\033[0m %b \033[1;35m★★★★★\033[0m\n\n" "$@"
+        printf "\033[1;35m★★★★★\033[0m %b \033[1;35m★★★★★\033[0m\n" "$@"
     }
     e_prompt ()   { printf "\n \033[1;37m☛\033[0m %b " "$@"; }
     e_success ()  { printf " \033[1;32m✔\033[0m %b\n" "$@"; }
@@ -53,9 +53,9 @@ if [[ "$(locale charmap)" =~ UTF-8 ]] && [[ "$TERM" != 'linux' ]] ; then
     e_arrow ()    { printf " \033[1;33m➜\033[0m %b\n" "$@"; }
 else
     e_header ()   {
-        printf "\n\033[1;35m=====\033[0m %b \033[1;35m=====\033[0m\n\n" "$@"
+        printf "\033[1;35m=====\033[0m %b \033[1;35m=====\033[0m\n" "$@"
     }
-    e_prompt ()   { printf "\n \037[1;35m?\033[0m %b " "$@"; }
+    e_prompt ()   { printf "\n \033[1;37m?\033[0m %b " "$@"; }
     e_success ()  { printf " \033[1;32m:)\033[0m %b\n" "$@"; }
     e_error ()    { printf " \033[1;31m:(\033[0m %b\n" "$@"; }
     e_fatal ()    { printf " \033[1;31m:/\033[0m %b\n" "$@"; }
@@ -132,6 +132,8 @@ check_noclobber () {
     local real_destfile="$destfile"
 
     if "${DOTFILES_NOCLOBBER}"; then
+        [[ -e "$destfile" ]] || return
+
         local noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-false}"
 
         if [[ "$noclobber" == true ]]; then
@@ -147,7 +149,7 @@ check_noclobber () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-skip () {
+prompt_skip () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Offer the user a chance to skip something.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -196,6 +198,7 @@ call_conditional () {
     if declare -F "$1" &>/dev/null; then
         "$@"
     else
+        # If a submodule doesn't define a function, we don't want to bomb out.
         return 0
     fi
 }
@@ -251,6 +254,38 @@ prep_process () {
     echo "$srcdir" "$optype"
 }
 
+process_check () {
+    local srcfile="$1"
+    shift
+    local destfile="$1"
+    shift
+
+    # If _test function returns a string, skip file and print that
+    # message.
+    local skip_reason
+    skip_reason="$(call_conditional check "$srcfile" "$destfile")"
+    check_exit_code=$?
+    skip_reason="${skip_reason:-unknown error}"
+
+    case "$check_exit_code" in
+        0)
+            return 0
+            ;;
+        1)
+            e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
+            return 1
+            ;;
+        2)
+            e_arrow "Skipping ${srcstem}: ${skip_reason}" 1>&2
+            return 2
+            ;;
+        *)
+            e_fatal "Invalid exit status; exiting."
+            exit 1
+            ;;
+    esac
+}
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 process () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -264,13 +299,18 @@ process () {
 
     if [[ -f "$optype_file" ]]; then
         source "$optype_file" "$@" &>/dev/null
+        local -i sourced_exit=$?
+        if (( sourced_exit != 0 )); then
+            e_error "Sourcing ${optype_file} exited abnormally" 1>&2
+            return $sourced_exit
+        fi
     else
         e_error "No such file: $optype_file" 1>&2
         return 1
     fi
 
     # Print a pretty header :)
-    local header="${header:-"Running $optype_file"}"
+    local header="${header:-"Running ${optype_file}"}"
     e_header "$header"
 
     read -r srcdir optype _ < <(prep_process "$optype_file")
@@ -280,9 +320,15 @@ process () {
     if ! [[ -d "$srcdir" ]]; then
         if [[ $DOTFILES_IGNORE_MISSING != 'true' ]]; then
             e_error "No such directory: $srcdir;" \
-                " unable to complete '$optype' task" 1>&2
+                "unable to complete '$optype' task" 1>&2
         fi
         return 1
+    fi
+
+    local skip_reason
+    skip_reason="$(call_conditional skip)"
+    if [[ -n "$skip_reason" ]]; then
+        e_arrow "Skipping ${optype}: ${skip_reason}"
     fi
 
     call_conditional pre
@@ -301,34 +347,14 @@ process () {
         srcstem="${srcfile#$srcdir/}"
         destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
-        # If _test function returns a string, skip file and print that
-        # message.
-        skip_reason="$(call_conditional check "$srcfile" "$destfile")"
-        check_exit_code=$?
-        skip_reason="${skip_reason:-unknown error}"
-
-        case "$check_exit_code" in
-            0)
-                destfile="$(check_noclobber "$srcfile" \
-                    "${DOTFILES_DESTDIR}/${srcstem}")"
-
-                ;;
-            1)
-                e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
+        process_check "$srcfile" "$destfile" || {
+            [[ $? == 2 ]] && continue
+            destfile="$(check_noclobber "$srcfile" \
+                "${DOTFILES_DESTDIR}/${srcstem}")"
+            if ! process_check "$srcfile" "$destfile"; then
                 continue
-                ;;
-            2)
-                e_arrow "Skipping ${srcstem}: ${skip_reason}"
-                continue
-                ;;
-            *)
-                e_fatal "Invalid exit status; exiting."
-                exit 1
-                ;;
-        esac
-
-        destfile="$(check_noclobber "$srcfile" \
-            "${DOTFILES_DESTDIR}/${srcstem}")"
+            fi
+        }
 
         # Only back up the file if we're going to replace it
         backup "$destfile"
@@ -466,7 +492,7 @@ Please run 'dotfiles --help' for detailed usage.
 -c, --clobber           Tell dotfiles to overwrite configuration files that
                         would otherwise have been preserved.  Under the current
                         settings, dotfiles doesn't clobber:
-                        ${DOTFILES_NOCLOBBER_RCS[@]}
+                        ${DOTFILES_NOCLOBBER_RCS[*]}
 
 -P, --preserve FILES    Tell dotfiles to preserve a list of files passed as a
                         comma-separated argument.
@@ -706,7 +732,6 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     export DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
     export DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
     export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
-    export DOTFILES_NOCLOBBER_RCS="${DOTFILES_NOCLOBBER_RCS:-}"
     export DOTFILES_IGNORE_MISSING=false
 
     if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then

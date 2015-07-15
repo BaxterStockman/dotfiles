@@ -115,6 +115,8 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
   (preferably containing the reason why these inputs should be skipped, since
   `dotfiles` is going to print the echoed message).  `check` should also
   indicate with the return code whether the reason for skipping was exceptional
-  (return code `1`) or not (return code `2`).  `check` should return `0` for
+  (return code `1`) or not (return code `2` -- mostly useful for indicating the
+  the destination file is the same as the source file).  `check` should return
+  `0` for
   files that should not be skipped.  This function is optional.
 - `post`: Like `pre`, but later.
