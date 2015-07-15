@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright (c) 2012 "Cowboy" Ben Alman
+# With modifications by Matt Schreiber (c) 2015
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
@@ -33,7 +34,6 @@ if [[ -z "${BASH_SOURCE[*]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     # DOTFILES_VERSION so that check_dotfiles_version doesn't complain.
     if [[ "${__DOTFILES_EXECD:-false}" != true ]]; then
         DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
-        echo "$DOTFILES_OLD_VERSION"
     fi
 else
     __DOTFILES_SOURCED=true
@@ -218,6 +218,8 @@ prep_process () {
             local optype_file_basename="${optype_file##*/}"
             local optype_file_noext="${optype_file_basename%.*}"
 
+            # Assume that the filename (minus extension) is of the form
+            # [0-9]*_blah
             optype="${optype_file_noext#[[:digit:]]*_}"
         fi
     fi
@@ -237,19 +239,10 @@ prep_process () {
     fi
 
     local filter
-    if [[ -n "${DOTFILES_DIR_FILTERS[*]:-}" ]]; then
-        for filter in "${DOTFILES_DIR_FILTERS[@]}"; do
+    if (( ${#DOTFILES_FILTERS[@]} )); then
+        for filter in "${DOTFILES_FILTERS[@]}"; do
             if [[ "$srcdir" =~ $filter ]]; then
                 e_arrow "Directory ${srcdir} matches filter; skipping..." 1>&2
-                return 1
-            fi
-        done
-    fi
-
-    if [[ -n "${DOTFILES_OPTYPE_FILTERS[*]:-}" ]]; then
-        for filter in "${DOTFILES_OPTYPE_FILTERS[@]}"; do
-            if [[ "$optype" =~ $filter ]]; then
-                e_arrow "Operation '${optype}' matches filter; skipping..." 1>&2
                 return 1
             fi
         done
@@ -611,12 +604,8 @@ main () {
                 DOTFILES_NOCLOBBER_RCS[$opt_value]=true
                 shift 2
                 ;;
-            -D|--filter-dir)
-                DOTFILES_DIR_FILTERS+=("$opt_value")
-                shift 2
-                ;;
-            -O|--filter-operation)
-                DOTFILES_OPTYPE_FILTERS+=("$opt_value")
+            -F|--filter)
+                DOTFILES_FILTERS+=("$opt_value")
                 shift 2
                 ;;
             -R|--rundir)
@@ -732,7 +721,7 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     declare -i __DOTFILES_BACKUP=0
     declare -i __DOTFILES_FAILED=0
 
-    declare -A DOTFILES_NOCLOBBER_RCS
+    declare -A DOTFILES_NOCLOBBER_RCS=()
     # RC files to not clobber when linking
     if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 0 )); then
         DOTFILES_NOCLOBBER_RCS=(
@@ -747,11 +736,11 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
         )
     fi
 
-    declare -a DOTFILES_DIR_FILTERS DOTFILES_OPTYPE_FILTERS
+    declare -a DOTFILES_FILTERS=()
 
     main "$@"
 else
     unset SCRIPT_PATH SCRIPT_BASENAME SCRIPT_DIRNAME
-    unset __DOTFILES_SOURCED
+    unset __DOTFILES_SOURCED __DOTFILES_EXECD
     unset -f intro usage
 fi
