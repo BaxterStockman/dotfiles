@@ -31,8 +31,8 @@ Usage
 `dotfiles` respects the following environment variables, which are also passed
 through to sourced scripts:
 
-- `DOTFILES_ROOT`: the filesystem path where `dotfiles` will look for
-  configuration files and instructions.  By default, `~/.dotfiles`.
+- `DOTFILES_ROOT`: the path where `dotfiles` will look for configuration files
+  and instructions.  By default, `~/.dotfiles`.
 - `DOTFILES_REPO`: the git repository hosting the `dotfiles` script.  By
   default, [my `dotfiles-config`
   repository](https://github.com/BaxterStockman/dotfiles-config).
@@ -50,7 +50,7 @@ through to sourced scripts:
   `$DOTFILES_ROOT/backup`.
 - `DOTFILES_CACHEDIR`: used for... I dunno.  May go away.  By default,
   `$DOTFILES_ROOT/caches`
-- `DOTFILES_NEW_INSTALL`: whether this is a new `dotfiles` installation.  True
+- `DOTFILES_NEW_INSTALL`: whether this is a new `dotfiles` installation.  False
   by default.
 - `DOTFILES_SKIP_INIT`: whether to skip certain installation steps.  False by
   default.
@@ -89,7 +89,7 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
 #### Variables
 
 - `header`: `dotfiles` will print this message as a preamble to executing the
-  functions defined in the sourced file.  `dotfiles` prints a generic method if
+  functions defined in the sourced file.  `dotfiles` prints a generic message if
   this variable is unset.
 - `processdir`: where `dotfiles` should look for files to process.  If it is a
   relative path, it is assumed to be relative to `DOTFILES_ROOT`.  If this
