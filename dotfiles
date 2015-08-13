@@ -17,26 +17,30 @@ if [[ -z "${DOTFILES_ROOT}" ]]; then
     export DOTFILES_ROOT="${HOME}/.dotfiles"
 fi
 
+# Only enter this block if dotfiles isn't being sourced
 if [[ -z "${BASH_SOURCE[*]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    __DOTFILES_SOURCED=false
+    __DOTFILES_SOURCED=0
 
+    # If DOTFILES_VERSION is already set, we're being exec'd by an older
+    # version of dotfiles.
     if [[ -n $DOTFILES_VERSION ]]; then
         DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
     fi
 
-    DOTFILES_VERSION=1.0.0.0
+    # Set current version
+    DOTFILES_VERSION=1.0.0
 
-    # If __DOTFILES_EXECD == 'true' at this point, we know that we have been
+    # If __DOTFILES_EXECD == 1 at this point, we know that we have been
     # exec'd with an updated version.  Therefore, if DOTFILES_VERSION was unset
     # until just before now, it's because the script just started running and
     # not because we were exec'd from an old version that didn't yet use
     # DOTFILES_VERSION.  So, set the value of DOTFILES_OLD_VERSION to
     # DOTFILES_VERSION so that check_dotfiles_version doesn't complain.
-    if [[ "${__DOTFILES_EXECD:-false}" != true ]]; then
+    if ! (( ${__DOTFILES_EXECD:-0} )); then
         DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
     fi
 else
-    __DOTFILES_SOURCED=true
+    __DOTFILES_SOURCED=1
 fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -46,7 +50,7 @@ if [[ "$(locale charmap)" =~ UTF-8 ]] && [[ "$TERM" != 'linux' ]] ; then
     e_header ()   {
         printf "\033[1;35m★★★★★\033[0m %b \033[1;35m★★★★★\033[0m\n" "$@"
     }
-    e_prompt ()   { printf "\n \033[1;37m☛\033[0m %b " "$@"; }
+    e_prompt ()   { printf " \033[1;37m☛\033[0m %b " "$@"; }
     e_success ()  { printf " \033[1;32m✔\033[0m %b\n" "$@"; }
     e_error ()    { printf " \033[1;31m✖\033[0m %b\n" "$@"; }
     e_fatal ()    { printf " \033[1;31m☠\033[0m %b\n" "$@"; }
@@ -55,7 +59,7 @@ else
     e_header ()   {
         printf "\033[1;35m=====\033[0m %b \033[1;35m=====\033[0m\n" "$@"
     }
-    e_prompt ()   { printf "\n \033[1;37m?\033[0m %b " "$@"; }
+    e_prompt ()   { printf " \033[1;37m?\033[0m %b " "$@"; }
     e_success ()  { printf " \033[1;32m:)\033[0m %b\n" "$@"; }
     e_error ()    { printf " \033[1;31m:(\033[0m %b\n" "$@"; }
     e_fatal ()    { printf " \033[1;31m:/\033[0m %b\n" "$@"; }
@@ -75,7 +79,8 @@ md5cmp () {
     leftsumout="$(md5sum "$left")"
     rightsumout="$(md5sum "$right")"
 
-    [[ "${leftsumout%% *}" == ${rightsumout%% *} ]]
+    # md5sum prints two fields; we're only interested in the leftmost
+    [[ "${leftsumout%%[[:space:]]*}" == "${rightsumout%%[[:space:]]*}" ]]
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,9 +104,9 @@ find_hierarchical () {
     shift
     local prefix
 
-    local opt_name opt_arg remain
+    local opt_name opt_arg
     while (( $# )); do
-        read -r opt_name opt_arg remain <<<"$@"
+        read -r opt_name opt_arg _ <<<"$@"
         case "$opt_name" in
 		-p|--prefix)
 			prefix="$opt_arg"
@@ -134,9 +139,9 @@ check_noclobber () {
     if "${DOTFILES_NOCLOBBER}"; then
         [[ -e "$destfile" ]] || return
 
-        local noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-false}"
+        local -i noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-0}"
 
-        if [[ "$noclobber" == true ]]; then
+        if (( noclobber )); then
             local noclobber_message
             printf -v noclobber_message %s "Not clobbering ${destfile};" \
                 " ${srcfile} will be appended with '${DOTFILES_NOCLOBBER_EXT}'"
@@ -214,8 +219,8 @@ prep_process () {
         return 0
     fi
 
-    if [[ -z "${optype:-}" ]]; then
-        if [[ -n "${processdir:-}" ]]; then
+    if [[ -z "${optype-}" ]]; then
+        if [[ -n "${processdir-}" ]]; then
             optype="${processdir##*/}"
         else
             local optype_file_basename="${optype_file##*/}"
@@ -318,7 +323,7 @@ process () {
     (( prep_exit != 0 )) && return $prep_exit
 
     if ! [[ -d "$srcdir" ]]; then
-        if [[ $DOTFILES_IGNORE_MISSING != 'true' ]]; then
+        if ! (( DOTFILES_IGNORE_MISSING )); then
             e_error "No such directory: $srcdir;" \
                 "unable to complete '$optype' task" 1>&2
         fi
@@ -408,12 +413,12 @@ init_dotfiles() {
     e_header "Pulling in updated dotfiles repo"
 
     # Skip this function after we exec the updated version of this script.
-    export DOTFILES_SKIP_INIT=true
+    export DOTFILES_SKIP_INIT=1
 
     if [[ ! -d $DOTFILES_ROOT ]]; then
         # If the root directory doesn't exist, treat this as a new
         # installation.
-        export DOTFILES_NEW_INSTALL=true
+        export DOTFILES_NEW_INSTALL=1
         e_header "Downloading dotfiles configuration"
 	mkdir -p "$DOTFILES_ROOT"
         git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"
@@ -447,7 +452,7 @@ init_dotfiles() {
 
         if [[ "$current_head" != "$prev_head" ]]; then
             e_header "Executing updated ${SCRIPT_BASENAME} script"
-            export __DOTFILES_EXECD=true
+            export __DOTFILES_EXECD=1
             exec "${DOTFILES_BINDIR}/dotfiles"
         fi
     fi
@@ -455,12 +460,14 @@ init_dotfiles() {
 
 intro () {
     printf '%s' "\
+
 See the README for documentation. https://github.com/BaxterStockman/dotfiles
 
 Copyright (c) 2012 \"Cowboy\" Ben Alman Licensed under the MIT license.
 http://benalman.com/about/license/
 
 With modifications copyright (c) 2015 Matt Schreiber under the MIT license.
+
 "
 }
 
@@ -469,7 +476,7 @@ usage () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local -i return_code=${1:-0}
 
-    if (( $return_code != 0 )); then
+    if (( return_code != 0 )); then
         printf '%s' "
 Usage: $SCRIPT_BASENAME [OPTIONS] [-- [PASSTHRU OPTIONS]]
 
@@ -492,7 +499,7 @@ Please run 'dotfiles --help' for detailed usage.
 -c, --clobber           Tell dotfiles to overwrite configuration files that
                         would otherwise have been preserved.  Under the current
                         settings, dotfiles doesn't clobber:
-                        ${DOTFILES_NOCLOBBER_RCS[*]}
+                        ${!DOTFILES_NOCLOBBER_RCS[*]}
 
 -P, --preserve FILES    Tell dotfiles to preserve a list of files passed as a
                         comma-separated argument.
@@ -511,9 +518,6 @@ Please run 'dotfiles --help' for detailed usage.
 -X, --bindir PATH       The directory where dotfiles itself will be checked out
 
 -v, --verbose           Tell dotfiles to be chatty.
-
--V, --skip-vim-plugins  Tell dotfiles to skip installing and updating vim
-                        plugins.
 
 -q, --quiet             Tell dotfiles to pipe it down, guldarnit!
 
@@ -559,8 +563,7 @@ check_dotfiles_version () {
     comparison="$(compare_versions $DOTFILES_VERSION \
         ${DOTFILES_OLD_VERSION:-$DOTFILES_VERSION})"
 
-    # Grab command-line options
-    if [[ -z "${DOTFILES_OLD_VERSION:-}" ]] || [[ "$comparison" -gt 0 ]]; then
+    if [[ -z "${DOTFILES_OLD_VERSION-}" ]] || (( comparison > 0 )); then
         e_fatal "You are running an old version of dotfiles.  Old options " \
             "may no longer work.  Please run 'dotfiles --help' to view usage."
         exit 1
@@ -588,11 +591,11 @@ check_bash_version () {
     local bash_major_ver
     read -r bash_major_ver _ <<<"$(explode_bash_version "$BASH_VERSION")"
 
-    if (( $bash_major_ver < 3 )); then
+    if (( bash_major_ver < 3 )); then
         e_fatal "You are using an ancient Bash version ($BASH_VERSION)." \
             "Please upgrade."
         exit 1
-    elif (( $bash_major_ver < 4 )); then
+    elif (( bash_major_ver < 4 )); then
         e_fatal "Your Bash version ($BASH_VERSION) doesn't support" \
             "associative arrays. Please upgrade."
         exit 1
@@ -615,19 +618,19 @@ main () {
                 break
                 ;;
             -n|--new-install)
-                DOTFILES_NEW_INSTALL=true
+                DOTFILES_NEW_INSTALL=1
                 shift
                 ;;
             -s|--skip-init)
-                DOTFILES_SKIP_INIT=true
+                DOTFILES_SKIP_INIT=1
                 shift
                 ;;
             -c|--clobber)
-                DOTFILES_NOCLOBBER=false
+                DOTFILES_NOCLOBBER=0
                 shift
                 ;;
             -P|--preserve)
-                DOTFILES_NOCLOBBER_RCS[$opt_value]=true
+                DOTFILES_NOCLOBBER_RCS[$opt_value]=1
                 shift 2
                 ;;
             -F|--filter)
@@ -656,11 +659,11 @@ main () {
                 shift 2
                 ;;
             -v|--verbose)
-                DOTFILES_VERBOSE=true
+                DOTFILES_VERBOSE=0
                 shift
                 ;;
             -q|--quiet)
-                DOTFILES_VERBOSE=false
+                DOTFILES_VERBOSE=0
                 shift
                 ;;
             -h|--help)
@@ -676,7 +679,7 @@ main () {
     done
 
     # Initial stuff; do only if we haven't updated to the newest version
-    if [[ "$DOTFILES_SKIP_INIT" != true ]]; then
+    if (( ${DOTFILES_SKIP_INIT:-0} )); then
         init_dotfiles
     else
         e_header "Skipping initialization"
@@ -711,9 +714,9 @@ main () {
     return $__DOTFILES_FAILED
 }
 
-if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
+if ! (( __DOTFILES_SOURCED )); then
     # Don't allow unset variables or uncaught errors
-    set -o nounset
+    #set -o nounset
 
     # Tweak file globbing.
     shopt -s dotglob
@@ -725,14 +728,33 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     export DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
     export DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
     export DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
-    export DOTFILES_NEW_INSTALL="${DOTFILES_NEW_INSTALL:-false}"
     export DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
     export DOTFILES_CONFIG_REPO="${DOTFILES_CONFIG_REPO:-git://github.com/BaxterStockman/dotfiles-config.git}"
-    export DOTFILES_SKIP_INIT="${DOTFILES_SKIP_INIT:-false}"
-    export DOTFILES_NOCLOBBER="${DOTFILES_NOCLOBBER:-true}"
-    export DOTFILES_VERBOSE="${DOTFILES_VERBOSE:-true}"
     export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
-    export DOTFILES_IGNORE_MISSING=false
+
+    # Values that are false by default
+    for varname in DOTFILES_NEW_INSTALL DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
+        current_value="${!varname}"
+        if (( ${current_value:-0} == 1 )) || [[ $current_value == value ]]; then
+            value=1
+        else
+            value=0
+        fi
+
+        declare -i "${varname}=${value}"
+    done
+
+    # Values that are true by default
+    for varname in DOTFILES_NOCLOBBER DOTFILES_VERBOSE; do
+        current_value="${!varname}"
+        if (( ${current_value:-1} == 0 )) || [[ $current_value == false ]]; then
+            value=0
+        else
+            value=1
+        fi
+
+        declare -i "${varname}=${value}"
+    done
 
     if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
         declare -r DOTFILES_OSTYPE='arch'
@@ -750,14 +772,14 @@ if [[ "$__DOTFILES_SOURCED" != 'true' ]]; then
     # RC files to not clobber when linking
     if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 0 )); then
         DOTFILES_NOCLOBBER_RCS=(
-            ["${DOTFILES_DESTDIR}/.bashrc"]=true
-            ["${DOTFILES_DESTDIR}/.bash_login"]=true
-            ["${DOTFILES_DESTDIR}/.bash_logout"]=true
-            ["${DOTFILES_DESTDIR}/.bash_profile"]=true
-            ["${DOTFILES_DESTDIR}/.muttrc"]=true
-            ["${DOTFILES_DESTDIR}/.subversion"]=true
-            ["${DOTFILES_DESTDIR}/.perlbrew"]=true
-            ["${DOTFILES_DESTDIR}/.ssh"]=true
+            ["${DOTFILES_DESTDIR}/.bashrc"]=1
+            ["${DOTFILES_DESTDIR}/.bash_login"]=1
+            ["${DOTFILES_DESTDIR}/.bash_logout"]=1
+            ["${DOTFILES_DESTDIR}/.bash_profile"]=1
+            ["${DOTFILES_DESTDIR}/.muttrc"]=1
+            ["${DOTFILES_DESTDIR}/.subversion"]=1
+            ["${DOTFILES_DESTDIR}/.perlbrew"]=1
+            ["${DOTFILES_DESTDIR}/.ssh"]=1
         )
     fi
 
@@ -769,3 +791,4 @@ else
     unset __DOTFILES_SOURCED __DOTFILES_EXECD
     unset -f intro usage
 fi
+
