@@ -690,7 +690,7 @@ main () {
         e_header "Skipping initialization"
     fi
 
-    if (( DOTFILES_NOCLOBBER )); then
+    if (( ${DOTFILES_NOCLOBBER:-0} )); then
         e_header "Preserving some existing configurations"
     fi
 
