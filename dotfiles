@@ -690,8 +690,9 @@ main () {
         e_header "Skipping initialization"
     fi
 
-    "${DOTFILES_NOCLOBBER}" \
-        && e_header "Preserving some existing configurations"
+    if (( DOTFILES_NOCLOBBER )); then
+        e_header "Preserving some existing configurations"
+    fi
 
     # Add binaries into the path
     PATH="${DOTFILES_BINDIR}${PATH:+:}${PATH}"
