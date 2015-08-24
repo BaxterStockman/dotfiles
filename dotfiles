@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 # Copyright (c) 2012 "Cowboy" Ben Alman
 # With modifications by Matt Schreiber (c) 2015
 # Licensed under the MIT license.
@@ -399,6 +401,19 @@ process_all () {
     return $exit_code
 }
 
+check_repo_url () {
+    local wanted_url="$1"
+    shift
+    local gitdir="$1"
+    shift
+
+    local git_config_path="${gitdir}/.git/config"
+    local url_from_config=''
+    url_from_config="$(git config --file "$git_config_path" --get remote.origin.url 2>/dev/null)"
+
+    [[ "$wanted_url" == "$url_from_config" ]]
+}
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_dotfiles() {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -417,13 +432,16 @@ init_dotfiles() {
     # Skip this function after we exec the updated version of this script.
     export DOTFILES_SKIP_INIT=1
 
-    if ! [[ -d $DOTFILES_ROOT ]]; then
-        # If the root directory doesn't exist, treat this as a new
+    if ! check_repo_url "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
+        # If the run directory doesn't exist, treat this as a new
         # installation.
         export DOTFILES_NEW_INSTALL=1
         e_header "Downloading dotfiles configuration"
         mkdir -p "$DOTFILES_ROOT"
-        git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"
+        if ! git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
+            e_fatal "Cannot clone dotfiles config repo; exiting"
+            exit 1
+        fi
     else
         # Make sure we have the latest files.
         e_header "Updating dotfiles configuration"
@@ -432,7 +450,7 @@ init_dotfiles() {
         popd >/dev/null
     fi
 
-    if ! [[ -d "$DOTFILES_BINDIR" ]]; then
+    if ! check_repo_url "$DOTFILES_REPO" "$DOTFILES_BINDIR"; then
         e_header "Downloading dotfiles"
         mkdir -p "$DOTFILES_BINDIR"
         git clone --recursive "$DOTFILES_REPO" "$DOTFILES_BINDIR"
