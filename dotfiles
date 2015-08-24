@@ -684,13 +684,13 @@ main () {
     done
 
     # Initial stuff; do only if we haven't updated to the newest version
-    if (( ${DOTFILES_SKIP_INIT:-0} )); then
+    if ! (( DOTFILES_SKIP_INIT )); then
         init_dotfiles
     else
         e_header "Skipping initialization"
     fi
 
-    if (( ${DOTFILES_NOCLOBBER:-0} )); then
+    if (( DOTFILES_NOCLOBBER )); then
         e_header "Preserving some existing configurations"
     fi
 
@@ -729,41 +729,26 @@ if ! (( __DOTFILES_SOURCED )); then
     shopt -s nullglob
 
     # Globals
-    export DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-\
-        ${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
+    export DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
     export DOTFILES_CACHEDIR="${DOTFILES_CACHEDIR:-${DOTFILES_ROOT}/caches}"
     export DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
     export DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
     export DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
-    export DOTFILES_REPO="${DOTFILES_REPO:-\
-        git://github.com/BaxterStockman/dotfiles.git}"
-    export DOTFILES_CONFIG_REPO="${DOTFILES_CONFIG_REPO:-\
-        git://github.com/BaxterStockman/dotfiles-config.git}"
+    export DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
+    export DOTFILES_CONFIG_REPO="${DOTFILES_CONFIG_REPO:-git://github.com/BaxterStockman/dotfiles-config.git}"
     export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
 
     # Values that are false by default
     for varname in DOTFILES_NEW_INSTALL DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
         current_value="${!varname}"
-        if (( ${current_value:-0} == 1 )) || [[ $current_value == value ]]; then
-            value=1
-        else
-            value=0
-        fi
-
-        declare -i "${varname}=${value}"
+        declare -i "${varname}=${current_value:-0}"
         export "$varname"
     done
 
     # Values that are true by default
     for varname in DOTFILES_NOCLOBBER DOTFILES_VERBOSE; do
         current_value="${!varname}"
-        if (( ${current_value:-1} == 0 )) || [[ $current_value == false ]]; then
-            value=0
-        else
-            value=1
-        fi
-
-        declare -i "${varname}=${value}"
+        declare -i "${varname}=${current_value:-1}"
         export "$varname"
     done
 
