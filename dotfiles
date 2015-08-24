@@ -11,11 +11,13 @@ SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
 
 # Use readlink's -m option (--canonicalize-missing) since we might be on a
 # bootstrap run where SCRIPT_DIRNAME doesn't actually exist yet.
-export DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${SCRIPT_DIRNAME}/..")}"
+DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${SCRIPT_DIRNAME}/..")}"
 
 if [[ -z "${DOTFILES_ROOT}" ]]; then
-    export DOTFILES_ROOT="${HOME}/.dotfiles"
+    DOTFILES_ROOT="${HOME}/.dotfiles"
 fi
+
+export DOTFILES_ROOT
 
 # Only enter this block if dotfiles isn't being sourced
 if [[ -z "${BASH_SOURCE[*]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
@@ -214,7 +216,7 @@ prep_process () {
     local optype_file="$1"
     shift
 
-    # Silently ignore any operation types that haven't been declared.
+    # Silently ignore any files that don't define 'run'
     if ! declare -F run &>/dev/null; then
         return 0
     fi
@@ -415,12 +417,12 @@ init_dotfiles() {
     # Skip this function after we exec the updated version of this script.
     export DOTFILES_SKIP_INIT=1
 
-    if [[ ! -d $DOTFILES_ROOT ]]; then
+    if ! [[ -d $DOTFILES_ROOT ]]; then
         # If the root directory doesn't exist, treat this as a new
         # installation.
         export DOTFILES_NEW_INSTALL=1
         e_header "Downloading dotfiles configuration"
-	mkdir -p "$DOTFILES_ROOT"
+        mkdir -p "$DOTFILES_ROOT"
         git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"
     else
         # Make sure we have the latest files.
@@ -430,15 +432,14 @@ init_dotfiles() {
         popd >/dev/null
     fi
 
-    if [[ ! -d "$DOTFILES_BINDIR" ]]; then
+    if ! [[ -d "$DOTFILES_BINDIR" ]]; then
         e_header "Downloading dotfiles"
-	mkdir -p "$DOTFILES_BINDIR"
+        mkdir -p "$DOTFILES_BINDIR"
         git clone --recursive "$DOTFILES_REPO" "$DOTFILES_BINDIR"
     else
         # Make sure we have the latest dotfiles script
         e_header "Updating dotfiles"
         pushd "$DOTFILES_BINDIR" >/dev/null
-
 
         local prev_head
         prev_head="$(git rev-parse HEAD)"
@@ -519,7 +520,7 @@ Please run 'dotfiles --help' for detailed usage.
 
 -v, --verbose           Tell dotfiles to be chatty.
 
--q, --quiet             Tell dotfiles to pipe it down, guldarnit!
+-q, --quiet             Tell dotfiles to pipe down, guldarnit!
 
 -h, --help              Print this message.
 
@@ -625,6 +626,10 @@ main () {
                 DOTFILES_SKIP_INIT=1
                 shift
                 ;;
+            -I|--ignore-missing)
+                DOTFILES_IGNORE_MISSING=1
+                shift
+                ;;
             -c|--clobber)
                 DOTFILES_NOCLOBBER=0
                 shift
@@ -659,7 +664,7 @@ main () {
                 shift 2
                 ;;
             -v|--verbose)
-                DOTFILES_VERBOSE=0
+                DOTFILES_VERBOSE=1
                 shift
                 ;;
             -q|--quiet)
@@ -723,13 +728,16 @@ if ! (( __DOTFILES_SOURCED )); then
     shopt -s nullglob
 
     # Globals
-    export DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
+    export DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-\
+        ${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
     export DOTFILES_CACHEDIR="${DOTFILES_CACHEDIR:-${DOTFILES_ROOT}/caches}"
     export DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
     export DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
     export DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
-    export DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
-    export DOTFILES_CONFIG_REPO="${DOTFILES_CONFIG_REPO:-git://github.com/BaxterStockman/dotfiles-config.git}"
+    export DOTFILES_REPO="${DOTFILES_REPO:-\
+        git://github.com/BaxterStockman/dotfiles.git}"
+    export DOTFILES_CONFIG_REPO="${DOTFILES_CONFIG_REPO:-\
+        git://github.com/BaxterStockman/dotfiles-config.git}"
     export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
 
     # Values that are false by default
@@ -742,6 +750,7 @@ if ! (( __DOTFILES_SOURCED )); then
         fi
 
         declare -i "${varname}=${value}"
+        export "$varname"
     done
 
     # Values that are true by default
@@ -754,6 +763,7 @@ if ! (( __DOTFILES_SOURCED )); then
         fi
 
         declare -i "${varname}=${value}"
+        export "$varname"
     done
 
     if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
