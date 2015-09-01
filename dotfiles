@@ -247,11 +247,20 @@ prep_process () {
         srcdir="${DOTFILES_ROOT}/${prefix_path}${optype}"
     fi
 
-    local filter
-    if (( ${#DOTFILES_FILTERS[@]} )); then
-        for filter in "${DOTFILES_FILTERS[@]}"; do
-            if [[ "$srcdir" =~ $filter ]]; then
-                e_arrow "Directory ${srcdir} matches filter; skipping..." 1>&2
+    local include_pattern exclude_pattern
+    if (( ${#DOTFILES_INCLUDES[@]} )); then
+        for include_pattern in "${DOTFILES_INCLUDES[@]}"; do
+            if ! [[ "$optype" =~ $include_pattern ]]; then
+                e_arrow "Operation '${optype}' does not match include filter; skipping..." 1>&2
+                return 1
+            fi
+        done
+    fi
+
+    if (( ${#DOTFILES_EXCLUDES[@]} )); then
+        for exclude_pattern in "${DOTFILES_EXCLUDES[@]}"; do
+            if [[ "$optype" =~ $exclude_pattern ]]; then
+                e_arrow "Operation '${optype}' matches exclude filter; skipping..." 1>&2
                 return 1
             fi
         done
@@ -517,9 +526,19 @@ Please run 'dotfiles --help' for detailed usage.
                         settings, dotfiles doesn't clobber:
                         ${!DOTFILES_NOCLOBBER_RCS[*]}
 
--F, --filter PATTERN    Tell dotfiles to ignore files in $DOTFILES_RUNDIR that
-                        match this pattern.  Accepts a Bash regular expression;
-                        may be specified multiple times.
+-i, --ignore-missing    When given, dotfiles won't raise an error when looking
+                        for the source directory specified in a given file in
+                        $DOTFILES_RUNDIR.
+
+-I, --include PATTERN   Tell dotfiles to perform only those action types
+                        specified in files in $DOTFILES_RUNDIR that match this
+                        pattern.  Accepts a Bash regular expression; may be
+                        specified multiple times.
+
+-E, --exclude PATTERN   Tell dotfiles to ignore those action types given in
+                        file in  $DOTFILES_RUNDIR that match this pattern.
+                        Accepts a Bash regular expression; may be specified
+                        multiple times.
 
 -P, --preserve FILE     Tell dotfiles to not overwrite this file.  This option
                         can be given multiple times.
@@ -645,7 +664,7 @@ main () {
                 DOTFILES_SKIP_INIT=1
                 shift
                 ;;
-            -I|--ignore-missing)
+            -i|--ignore-missing)
                 DOTFILES_IGNORE_MISSING=1
                 shift
                 ;;
@@ -657,8 +676,12 @@ main () {
                 DOTFILES_NOCLOBBER_RCS[$opt_value]=1
                 shift 2
                 ;;
-            -F|--filter)
-                DOTFILES_FILTERS+=("$opt_value")
+            -I|--include)
+                DOTFILES_INCLUDES+=("$opt_value")
+                shift 2
+                ;;
+            -E|--exclude)
+                DOTFILES_EXCLUDES+=("$opt_value")
                 shift 2
                 ;;
             -R|--rundir)
@@ -799,6 +822,8 @@ if ! (( __DOTFILES_SOURCED )); then
     fi
 
     declare -a DOTFILES_FILTERS=()
+    declare -a DOTFILES_INCLUDE_FILES=()
+    declare -a DOTFILES_EXCLUDE_FILES=()
 
     main "$@"
 else
