@@ -72,10 +72,11 @@ md5cmp () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Minimize dependencies: cmp is in diffutils, md5sum is in coreutils.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local left right leftsumout rightsumout
+    local left="$1"
+    shift
+    local right="$1"
 
-    left="$1"
-    right="$2"
+    local leftsumout rightsumout
 
     leftsumout="$(md5sum "$left")"
     rightsumout="$(md5sum "$right")"
@@ -85,15 +86,26 @@ md5cmp () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+is_true () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local maybe="$1"
+    [[ "$maybe" == true ]] || [[ "$maybe" -eq 1 ]]
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 splitfile () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local file="$1"
-    local prefix="$2"
+    shift
+    local prefix="$1"
+
     local relpath="${file##$prefix}"
+
     local -a path_elements
     local IFS=$'/'
     read -ra path_elements <<<"$relpath"
     unset IFS
+
     # Necessary in order to get rid of the leading trailing space
     echo "${path_elements[@]:1}"
 }
@@ -103,9 +115,8 @@ find_hierarchical () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local targetdir="$1"
     shift
-    local prefix
 
-    local opt_name opt_arg
+    local prefix opt_name opt_arg
     while (( $# )); do
         read -r opt_name opt_arg _ <<<"$@"
         case "$opt_name" in
@@ -137,9 +148,7 @@ check_noclobber () {
     local destfile="$2"
     local real_destfile="$destfile"
 
-    if "${DOTFILES_NOCLOBBER}"; then
-        [[ -e "$destfile" ]] || return
-
+    if is_true "${DOTFILES_NOCLOBBER:-1}" && [[ -e "$destfile" ]]; then
         local -i noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-0}"
 
         if (( noclobber )); then
