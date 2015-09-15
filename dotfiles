@@ -665,7 +665,6 @@ main () {
     local -i optind=0
     while (( optind < $# )); do
         read opt_name opt_value _ <<<"${@:optind:optind+1}"
-        echo "$opt_name $opt_value"
         case "$opt_name" in
             --)
                 break
