@@ -487,7 +487,7 @@ init_dotfiles() {
         if [[ "$current_head" != "$prev_head" ]]; then
             e_header "Executing updated ${SCRIPT_BASENAME} script"
             export __DOTFILES_EXECD=1
-            exec "${DOTFILES_BINDIR}/dotfiles"
+            exec "${DOTFILES_BINDIR}/${SCRIPT_BASENAME}"
         fi
     fi
 }
@@ -657,7 +657,36 @@ main () {
     check_bash_version
     check_dotfiles_version
 
+    # Check for --skip-init before any other options.  We want to run
+    # init_dotfiles ASAP so that any options that may have been added in the
+    # updated dotfiles can be used prior to the update without causing a fatal
+    # error.
     local opt_name opt_value
+    local -i optind=0
+    while (( optind < $# )); do
+        read opt_name opt_value _ <<<"${@:optind:optind+1}"
+        echo "$opt_name $opt_value"
+        case "$opt_name" in
+            --)
+                break
+                ;;
+            -s|--skip-init)
+                DOTFILES_SKIP_INIT=1
+                set -- "${@:1:optind-1}" "${@:optind+1:$#}"
+                break
+                ;;
+        esac
+        ((optind++))
+    done
+
+    # Initial stuff; do only if we haven't updated to the newest version
+    if ! (( DOTFILES_SKIP_INIT )); then
+        init_dotfiles
+    else
+        e_header "Skipping initialization"
+    fi
+
+    # Now process new options.
     while (( $# )); do
         read opt_name opt_value _ <<<"$@"
         case "$opt_name" in
@@ -667,10 +696,6 @@ main () {
                 ;;
             -n|--new-install)
                 DOTFILES_NEW_INSTALL=1
-                shift
-                ;;
-            -s|--skip-init)
-                DOTFILES_SKIP_INIT=1
                 shift
                 ;;
             -i|--ignore-missing)
@@ -733,13 +758,6 @@ main () {
                 ;;
         esac
     done
-
-    # Initial stuff; do only if we haven't updated to the newest version
-    if ! (( DOTFILES_SKIP_INIT )); then
-        init_dotfiles
-    else
-        e_header "Skipping initialization"
-    fi
 
     if (( DOTFILES_NOCLOBBER )); then
         e_header "Preserving some existing configurations"
