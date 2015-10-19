@@ -808,8 +808,6 @@ if [[ -f "$DOTFILES_RC" ]]; then
     readconf "$DOTFILES_RC" uc
 fi
 
-return 0
-
 # Use readlink's -m option (--canonicalize-missing) since we might be on a
 # bootstrap run where SCRIPT_DIRNAME doesn't actually exist yet.
 DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${SCRIPT_DIRNAME}/..")}"
