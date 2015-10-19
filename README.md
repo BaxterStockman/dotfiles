@@ -67,14 +67,13 @@ through to sourced scripts:
 - `DOTFILES_OPTYPE_FILTERS`: Like `DOTFILES_DIR_FILTERS`, but matches are
   against the operation type.
 
-
 `dotfiles` runs with several other variables which can't be set from the
 controlling terminal:
 - `SCRIPT_PATH`: whatever is in `${BASH_SOURCE[0]}`.
-- `SCRIPT_DIRNAME`: `$SCRIPT_NAME` minus the last forward slash and everything
+- `SCRIPT_DIRNAME`: `$SCRIPT_PATH` minus the last forward slash and everything
   that follows it.
-- `SCRIPT_BASENAME`: `$SCRIPT_NAME` minus the last slash and everything
-  preceeding it.
+- `SCRIPT_BASENAME`: `$SCRIPT_PATH` minus the last forward slash and everything
+  preceding it.
 
 #### Positional Parameters
 
@@ -89,8 +88,8 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
 #### Variables
 
 - `header`: `dotfiles` will print this message as a preamble to executing the
-  functions defined in the sourced file.  `dotfiles` prints a generic message if
-  this variable is unset.
+  functions defined in the sourced file.  `dotfiles` prints a generic message
+  if this variable is unset.
 - `processdir`: where `dotfiles` should look for files to process.  If it is a
   relative path, it is assumed to be relative to `DOTFILES_ROOT`.  If this
   variable is unset, `dotfiles` tries to infer which directory to process based
@@ -103,7 +102,8 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
 #### Functions
 
 - `pre`: This is called once per sourced file prior to loop in which the `run`
-  function, described below, is called.
+  function, described below, is called.  This can be used as a hook for setup
+  tasks.
 - `run`: This is where the bulk of the work is done.  `run` is called once for
   each file located in `processdir`.  It receives two arguments: `$1` contains
   a source file somewhere in `processdir`, and `$2` contains the (putative)
@@ -115,8 +115,8 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
   (preferably containing the reason why these inputs should be skipped, since
   `dotfiles` is going to print the echoed message).  `check` should also
   indicate with the return code whether the reason for skipping was exceptional
-  (return code `1`) or not (return code `2` -- mostly useful for indicating the
-  the destination file is the same as the source file).  `check` should return
-  `0` for
-  files that should not be skipped.  This function is optional.
+  (return code `1`) or not (return code `2` -- I use this mostly for
+  indicating the the destination file is the same as the source file).  `check`
+  should return `0` for files that should not be skipped.  This function is
+  optional.
 - `post`: Like `pre`, but later.

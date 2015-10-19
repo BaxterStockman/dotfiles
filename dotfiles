@@ -5,45 +5,9 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
-SCRIPT_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
-SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
-SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
-
-# Use readlink's -m option (--canonicalize-missing) since we might be on a
-# bootstrap run where SCRIPT_DIRNAME doesn't actually exist yet.
-DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${SCRIPT_DIRNAME}/..")}"
-
-if [[ -z "${DOTFILES_ROOT}" ]]; then
-    DOTFILES_ROOT="${HOME}/.dotfiles"
-fi
-
-export DOTFILES_ROOT
-
-# Only enter this block if dotfiles isn't being sourced
-if [[ -z "${BASH_SOURCE[*]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    __DOTFILES_SOURCED=0
-
-    # If DOTFILES_VERSION is already set, we're being exec'd by an older
-    # version of dotfiles.
-    if [[ -n $DOTFILES_VERSION ]]; then
-        DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
-    fi
-
-    # Set current version
-    DOTFILES_VERSION=1.0.0
-
-    # If __DOTFILES_EXECD == 1 at this point, we know that we have been
-    # exec'd with an updated version.  Therefore, if DOTFILES_VERSION was unset
-    # until just before now, it's because the script just started running and
-    # not because we were exec'd from an old version that didn't yet use
-    # DOTFILES_VERSION.  So, set the value of DOTFILES_OLD_VERSION to
-    # DOTFILES_VERSION so that check_dotfiles_version doesn't complain.
-    if ! (( ${__DOTFILES_EXECD:-0} )); then
-        DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
-    fi
-else
-    __DOTFILES_SOURCED=1
-fi
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Function definitions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Logging stuff
@@ -652,6 +616,44 @@ check_bash_version () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+readconf () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local conf_file="$1"
+    shift
+
+    local -i using_extglob=0
+    if shopt extglob >/dev/null; then
+        using_extglob=1
+    else
+        shopt -s extglob
+    fi
+
+    local varname varval
+    local varname_ltrim varval_ltrim
+    local varname_rtrim varval_rtrim
+    local varname_final
+    while read -r line; do
+        [[ "$line" == *=* ]] || continue
+        varname="${line%%=*}"
+        varval="${line#*=}"
+        varname_ltrim="${varname##+([[:space:]])}"
+        varval_ltrim="${varval##+([[:space:]])}"
+        varname_rtrim="${varname_ltrim%%+([[:space:]])}"
+        varval_rtrim="${varval_ltrim%%+([[:space:]])}"
+
+        if (( $# )); then
+            varname_final="$("$@" "$varname")"
+        else
+            varname_final="$varname_rtrim"
+        fi
+
+        declare -g "${varname_final}=${varval_rtrim}"
+    done < "$conf_file"
+
+    (( using_extglob )) || shopt -u extglob
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 main () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     check_bash_version
@@ -787,6 +789,62 @@ main () {
     e_header "All done!"
     return $__DOTFILES_FAILED
 }
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Main body of dotfiles
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SCRIPT_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
+SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
+SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
+DOTFILES_RC="${DOTFILES_RC:-${HOME}/.dotfilesrc}"
+
+uc () {
+    printf '%s' "${1^^}"
+}
+
+# Source the configuration file, if it exists.
+if [[ -f "$DOTFILES_RC" ]]; then
+    readconf "$DOTFILES_RC" uc
+fi
+
+return 0
+
+# Use readlink's -m option (--canonicalize-missing) since we might be on a
+# bootstrap run where SCRIPT_DIRNAME doesn't actually exist yet.
+DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${SCRIPT_DIRNAME}/..")}"
+
+if [[ -z "${DOTFILES_ROOT}" ]]; then
+    DOTFILES_ROOT="${HOME}/.dotfiles"
+fi
+
+export DOTFILES_ROOT
+
+# Only enter this block if dotfiles isn't being sourced
+if [[ -z "${BASH_SOURCE[*]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    __DOTFILES_SOURCED=0
+
+    # If DOTFILES_VERSION is already set, we're being exec'd by an older
+    # version of dotfiles.
+    if [[ -n $DOTFILES_VERSION ]]; then
+        DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
+    fi
+
+    # Set current version
+    DOTFILES_VERSION=1.0.0
+
+    # If __DOTFILES_EXECD == 1 at this point, we know that we have been
+    # exec'd with an updated version.  Therefore, if DOTFILES_VERSION was unset
+    # until just before now, it's because the script just started running and
+    # not because we were exec'd from an old version that didn't yet use
+    # DOTFILES_VERSION.  So, set the value of DOTFILES_OLD_VERSION to
+    # DOTFILES_VERSION so that check_dotfiles_version doesn't complain.
+    if ! (( ${__DOTFILES_EXECD:-0} )); then
+        DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
+    fi
+else
+    __DOTFILES_SOURCED=1
+fi
 
 if ! (( __DOTFILES_SOURCED )); then
     # Don't allow unset variables or uncaught errors
