@@ -600,17 +600,14 @@ explode_bash_version () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 check_bash_version () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local bash_major_ver
-    read -r bash_major_ver _ <<<"$(explode_bash_version "$BASH_VERSION")"
-
-    if (( bash_major_ver < 3 )); then
+    if (( BASH_VERSINFO[0] < 3 )); then
         e_fatal "You are using an ancient Bash version ($BASH_VERSION)." \
             "Please upgrade."
-        exit 1
-    elif (( bash_major_ver < 4 )); then
+        return 1
+    elif (( BASH_VERSINFO[0] < 4 )); then
         e_fatal "Your Bash version ($BASH_VERSION) doesn't support" \
             "associative arrays. Please upgrade."
-        exit 1
+        return 1
     fi
 
 }
@@ -656,8 +653,8 @@ readconf () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 main () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    check_bash_version
-    check_dotfiles_version
+    check_bash_version || return $?
+    check_dotfiles_version || return $?
 
     # Check for --skip-init before any other options.  We want to run
     # init_dotfiles ASAP so that any options that may have been added in the
@@ -913,4 +910,3 @@ else
     unset __DOTFILES_SOURCED __DOTFILES_EXECD
     unset -f intro usage
 fi
-
