@@ -5,61 +5,100 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
+DOTFILES_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
+DOTFILES_DIRNAME="${DOTFILES_PATH%/*}"
+DOTFILES_BASENAME="${DOTFILES_PATH##*/}"
+
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    printf '%s: %s\n' "$DOTFILES_BASENAME" 'cannot be sourced'
+    unset DOTFILES_PATH DOTFILES_DIRNAME DOTFILES_BASENAME
+    return 1
+else
+    declare -grx DOTFILES_PATH DOTFILES_DIRNAME DOTFILES_BASENAME
+fi
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Function definitions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# General utility functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+can_run? () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    type -P -- "$@" &>/dev/null
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+truthy? () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    case "${*,,}" in
+        1|yes|true|on|enable)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Logging stuff
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+init_logging () {
+    local -a colors=(RED GREEN BLUE YELLOW MAGENTA CYAN WHITE)
 
-# check if messages are to be printed using color
-declare -a colors=(RED GREEN BLUE YELLOW MAGENTA CYAN WHITE)
-unset RESET BOLD "${colors[@]}"
-#if [[ -t 2 ]] && is_true "$DOTFILES_USE_COLOR"; then
-if [[ -t 2 ]]; then
-    if tput setaf 0 &>/dev/null; then
-        RESET="$(tput sgr0)"
-        BOLD="$(tput bold)"
-        RED="$(tput setaf 1)"
-        GREEN="$(tput setaf 2)"
-        YELLOW="$(tput setaf 3)"
-        BLUE="$(tput setaf 4)"
-        MAGENTA=$(tput setaf 5)
-        CYAN=$(tput setaf 6)
-        WHITE=$(tput setaf 7)
+    unset RESET BOLD "${colors[@]}" 2>/dev/null
+
+    if [[ -t 2 ]] && truthy? "${DOTFILES_USE_COLOR:-true}"; then
+        if can_run? tput && tput setaf 0 &>/dev/null; then
+            RESET="$(tput sgr0)"
+            BOLD="$(tput bold)"
+            RED="$(tput setaf 1)"
+            GREEN="$(tput setaf 2)"
+            YELLOW="$(tput setaf 3)"
+            BLUE="$(tput setaf 4)"
+            MAGENTA=$(tput setaf 5)
+            CYAN=$(tput setaf 6)
+            WHITE=$(tput setaf 7)
+        else
+            RESET="\e[0m"
+            BOLD="\e[1m"
+            RED="\e[31m"
+            GREEN="\e[32m"
+            YELLOW="\e[33m"
+            BLUE="\e[34m"
+            MAGENTA="\e[35m"
+            CYAN="\e[36m"
+            WHITE="\e[37m"
+        fi
     else
-        RESET="\e[0m"
-        BOLD="\e[1m"
-        RED="\e[31m"
-        GREEN="\e[32m"
-        YELLOW="\e[33m"
-        BLUE="\e[34m"
-        MAGENTA="\e[35m"
-        CYAN="\e[36m"
-        WHITE="\e[37m"
+        for color in RESET BOLD "${colors[@]}"; do
+            declare -grx "${color}="
+        done
     fi
-fi
-readonly RESET BOLD "${colors[@]}"
 
-can_run? () { type -P "$1" &>/dev/null; }
+    declare -grx RESET BOLD "${colors[@]}"
 
-if can_run? gettext; then
-    export TEXTDOMAIN='dotfiles'
-    export TEXTDOMAINDIR="${TEXTDOMAINDIR:=/usr/share/locale}"
-else
-    # If we can't run `gettext`, just print all the arguments back
-    gettext () { echo -n "$@"; }
-fi
+    if can_run? gettext; then
+        export TEXTDOMAIN='dotfiles'
+        export TEXTDOMAINDIR="${TEXTDOMAINDIR:=/usr/share/locale}"
+    else
+        # If we can't run `gettext`, just print all the arguments back
+        gettext () { echo -n "$@"; }
+    fi
 
-e_header () { printf "${BOLD}${WHITE}:: ${RESET}${BOLD}%b${RESET}\n" "$@"; }
-e_prompt () { printf "${BOLD}${CYAN} > ${RESET}${BOLD}%b${RESET}: " "$@"; }
-e_success () { printf "${GREEN}==> ${RESET}${BOLD} %b${RESET}\n" "$@"; }
-e_warning () { printf "${YELLOW}==> $(gettext "WARNING")${RESET}:${BOLD} %b${RESET}\n" "$@"; }
-e_error () { printf "${MAGENTA}==> $(gettext "ERROR")${RESET}:${BOLD} %b${RESET}\n" "$@"; }
-e_fatal () { printf "${BOLD}${RED}==> $(gettext "FATAL")${RESET}:${BOLD} %b${RESET}\n" "$@"; }
-e_arrow () { printf "   ${BLUE}->${RESET}${BOLD} %b${RESET}\n" "$@"; }
+    e_header () { printf "${BOLD}${WHITE}:: ${RESET}${BOLD}%b${RESET}\n" "$@"; }
+    e_prompt () { printf "${BOLD}${CYAN} > ${RESET}${BOLD}%b${RESET}: " "$@"; }
+    e_success () { printf "${GREEN}==> ${RESET}${BOLD} %b${RESET}\n" "$@"; }
+    e_warning () { printf "${YELLOW}==> $(gettext "WARNING")${RESET}:${BOLD} %b${RESET}\n" "$@"; }
+    e_error () { printf "${MAGENTA}==> $(gettext "ERROR")${RESET}:${BOLD} %b${RESET}\n" "$@"; }
+    e_fatal () { printf "${BOLD}${RED}==> $(gettext "FATAL")${RESET}:${BOLD} %b${RESET}\n" "$@"; }
+    e_arrow () { printf "   ${BLUE}->${RESET}${BOLD} %b${RESET}\n" "$@"; }
+}
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 md5cmp () {
@@ -80,18 +119,11 @@ md5cmp () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-is_true () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local maybe="$1"
-    [[ "$maybe" == true ]] || [[ "$maybe" -eq 1 ]]
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 splitfile () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local file="$1"
     shift
-    local prefix="$1"
+    local prefix="${1:-}"
 
     local relpath="${file##$prefix}"
 
@@ -142,7 +174,7 @@ check_noclobber () {
     local destfile="$2"
     local real_destfile="$destfile"
 
-    if is_true "${DOTFILES_NOCLOBBER:-1}" && [[ -e "$destfile" ]]; then
+    if truthy? "${DOTFILES_NOCLOBBER:-1}" && [[ -e "$destfile" ]]; then
         local -i noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-0}"
 
         if (( noclobber )); then
@@ -403,8 +435,7 @@ process_all () {
     local optype_file
     local -i exit_code=0
     for optype_file in "${rundir}/"*"${run_extension}"; do
-        process "$optype_file" "$@"
-        (( exit_code &= $? ))
+        process "$optype_file" "$@" || (( exit_code |= $? ))
     done
 
     return $exit_code
@@ -426,8 +457,6 @@ check_repo_url () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_dotfiles() {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    intro
-
     e_header "Performing initial configuration"
 
     if ! type -P git &>/dev/null; then
@@ -455,7 +484,7 @@ init_dotfiles() {
         # Make sure we have the latest files.
         e_header "Updating dotfiles configuration"
         pushd "$DOTFILES_ROOT" >/dev/null
-        git pull
+        git pull || :
         popd >/dev/null
     fi
 
@@ -479,9 +508,9 @@ init_dotfiles() {
         popd >/dev/null
 
         if [[ "$current_head" != "$prev_head" ]]; then
-            e_header "Executing updated ${SCRIPT_BASENAME} script"
+            e_header "Executing updated ${DOTFILES_BASENAME} script"
             export __DOTFILES_EXECD=1
-            exec "${DOTFILES_BINDIR}/${SCRIPT_BASENAME}"
+            exec "${DOTFILES_BINDIR}/${DOTFILES_BASENAME}"
         fi
     fi
 }
@@ -491,17 +520,15 @@ usage () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local -i return_code=${1:-0}
 
+    printf '%s %s\n' "$DOTFILES_BASENAME" "$DOTFILES_VERSION"
+    printf -- "$(gettext 'Usage: %s [OPTIONS] [-- [PASSTHRU OPTIONS]]')\n" "$0"
+
     if (( return_code != 0 )); then
-        printf '%s' "
-Usage: $SCRIPT_BASENAME [OPTIONS] [-- [PASSTHRU OPTIONS]]
-
-Please run 'dotfiles --help' for detailed usage.
-"
-
+        printf -- "$(gettext "Please run '%s --help' for detailed usage.")\n" "$DOTFILES_BASENAME"
         return "$return_code"
     fi
 
-    printf '%s' "\
+    gettext -- "$(printf -- '%s' "\
 -n, --new-install       Tell dotfiles that this is a new installation.  Causes
                         dotfiles to print some helpful(?) post-installation
                         tips.
@@ -552,9 +579,9 @@ Please run 'dotfiles --help' for detailed usage.
 
 -h, --help              Print this message.
 
-If $SCRIPT_BASENAME sees a bare '--', it assumes that options processing is
+If $DOTFILES_BASENAME sees a bare '--', it assumes that options processing is
 done and passes any further parameters to the scripts in ${DOTFILES_RUNDIR}.
-"
+")"
 
     return "$return_code"
 }
@@ -569,7 +596,7 @@ compare_versions () {
     IFS=$'.' read -ra right_elems <<<"$right"
 
     local left_elem right_elem
-    local r
+    local r=''
     for i in "${!left_elems[@]}"; do
         left_elem="${left_elems[$i]}"
         right_elem="${right_elems[$i]}"
@@ -584,20 +611,6 @@ compare_versions () {
     done
 
     printf '%s\n' "$r"
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-check_dotfiles_version () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local comparison
-    comparison="$(compare_versions $DOTFILES_VERSION \
-        ${DOTFILES_OLD_VERSION:-$DOTFILES_VERSION})"
-
-    if [[ -z "${DOTFILES_OLD_VERSION-}" ]] || (( comparison > 0 )); then
-        e_fatal "You are running an old version of dotfiles.  Old options " \
-            "may no longer work.  Please run 'dotfiles --help' to view usage."
-        exit 1
-    fi
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -631,10 +644,45 @@ check_bash_version () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-readconf () {
+to_env_var () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local optname="$1"
+    shift
+    local header="$1"
+
+    case "$header" in
+        env)
+            header=''
+            ;;
+        '')
+            header=DOTFILES
+            ;;
+        *)
+            header="DOTFILES_${header^^}"
+            ;;
+    esac
+
+    printf '%s' "${header:+${header}_}${optname}"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+parseconf () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local conf_file="$1"
     shift
+
+    if (( $# )); then
+        # Need to assign outer-scope $@ to account for scope change inside
+        # `formatter`
+        local -a _formatter=("$@")
+        formatter () {
+            "${_formatter[@]}" "$@"
+        }
+    else
+        formatter () {
+            echo -n "${2:+${2}_}${1}"
+        }
+    fi
 
     local -i using_extglob=0
     if shopt extglob >/dev/null; then
@@ -643,27 +691,39 @@ readconf () {
         shopt -s extglob
     fi
 
-    local varname varval
-    local varname_ltrim varval_ltrim
-    local varname_rtrim varval_rtrim
-    local varname_final
-    while read -r line; do
-        [[ "$line" == *=* ]] || continue
-        varname="${line%%=*}"
-        varval="${line#*=}"
-        varname_ltrim="${varname##+([[:space:]])}"
-        varval_ltrim="${varval##+([[:space:]])}"
-        varname_rtrim="${varname_ltrim%%+([[:space:]])}"
-        varval_rtrim="${varval_ltrim%%+([[:space:]])}"
+    extract_header () {
+        local line="$1"
+        shift
 
-        if (( $# )); then
-            varname_final="$("$@" "$varname")"
-        else
-            varname_final="$varname_rtrim"
+        if [[ "$line" == '['*']' ]]; then
+            header="${line#[}"
+            header="${header%]}"
+            if [[ -n $header ]]; then
+                echo "$header"
+                return 0
+            fi
         fi
 
-        declare -g "${varname_final}=${varval_rtrim}"
+        return 1
+    }
+
+    local optname='' optval='' header=''
+    while read -r line; do
+        [[ -z "$line" ]] && continue
+
+        # If we got a header, skip to the next iteration
+        maybe_header="$(extract_header "$line")" && {
+            header="$maybe_header"
+            continue
+        }
+
+        IFS=$'=' read -r optname optval <<<"$line"
+        optname="$(formatter "$optname" "$header")"
+
+        declare -xg "${optname}=${optval}"
     done < "$conf_file"
+
+    unset -f formatter
 
     (( using_extglob )) || shopt -u extglob
 }
@@ -671,8 +731,95 @@ readconf () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 main () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    init_logging
+
     check_bash_version || return $?
-    check_dotfiles_version || return $?
+
+    IFS=$':' read -ra dotfiles_extra_envpaths <<<"${DOTFILESENV:-}"
+    declare -agr DOTFILES_ENVPATHS=(
+        "${dotfiles_extra_envpaths[@]}"
+        /etc/dotfiles.conf
+        "${XDG_CONFIG_HOME:-${HOME}/.config}/dotfiles/dotfiles.conf"
+        "${HOME}/.dotfilesrc"
+    )
+    unset dotfiles_extra_envpaths
+
+    for envfile in "${DOTFILES_ENVPATHS[@]}"; do
+        if [[ -f "$envfile" ]]; then
+            parseconf "$envfile" to_env_var
+        fi
+    done
+
+    # Use readlink's -m option (--canonicalize-missing) since we might be on a
+    # bootstrap run where DOTFILES_DIRNAME doesn't actually exist yet.
+    DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${DOTFILES_DIRNAME}/..")}"
+    if [[ -z "${DOTFILES_ROOT}" ]]; then
+        DOTFILES_ROOT="${HOME}/.dotfiles"
+    fi
+    declare -grx DOTFILES_ROOT
+
+    # Set current version
+    declare -grx DOTFILES_VERSION=1.0.0
+
+    # Don't allow unset variables or uncaught errors
+    set -o nounset
+    set -o errexit
+
+    # Tweak file globbing.
+    shopt -s dotglob
+    shopt -s nullglob
+
+    # Globals
+    declare -grx DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
+    declare -grx DOTFILES_CACHEDIR="${DOTFILES_CACHEDIR:-${DOTFILES_ROOT}/caches}"
+    declare -grx DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
+    declare -grx DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
+    declare -grx DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
+    declare -grx DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
+    declare -grx DOTFILES_CONFIG_REPO="${DOTFILES_CONFIG_REPO:-git://github.com/BaxterStockman/dotfiles-config.git}"
+    declare -grx DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
+
+    # Values that are false by default
+    for varname in DOTFILES_NEW_INSTALL DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
+        declare -i "${varname}=${!varname:-0}"
+        export "$varname"
+    done
+
+    # Values that are true by default
+    for varname in DOTFILES_NOCLOBBER DOTFILES_VERBOSE; do
+        declare -i "${varname}=${!varname:-1}"
+        export "$varname"
+    done
+
+    if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
+        declare -r DOTFILES_OSTYPE='arch'
+    elif [[ "$OSTYPE" =~ ^darwin ]]; then
+        declare -r DOTFILES_OSTYPE='darwin'
+    else
+        declare -r DOTFILES_OSTYPE='linux'
+    fi
+    export DOTFILES_OSTYPE
+
+    declare -i __DOTFILES_BACKUP=0
+    declare -i __DOTFILES_FAILED=0
+
+    declare -A DOTFILES_NOCLOBBER_RCS=()
+    # RC files to not clobber when linking
+    if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 0 )); then
+        DOTFILES_NOCLOBBER_RCS=(
+            ["${DOTFILES_DESTDIR}/.bashrc"]=1
+            ["${DOTFILES_DESTDIR}/.bash_login"]=1
+            ["${DOTFILES_DESTDIR}/.bash_logout"]=1
+            ["${DOTFILES_DESTDIR}/.bash_profile"]=1
+            ["${DOTFILES_DESTDIR}/.muttrc"]=1
+            ["${DOTFILES_DESTDIR}/.subversion"]=1
+            ["${DOTFILES_DESTDIR}/.perlbrew"]=1
+            ["${DOTFILES_DESTDIR}/.ssh"]=1
+        )
+    fi
+
+    declare -a DOTFILES_INCLUDES=()
+    declare -a DOTFILES_EXCLUDES=()
 
     # Check for --skip-init before any other options.  We want to run
     # init_dotfiles ASAP so that any options that may have been added in the
@@ -692,7 +839,8 @@ main () {
                 break
                 ;;
         esac
-        ((optind++))
+
+        (( optind+=1 ))
     done
 
     # Initial stuff; do only if we haven't updated to the newest version
@@ -704,8 +852,7 @@ main () {
 
     # Now process new options.
     while (( $# )); do
-        read opt_name opt_value _ <<<"$@"
-        case "$opt_name" in
+        case "$1" in
             --)
                 shift
                 break
@@ -764,7 +911,9 @@ main () {
                 shift
                 ;;
             -h|--help)
-                usage 0
+                #usage 0
+                printenv | sort | grep ^DOTFILES
+                echo "$PREFIX"
                 exit $?
                 ;;
             *)
@@ -788,10 +937,10 @@ main () {
 
     # Execute code for each file in these subdirectories.
     if [[ -d "$DOTFILES_RUNDIR" ]]; then
-        process_all "$DOTFILES_RUNDIR" "$@"
+        process_all "$DOTFILES_RUNDIR" "$@" || :
     else
         e_fatal "No such directory: ${DOTFILES_RUNDIR}" \
-            "${SCRIPT_BASENAME} cannot proceed." 1>&2
+            "${DOTFILES_BASENAME} cannot proceed." 1>&2
         exit 1
     fi
 
@@ -808,122 +957,4 @@ main () {
 # Main body of dotfiles
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SCRIPT_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
-SCRIPT_BASENAME="${SCRIPT_PATH##*/}"
-SCRIPT_DIRNAME="${SCRIPT_PATH%/*}"
-DOTFILES_RC="${DOTFILES_RC:-${HOME}/.dotfilesrc}"
-
-uc () {
-    printf '%s' "${1^^}"
-}
-
-# Source the configuration file, if it exists.
-if [[ -f "$DOTFILES_RC" ]]; then
-    readconf "$DOTFILES_RC" uc
-fi
-
-# Use readlink's -m option (--canonicalize-missing) since we might be on a
-# bootstrap run where SCRIPT_DIRNAME doesn't actually exist yet.
-DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${SCRIPT_DIRNAME}/..")}"
-
-if [[ -z "${DOTFILES_ROOT}" ]]; then
-    DOTFILES_ROOT="${HOME}/.dotfiles"
-fi
-
-export DOTFILES_ROOT
-
-# Only enter this block if dotfiles isn't being sourced
-if [[ -z "${BASH_SOURCE[*]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    __DOTFILES_SOURCED=0
-
-    # If DOTFILES_VERSION is already set, we're being exec'd by an older
-    # version of dotfiles.
-    if [[ -n $DOTFILES_VERSION ]]; then
-        DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
-    fi
-
-    # Set current version
-    DOTFILES_VERSION=1.0.0
-
-    # If __DOTFILES_EXECD == 1 at this point, we know that we have been
-    # exec'd with an updated version.  Therefore, if DOTFILES_VERSION was unset
-    # until just before now, it's because the script just started running and
-    # not because we were exec'd from an old version that didn't yet use
-    # DOTFILES_VERSION.  So, set the value of DOTFILES_OLD_VERSION to
-    # DOTFILES_VERSION so that check_dotfiles_version doesn't complain.
-    if ! (( ${__DOTFILES_EXECD:-0} )); then
-        DOTFILES_OLD_VERSION="$DOTFILES_VERSION"
-    fi
-else
-    __DOTFILES_SOURCED=1
-fi
-
-if ! (( __DOTFILES_SOURCED )); then
-    # Don't allow unset variables or uncaught errors
-    #set -o nounset
-
-    # Tweak file globbing.
-    shopt -s dotglob
-    shopt -s nullglob
-
-    # Globals
-    export DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
-    export DOTFILES_CACHEDIR="${DOTFILES_CACHEDIR:-${DOTFILES_ROOT}/caches}"
-    export DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
-    export DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
-    export DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
-    export DOTFILES_REPO="${DOTFILES_REPO:-git://github.com/BaxterStockman/dotfiles.git}"
-    export DOTFILES_CONFIG_REPO="${DOTFILES_CONFIG_REPO:-git://github.com/BaxterStockman/dotfiles-config.git}"
-    export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
-
-    # Values that are false by default
-    for varname in DOTFILES_NEW_INSTALL DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
-        current_value="${!varname}"
-        declare -i "${varname}=${current_value:-0}"
-        export "$varname"
-    done
-
-    # Values that are true by default
-    for varname in DOTFILES_NOCLOBBER DOTFILES_VERBOSE; do
-        current_value="${!varname}"
-        declare -i "${varname}=${current_value:-1}"
-        export "$varname"
-    done
-
-    if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
-        declare -r DOTFILES_OSTYPE='arch'
-    elif [[ "$OSTYPE" =~ ^darwin ]]; then
-        declare -r DOTFILES_OSTYPE='darwin'
-    else
-        declare -r DOTFILES_OSTYPE='linux'
-    fi
-    export DOTFILES_OSTYPE
-
-    declare -i __DOTFILES_BACKUP=0
-    declare -i __DOTFILES_FAILED=0
-
-    declare -A DOTFILES_NOCLOBBER_RCS=()
-    # RC files to not clobber when linking
-    if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 0 )); then
-        DOTFILES_NOCLOBBER_RCS=(
-            ["${DOTFILES_DESTDIR}/.bashrc"]=1
-            ["${DOTFILES_DESTDIR}/.bash_login"]=1
-            ["${DOTFILES_DESTDIR}/.bash_logout"]=1
-            ["${DOTFILES_DESTDIR}/.bash_profile"]=1
-            ["${DOTFILES_DESTDIR}/.muttrc"]=1
-            ["${DOTFILES_DESTDIR}/.subversion"]=1
-            ["${DOTFILES_DESTDIR}/.perlbrew"]=1
-            ["${DOTFILES_DESTDIR}/.ssh"]=1
-        )
-    fi
-
-    declare -a DOTFILES_FILTERS=()
-    declare -a DOTFILES_INCLUDE_FILES=()
-    declare -a DOTFILES_EXCLUDE_FILES=()
-
-    main "$@"
-else
-    unset SCRIPT_PATH SCRIPT_BASENAME SCRIPT_DIRNAME
-    unset __DOTFILES_SOURCED __DOTFILES_EXECD
-    unset -f intro usage
-fi
+main "$@"
