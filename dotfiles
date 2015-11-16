@@ -374,8 +374,8 @@ process () {
     local -i prep_exit=$?
     (( prep_exit != 0 )) && return $prep_exit
 
-    local installs_files="${installs_files:-true}"
-    if ! [[ -d "$srcdir" ]] && truthy "$installs_files"; then
+    local requires_source="${requires_source:-true}"
+    if ! [[ -d "$srcdir" ]] && truthy "$requires_source"; then
         if ! (( DOTFILES_IGNORE_MISSING )); then
             e_error "No such directory: $srcdir; unable to complete '$optype' task" 1>&2
         fi
@@ -391,7 +391,7 @@ process () {
     call_conditional pre
 
     local -i failed=0
-    if ! truthy "$installs_files"; then
+    if ! truthy "$requires_source"; then
         if ! run; then
             ((failed++))
             ((__DOTFILES_FAILED++))
