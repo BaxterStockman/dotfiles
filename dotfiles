@@ -468,7 +468,7 @@ check_repo_url () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-init_dotfiles() {
+init_dotfiles () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     e_header "Performing initial configuration"
 
@@ -477,16 +477,7 @@ init_dotfiles() {
         exit 1
     fi
 
-    # Initialize.
-    e_header "Pulling in updated dotfiles repo"
-
-    # Skip this function after we exec the updated version of this script.
-    export DOTFILES_SKIP_INIT=1
-
     if ! check_repo_url "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
-        # If the run directory doesn't exist, treat this as a new
-        # installation.
-        export DOTFILES_NEW_INSTALL=1
         e_header "Downloading dotfiles configuration"
         mkdir -p "$DOTFILES_ROOT"
         if ! git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
@@ -505,7 +496,7 @@ init_dotfiles() {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 usage () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local -i return_code=${1:-0}
+    local -i return_code=${2:-0}
 
     printf '%s %s\n' "$DOTFILES_NAME" "$DOTFILES_VERSION"
     printf -- "$(gettext 'Usage: %s [OPTIONS] [-- [PASSTHRU OPTIONS]]')\n" "$0"
@@ -549,9 +540,6 @@ usage () {
 
 -B, --backup-path PATH  Tell dotfiles where to store backups of existing
                         configurations (currently: ${DOTFILES_BACKUPDIR}).
-
--C, --cache-path PATH   Cache path for use with certain git submodules
-                        (currently: ${DOTFILES_CACHEDIR}).
 
 -R, --rundir PATH       The directory in which dotfiles will search for its
                         marching orders (currently: ${DOTFILES_RUNDIR}).  If
@@ -710,15 +698,13 @@ init_vars () {
 
     # Globals
     declare -gx DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
-    declare -gx DOTFILES_CACHEDIR="${DOTFILES_CACHEDIR:-${DOTFILES_ROOT}/caches}"
     declare -gx DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
-    declare -gx DOTFILES_BINDIR="${DOTFILES_BINDIR:-"$DOTFILES_ROOT/bin"}"
     declare -gx DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
     declare -gx DOTFILES_CONFIG_REPO="${DOTFILES_CONFIG_REPO:-git://github.com/BaxterStockman/dotfiles-config.git}"
     declare -gx DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
 
     # Values that are false by default
-    for varname in DOTFILES_NEW_INSTALL DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
+    for varname in DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
         declare -gx "${varname}=${!varname:-0}"
     done
 
@@ -758,16 +744,21 @@ init_vars () {
 }
 
 init_conf () {
-    IFS=$':' read -ra dotfiles_extra_envpaths <<<"${DOTFILESENV:-}"
-    local -a DOTFILES_ENVPATHS=(
-        "${dotfiles_extra_envpaths[@]}"
+    local -a dotfiles_envpaths=(
         /etc/dotfiles.conf
         "${XDG_CONFIG_HOME:-${HOME}/.config}/dotfiles/dotfiles.conf"
         "${HOME}/.dotfilesrc"
     )
+
+    local -a dotfiles_extra_envpaths=()
+    IFS=$':' read -ra dotfiles_extra_envpaths <<<"${DOTFILES_ENV:-}"
+    for (( i = "${#dotfiles_extra_envpaths[@]}" - 1 ; i >= 0 ; i-- )); do
+        dotfiles_envpaths+=("${dotfiles_extra_envpaths[i]}")
+    done
+
     unset dotfiles_extra_envpaths
 
-    for envfile in "${DOTFILES_ENVPATHS[@]}"; do
+    for envfile in "${dotfiles_envpaths[@]}"; do
         if [[ -f "$envfile" ]]; then
             parseconf "$envfile" to_env_var
         fi
@@ -785,9 +776,6 @@ init_opts () {
             --)
                 shift
                 break
-                ;;
-            -n|--new-install)
-                DOTFILES_NEW_INSTALL=1
                 ;;
             -s|--skip-init)
                 DOTFILES_SKIP_INIT=1
@@ -819,16 +807,8 @@ init_opts () {
 
                 shift
                 ;;
-            -X|--bindir)
-                DOTFILES_BINDIR="$2"
-                shift
-                ;;
             -B|--backup-path)
                 DOTFILES_BACKUPDIR="$2"
-                shift
-                ;;
-            -C|--cache-path)
-                DOTFILES_CACHEDIR="$2"
                 shift
                 ;;
             -v|--verbose)
@@ -888,12 +868,6 @@ main () {
     if truthy "$DOTFILES_NOCLOBBER"; then
         e_header "Preserving some existing configurations"
     fi
-
-    PATH="${DOTFILES_BINDIR}${PATH:+:}${PATH}"
-    export PATH
-
-    # Create caches directory, if it doesn't already exist.
-    mkdir -p "$DOTFILES_CACHEDIR"
 
     # Execute code for each file in these subdirectories.
     if [[ -d "$DOTFILES_RUNDIR" ]]; then

@@ -8,7 +8,7 @@
   too much, and at the moment there's no apparent use case for it anyway.
 - Added logic to search for configuration files in multiple paths, with the
   colon-separated `DOTFILES_ENV` environment variables optionally specifying
-  extra paths in FIFO order.
+  extra paths in LIFO order.
 - Factored out CLI options processing into a separate subroutine
 - Added `gettext` support
 - Updated logging functions to use more eye-catching tokens and colors
@@ -20,4 +20,6 @@
    given file under `DOTFILES_RUNDIR` exists
 -- The loop that iterates over files in the mentioned source directory (since
    there presumably aren't any such files :)
-
+- Removed vestigial variables like `DOTFILES_CACHEDIR`
+- Updated (README)[README.md] to reflect changes to variables; also added
+  description of the configuration file.
