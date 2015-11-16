@@ -41,8 +41,11 @@ truthy () {
         1|yes|true|on|enable)
             return 0
             ;;
-        *)
+        0|no|false|off|disable)
             return 1
+            ;;
+        *)
+            return 2
             ;;
     esac
 }
@@ -478,18 +481,17 @@ init_dotfiles () {
     fi
 
     if ! check_repo_url "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
-        e_header "Downloading dotfiles configuration"
+        e_header "Downloading dotfiles configuration repo"
         mkdir -p "$DOTFILES_ROOT"
         if ! git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
-            e_fatal "Cannot clone dotfiles config repo; exiting"
+            e_fatal "Cannot download dotfiles configuration repo"
             exit 1
         fi
     else
         # Make sure we have the latest files.
         e_header "Updating dotfiles configuration"
         pushd "$DOTFILES_ROOT" >/dev/null
-        git pull || :
-        popd >/dev/null
+        git pull --work-tree "$DOTFILES_ROOT" --git-dir "${DOTFILES_ROOT}/.git" || :
     fi
 }
 
@@ -507,10 +509,6 @@ usage () {
     fi
 
     gettext -- "$(printf -- '%s' "\
--n, --new-install       Tell dotfiles that this is a new installation.  Causes
-                        dotfiles to print some helpful(?) post-installation
-                        tips.
-
 -s, --skip-init         Tell dotfiles to skip certain initialization steps,
                         like updating the dotfiles git repository and checking
                         that dependencies are installed.  WARNING: might cause
