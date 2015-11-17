@@ -135,9 +135,10 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
 - `header`: `dotfiles` will print this message as a preamble to executing the
   functions defined in the sourced file.  `dotfiles` prints a generic message
   if this variable is unset.
-- `creates_files`: a truthy value.  This should be set to `0` or `false` if the
-  script doesn't copy/link/etc. any files into `DOTFILES_DESTDIR`.  True by
-  default.
+- `requires_source`: a truthy value.  This should be set to `0` or `false` if
+  the script doesn't copy files, link files, or otherwise deal in files
+  somewhere under `DOTFILES_ROOT`.  Causes `dotfiles` to bypass checking that
+  the source directory exists.  True by default.
 - `processdir`: where `dotfiles` should look for files to process.  If it is a
   relative path, it is assumed to be relative to `DOTFILES_ROOT`.  If this
   variable is unset, `dotfiles` tries to infer which directory to process based

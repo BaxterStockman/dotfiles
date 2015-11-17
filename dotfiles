@@ -400,7 +400,11 @@ process () {
         # Iterate over files.
         local skip_reason srcfile srcstem destfile backup_subpath
         local -i check_exit_code
-        while read -r srcfile; do
+
+        # Don't clobber standard input, since sourced scripts may want to do
+        # stuff like get user input.
+        exec 3< <(find_hierarchical "$srcdir" --prefix "$DOTFILES_ROOT" -xtype f)
+        while read -u 3 -r srcfile; do
             # Don't quite know why this is necessary -- 'find' sometimes strips the
             # leading slash when called using process substitution...  Because find
             # returns absolute paths, it's probably (?) safe to just append a
@@ -427,7 +431,7 @@ process () {
                 ((failed++))
                 ((__DOTFILES_FAILED++))
             fi
-        done < <(find_hierarchical "$srcdir" --prefix "$DOTFILES_ROOT" -xtype f)
+        done
     fi
 
     call_conditional post
@@ -491,7 +495,7 @@ init_dotfiles () {
         # Make sure we have the latest files.
         e_header "Updating dotfiles configuration"
         pushd "$DOTFILES_ROOT" >/dev/null
-        git pull --work-tree "$DOTFILES_ROOT" --git-dir "${DOTFILES_ROOT}/.git" || :
+        git --work-tree "$DOTFILES_ROOT" --git-dir "${DOTFILES_ROOT}/.git" pull || :
     fi
 }
 
