@@ -164,9 +164,41 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
   (preferably containing the reason why these inputs should be skipped, since
   `dotfiles` is going to print the echoed message).  `check` should also
   indicate with the return code whether the reason for skipping was exceptional
-  (return code `1`) or not (return code `2` -- I use this mostly for
-  indicating the the destination file is the same as the source file).  `check`
-  should return `0` for files that should not be skipped.  This function is
-  optional.
+  or not -- see the section on (return codes)[#Return codes] below.  This
+  function is optional.
 - `post`: Like `pre`, but later.
 
+#### Return codes
+
+`dotfiles` makes several different return codes available based on
+(simpleminded) parsing of the contents of `/usr/include/sysexits.h`, if it
+exists, otherwise setting sane defaults.  The codes and default values are as
+follows:
+
+- `DOTFILES_EX_OK`: 0
+- `DOTFILES_EX_USAGE`: 64
+- `DOTFILES_EX_DATAERR`: 65
+- `DOTFILES_EX_NOINPUT`: 66
+- `DOTFILES_EX_NOUSER`: 67
+- `DOTFILES_EX_NOHOST`: 68
+- `DOTFILES_EX_UNAVAILABLE`: 69
+- `DOTFILES_EX_SOFTWARE`: 70
+- `DOTFILES_EX_OSERR`: 71
+- `DOTFILES_EX_OSFILE`: 72
+- `DOTFILES_EX_CANTCREAT`: 73
+- `DOTFILES_EX_IOERR`: 74
+- `DOTFILES_EX_TEMPFAIL`: 75
+- `DOTFILES_EX_PROTOCOL`: 76
+- `DOTFILES_EX_NOPERM`: 77
+- `DOTFILES_EX_CONFIG`: 78
+
+The `check` subroutine should return the catchall `DOTFILES_EX_TEMPFAIL` when
+the reason for skipping an operation is non-exceptional.  I use this code most
+frequently for indicating the the destination file is the same as the source
+file.  `check` should return `DOTFILES_EX_OK` for files that should not be
+skipped.  All other return codes will be treated as exceptional and will cause
+an error message to print, but execution will not halt.  In the future error
+handling may be more granular and specific to the individual codes.
+
+See the comments to your version of `/usr/include/sysexits.h` for an overview
+of the meaning of the codes.

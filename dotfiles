@@ -13,7 +13,7 @@ DOTFILES_BASENAME="${DOTFILES_PATH##*/}"
 DOTFILES_NAME=dotfiles
 
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
-    printf '%s: %s\n' "$DOTFILES_NAME" 'cannot be sourced'
+    printf '%s: %s\n' "$DOTFILES_NAME" 'cannot be sourced' 1>&2
     unset DOTFILES_PATH DOTFILES_DIRNAME DOTFILES_BASENAME DOTFILES_NAME
     return 1
 else
@@ -39,13 +39,13 @@ truthy () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     case "${*,,}" in
         1|yes|true|on|enable)
-            return 0
+            return "$DOTFILES_EX_OK"
             ;;
         0|no|false|off|disable)
-            return 1
+            return "$DOTFILES_EX_FAIL"
             ;;
         *)
-            return 2
+            return "$DOTFILES_EX_SOFTWARE"
             ;;
     esac
 }
@@ -54,7 +54,9 @@ truthy () {
 # Logging stuff
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_logging () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local -a colors=(RED GREEN BLUE YELLOW MAGENTA CYAN WHITE)
 
     unset RESET BOLD "${colors[@]}" 2>/dev/null
@@ -185,7 +187,7 @@ check_noclobber () {
 
         if (( noclobber )); then
             local noclobber_message
-            printf -v noclobber_message -- "Not clobbering %s; s will be appended with '%s'" \
+            printf -v noclobber_message -- "Not clobbering %s; %s will be appended with '%s'" \
                 "$destfile" "$srcfile"  "$DOTFILES_NOCLOBBER_EXT"
             e_arrow "$noclobber_message" 1>&2
             real_destfile="${destfile}${DOTFILES_NOCLOBBER_EXT}"
@@ -204,10 +206,10 @@ prompt_skip () {
     read -t 5 -n 1 -s -r -p "$(e_prompt "To skip, press X within 5 seconds.")"
     if [[ "$REPLY" =~ ^[Xx]$ ]]; then
         echo "Skipping!"
-        return 0
+        return "$DOTFILES_EX_OK"
     else
         echo "Continuing..."
-        return 1
+        return "$DOTFILES_EX_FAIL"
     fi
 }
 
@@ -227,11 +229,11 @@ backup () {
         if ! [[ -e "$backup_subpath" ]]; then
             if ! mkdir -p "$backup_subpath" &>/dev/null; then
                 e_fatal "Could not create backup directory ${backup_subpath}" 1>&2
-                return 1
+                return "$DOTFILES_EX_CANTCREAT"
             fi
         elif ! [[ -d "$backup_subpath" ]]; then
             e_error "${backup_subpath} exists but is not a directory" 1>&2
-            return 1
+            return "$DOTFILES_EX_CANTCREAT"
         fi
 
         cp "$destfile" "$backup_subpath"
@@ -245,19 +247,19 @@ call_conditional () {
         "$@"
     else
         # If a submodule doesn't define a function, we don't want to bomb out.
-        return 0
+        return "$DOTFILES_EX_OK"
     fi
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-prep_process () {
+process_prep () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local optype_file="$1"
     shift
 
     # Silently ignore any files that don't define 'run'
     if ! declare -F run &>/dev/null; then
-        return 0
+        return "$DOTFILES_EX_OK"
     fi
 
     if [[ -z "${optype-}" ]]; then
@@ -282,7 +284,7 @@ prep_process () {
     else
         if [[ -z "$optype" ]]; then
             e_error "No operation specified" 1>&2
-            return 1
+            return "$DOTFILES_EX_USAGE"
         fi
         srcdir="${DOTFILES_ROOT}/${prefix_path}${optype}"
     fi
@@ -309,7 +311,9 @@ prep_process () {
     echo "$srcdir" "$optype"
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 process_check () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local srcfile="$1"
     shift
     local destfile="$1"
@@ -323,22 +327,24 @@ process_check () {
     skip_reason="${skip_reason:-unknown error}"
 
     case "$check_exit_code" in
-        0)
-            return 0
+        $DOTFILES_EX_OK)
+            :
             ;;
-        1)
-            e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
-            return 1
-            ;;
-        2)
+        $DOTFILES_EX_TEMPFAIL)
             e_arrow "Skipping ${srcstem}: ${skip_reason}" 1>&2
-            return 2
             ;;
         *)
-            e_fatal "Invalid exit status; exiting."
-            exit 1
+            if (( check_exit_code <= DOTFILES_EX__BASE )) \
+              || (( check_exit_code >= DOTFILES_EX__MAX )); then
+                e_fatal "Invalid exit status" 1>&2
+                check_exit_code="$DOTFILES_EX_PROTOCOL"
+            else
+                e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
+            fi
             ;;
     esac
+
+    return "$check_exit_code"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -359,18 +365,18 @@ process () {
         local -i sourced_exit=$?
         if (( sourced_exit != 0 )); then
             e_error "Sourcing ${optype_file} exited abnormally" 1>&2
-            return $sourced_exit
+            return "$sourced_exit"
         fi
     else
         e_error "No such file: $optype_file" 1>&2
-        return 1
+        return "$DOTFILES_EX_NOINPUT"
     fi
 
     # Print a pretty header :)
     local header="${header:-"Running ${optype_file}"}"
     e_header "$header"
 
-    read -r srcdir optype _ < <(prep_process "$optype_file")
+    read -r srcdir optype _ < <(process_prep "$optype_file")
     local -i prep_exit=$?
     (( prep_exit != 0 )) && return $prep_exit
 
@@ -379,7 +385,7 @@ process () {
         if ! (( DOTFILES_IGNORE_MISSING )); then
             e_error "No such directory: $srcdir; unable to complete '$optype' task" 1>&2
         fi
-        return 1
+        return "$DOTFILES_EX_NOINPUT"
     fi
 
     local skip_reason
@@ -415,12 +421,12 @@ process () {
             destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
             process_check "$srcfile" "$destfile" || {
-                [[ $? == 2 ]] && continue
+                (( $? == DOTFILES_EX_TEMPFAIL )) && continue
+
                 destfile="$(check_noclobber "$srcfile" \
                     "${DOTFILES_DESTDIR}/${srcstem}")"
-                if ! process_check "$srcfile" "$destfile"; then
-                    continue
-                fi
+
+                process_check "$srcfile" "$destfile" || continue
             }
 
             # Only back up the file if we're going to replace it
@@ -461,7 +467,9 @@ process_all () {
     return $exit_code
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 check_repo_url () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local wanted_url="$1"
     shift
     local gitdir="$1"
@@ -481,7 +489,7 @@ init_dotfiles () {
 
     if ! type -P git &>/dev/null; then
         e_fatal "git should be installed.  It isn't"
-        exit 1
+        return "$DOTFILES_EX_FAIL"
     fi
 
     if ! check_repo_url "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
@@ -489,7 +497,7 @@ init_dotfiles () {
         mkdir -p "$DOTFILES_ROOT"
         if ! git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
             e_fatal "Cannot download dotfiles configuration repo"
-            exit 1
+            return "$DOTFILES_EX_FAIL"
         fi
     else
         # Make sure we have the latest files.
@@ -502,12 +510,12 @@ init_dotfiles () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 usage () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local -i return_code=${2:-0}
+    local -i return_code="${1:-$DOTFILES_EX_OK}"
 
     printf '%s %s\n' "$DOTFILES_NAME" "$DOTFILES_VERSION"
     printf -- "$(gettext 'Usage: %s [OPTIONS] [-- [PASSTHRU OPTIONS]]')\n" "$0"
 
-    if (( return_code != 0 )); then
+    if (( return_code != DOTFILES_EX_OK )); then
         printf -- "$(gettext "Please run '%s --help' for detailed usage.")\n" "$DOTFILES_NAME"
         return "$return_code"
     fi
@@ -559,35 +567,9 @@ usage () {
 If $DOTFILES_NAME sees a bare '--', it assumes that options processing is
 done and passes any further parameters to the scripts in ${DOTFILES_RUNDIR}.
 ")"
+    echo
 
     return "$return_code"
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-compare_versions () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local left="$1"
-    local right="$2"
-
-    IFS=$'.' read -ra left_elems <<<"$left"
-    IFS=$'.' read -ra right_elems <<<"$right"
-
-    local left_elem right_elem
-    local r=''
-    for i in "${!left_elems[@]}"; do
-        left_elem="${left_elems[$i]}"
-        right_elem="${right_elems[$i]}"
-
-        (( left_elem == right_elem )) && continue
-        if (( left_elem < right_elem )); then
-            r="-1"
-            return 0
-        fi
-        r="1"
-        return 0
-    done
-
-    printf '%s\n' "$r"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -596,11 +578,11 @@ check_bash_version () {
     if (( BASH_VERSINFO[0] < 3 )); then
         printf -- "$(gettext '%s: You are using an ancient Bash version (%s).  Please upgrade')" \
             "$DOTFILES_NAME" "$BASH_VERSION"
-        return 1
+        return "$DOTFILES_EX_FAIL"
     elif (( BASH_VERSINFO[0] < 4 )); then
         printf -- "$(gettext '%s: Your Bash version (%s) does not support associative arrays. Please upgrade.')" \
             "$DOTFILES_NAME" "$BASH_VERSION"
-        return 1
+        return "$DOTFILES_EX_FAIL"
     fi
 }
 
@@ -661,11 +643,11 @@ parseconf () {
             header="${header%]}"
             if [[ -n $header ]]; then
                 echo "$header"
-                return 0
+                return "$DOTFILES_EX_OK"
             fi
         fi
 
-        return 1
+        return "$DOTFILES_EX_FAIL"
     }
 
     local optname='' optval='' header=''
@@ -689,7 +671,46 @@ parseconf () {
     (( using_extglob )) || shopt -u extglob
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init_ex_vars () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if [[ -r /usr/include/sysexits.h ]]; then
+        while read -r define ex_type ex_code _; do
+            if [[ "$define" != '#define' ]] || [[ "$ex_type" != EX_* ]]; then
+                continue
+            fi
+            declare -girx "DOTFILES_${ex_type}=${ex_code}"
+        done < /usr/include/sysexits.h
+    else
+        declare -girx \
+            DOTFILES_EX_OK=0 \
+            DOTFILES_EX__BASE=64 \
+            DOTFILES_EX_USAGE=64 \
+            DOTFILES_EX_DATAERR=65 \
+            DOTFILES_EX_NOINPUT=66 \
+            DOTFILES_EX_NOUSER=67 \
+            DOTFILES_EX_NOHOST=68 \
+            DOTFILES_EX_UNAVAILABLE=69 \
+            DOTFILES_EX_SOFTWARE=70 \
+            DOTFILES_EX_OSERR=71 \
+            DOTFILES_EX_OSFILE=72 \
+            DOTFILES_EX_CANTCREAT=73 \
+            DOTFILES_EX_IOERR=74 \
+            DOTFILES_EX_TEMPFAIL=75 \
+            DOTFILES_EX_PROTOCOL=76 \
+            DOTFILES_EX_NOPERM=77 \
+            DOTFILES_EX_CONFIG=78 \
+            DOTFILES_EX__MAX=78
+    fi
+
+    declare -girx DOTFILES_EX_FAIL=1
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_vars () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    init_ex_vars
+
     # Use readlink's -m option (--canonicalize-missing) since we might be on a
     # bootstrap run where DOTFILES_DIRNAME doesn't actually exist yet.
     DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${DOTFILES_DIRNAME}/..")}"
@@ -745,7 +766,9 @@ init_vars () {
     declare -ga DOTFILES_EXCLUDES=()
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_conf () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local -a dotfiles_envpaths=(
         /etc/dotfiles.conf
         "${XDG_CONFIG_HOME:-${HOME}/.config}/dotfiles/dotfiles.conf"
@@ -767,7 +790,9 @@ init_conf () {
     done
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_opts () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     (( ${#optv[@]} )) || return
 
     set -- "${optv[@]}"
@@ -825,7 +850,7 @@ init_opts () {
                 ;;
             *)
                 echo "Invalid option: $1" 1>&2
-                usage 1
+                usage "$DOTFILES_EX_USAGE"
                 exit $?
                 ;;
         esac
@@ -876,7 +901,7 @@ main () {
         process_all "$DOTFILES_RUNDIR" "$@" || :
     else
         e_fatal "No such directory: ${DOTFILES_RUNDIR} ${DOTFILES_NAME} cannot proceed." 1>&2
-        exit 1
+        return "$DOTFILES_EX_NOINPUT"
     fi
 
     # Alert if backups were made.
