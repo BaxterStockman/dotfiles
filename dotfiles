@@ -5,6 +5,14 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
+set -x
+
+# Don't allow unset variables or uncaught errors, and don't mask the return
+# value of piped commands.
+set -o nounset
+set -o errexit
+set -o pipefail
+
 DOTFILES_VERSION=0.0.1
 
 DOTFILES_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
@@ -48,64 +56,6 @@ truthy () {
             return "$DOTFILES_EX_SOFTWARE"
             ;;
     esac
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Logging stuff
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-init_logging () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local -a colors=(RED GREEN BLUE YELLOW MAGENTA CYAN WHITE)
-
-    unset RESET BOLD "${colors[@]}" 2>/dev/null
-
-    if [[ -t 2 ]] && truthy "${DOTFILES_USE_COLOR:-true}"; then
-        if can_run tput && tput setaf 0 &>/dev/null; then
-            RESET="$(tput sgr0)"
-            BOLD="$(tput bold)"
-            RED="$(tput setaf 1)"
-            GREEN="$(tput setaf 2)"
-            YELLOW="$(tput setaf 3)"
-            BLUE="$(tput setaf 4)"
-            MAGENTA=$(tput setaf 5)
-            CYAN=$(tput setaf 6)
-            WHITE=$(tput setaf 7)
-        else
-            RESET="\e[0m"
-            BOLD="\e[1m"
-            RED="\e[31m"
-            GREEN="\e[32m"
-            YELLOW="\e[33m"
-            BLUE="\e[34m"
-            MAGENTA="\e[35m"
-            CYAN="\e[36m"
-            WHITE="\e[37m"
-        fi
-    else
-        for color in RESET BOLD "${colors[@]}"; do
-            declare -grx "${color}="
-        done
-    fi
-
-    declare -grx RESET BOLD "${colors[@]}"
-
-    if can_run gettext; then
-        export TEXTDOMAIN='dotfiles'
-        export TEXTDOMAINDIR="${TEXTDOMAINDIR:=/usr/share/locale}"
-    else
-        # If we can't run `gettext`, just print all the arguments back
-        gettext () { echo -n "$@"; }
-    fi
-
-    e_header () { printf -- "${BOLD}${WHITE}:: ${RESET}${BOLD}%b${RESET}\n" "$@"; }
-    e_prompt () { printf -- "${BOLD}${CYAN} > ${RESET}${BOLD}%b${RESET}: " "$@"; }
-    e_success () { printf -- "${GREEN}==> ${RESET}${BOLD} %b${RESET}\n" "$@"; }
-    e_warning () { printf -- "${YELLOW}==> $(gettext "WARNING")${RESET}:${BOLD} %b${RESET}\n" "$@"; }
-    e_error () { printf -- "${MAGENTA}==> $(gettext "ERROR")${RESET}:${BOLD} %b${RESET}\n" "$@"; }
-    e_fatal () { printf -- "${BOLD}${RED}==> $(gettext "FATAL")${RESET}:${BOLD} %b${RESET}\n" "$@"; }
-    e_arrow () { printf -- "   ${BLUE}->${RESET}${BOLD} %b${RESET}\n" "$@"; }
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -176,25 +126,43 @@ find_hierarchical () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-check_noclobber () {
+call_conditional () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcfile="$1"
-    local destfile="$2"
-    local real_destfile="$destfile"
-
-    if truthy "${DOTFILES_NOCLOBBER:-1}" && [[ -e "$destfile" ]]; then
-        local -i noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-0}"
-
-        if (( noclobber )); then
-            local noclobber_message
-            printf -v noclobber_message -- "Not clobbering %s; %s will be appended with '%s'" \
-                "$destfile" "$srcfile"  "$DOTFILES_NOCLOBBER_EXT"
-            e_arrow "$noclobber_message" 1>&2
-            real_destfile="${destfile}${DOTFILES_NOCLOBBER_EXT}"
-        fi
+    if declare -F "$1" &>/dev/null; then
+        "$@"
+    else
+        # If a submodule doesn't define a function, we don't want to bomb out.
+        return "$DOTFILES_EX_OK"
     fi
+}
 
-    printf '%s\n' "$real_destfile"
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+check_repo_url () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local wanted_url="$1"
+    shift
+    local gitdir="$1"
+    shift
+
+    local git_config_path="${gitdir}/.git/config"
+    local url_from_config=''
+    url_from_config="$(git config --file "$git_config_path" --get remote.origin.url 2>/dev/null)"
+
+    [[ "$wanted_url" == "$url_from_config" ]]
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+check_bash_version () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if (( BASH_VERSINFO[0] < 3 )); then
+        printf -- "$(gettext '%s: You are using an ancient Bash version (%s).  Please upgrade')" \
+            "$DOTFILES_NAME" "$BASH_VERSION"
+        return "$DOTFILES_EX_FAIL"
+    elif (( BASH_VERSINFO[0] < 4 )); then
+        printf -- "$(gettext '%s: Your Bash version (%s) does not support associative arrays. Please upgrade.')" \
+            "$DOTFILES_NAME" "$BASH_VERSION"
+        return "$DOTFILES_EX_FAIL"
+    fi
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -214,13 +182,93 @@ prompt_skip () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Logging stuff
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init_logging () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local -a colors=(RED GREEN BLUE YELLOW MAGENTA CYAN WHITE)
+
+    unset RESET BOLD "${colors[@]}" 2>/dev/null
+
+    if [[ -t 2 ]] && truthy "${DOTFILES_USE_COLOR:-true}"; then
+        if can_run tput && tput setaf 0 &>/dev/null; then
+            RESET="$(tput sgr0)"
+            BOLD="$(tput bold)"
+            RED="$(tput setaf 1)"
+            GREEN="$(tput setaf 2)"
+            YELLOW="$(tput setaf 3)"
+            BLUE="$(tput setaf 4)"
+            MAGENTA=$(tput setaf 5)
+            CYAN=$(tput setaf 6)
+            WHITE=$(tput setaf 7)
+        else
+            RESET="\e[0m"
+            BOLD="\e[1m"
+            RED="\e[31m"
+            GREEN="\e[32m"
+            YELLOW="\e[33m"
+            BLUE="\e[34m"
+            MAGENTA="\e[35m"
+            CYAN="\e[36m"
+            WHITE="\e[37m"
+        fi
+    else
+        for color in RESET BOLD "${colors[@]}"; do
+            declare -grx "${color}="
+        done
+    fi
+
+    declare -grx RESET BOLD "${colors[@]}"
+
+    if can_run gettext; then
+        export TEXTDOMAIN='dotfiles'
+        export TEXTDOMAINDIR="${TEXTDOMAINDIR:=/usr/share/locale}"
+    else
+        # If we can't run `gettext`, just print all the arguments back
+        gettext () { echo -n "$@"; }
+    fi
+
+    e_header () { printf -- "${BOLD}${WHITE}:: ${RESET}${BOLD}%b${RESET}\n" "$@" 1>&2; }
+    e_prompt () { printf -- "${BOLD}${CYAN} > ${RESET}${BOLD}%b${RESET}: " "$@" 1>&2; }
+    e_success () { printf -- "${GREEN}==> ${RESET}${BOLD} %b${RESET}\n" "$@" 1>&2; }
+    e_warning () { printf -- "${YELLOW}==> $(gettext "WARNING")${RESET}:${BOLD} b${RESET}\n" "$@" 1>&2; }
+    e_error () { printf -- "${MAGENTA}==> $(gettext "ERROR")${RESET}:${BOLD} %b${RESET}\n" "$@" 1>&2; }
+    e_fatal () { printf -- "${BOLD}${RED}==> $(gettext "FATAL")${RESET}:${BOLD} %b${RESET}\n" "$@" 1>&2; }
+    e_arrow () { printf -- "   ${BLUE}->${RESET}${BOLD} %b${RESET}\n" "$@" 1>&2; }
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+check_noclobber () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    local destfile="$2"
+    local real_destfile="$destfile"
+
+    if truthy "${DOTFILES_NOCLOBBER:-1}" && [[ -e "$destfile" ]]; then
+        local -i noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-0}"
+
+        if (( noclobber )); then
+            local noclobber_message
+            printf -v noclobber_message -- "Not clobbering %s; %s will be appended with '%s'" \
+                "$destfile" "$srcfile"  "$DOTFILES_NOCLOBBER_EXT"
+            e_arrow "$noclobber_message"
+            real_destfile="${destfile}${DOTFILES_NOCLOBBER_EXT}"
+        fi
+    fi
+
+    printf '%s\n' "$real_destfile"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 backup () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local destfile="$1"
 
     # Destination file already exists. Back it up!
     if [[ -e "$destfile" ]]; then
-        e_arrow "Backing up ${destfile}."
+        e_arrow "Backing up ${destfile}"
         # Set backup flag, so a nice message can be shown at the end.
         ((__DOTFILES_BACKUP++))
 
@@ -228,26 +276,15 @@ backup () {
         # Create backup dir if it doesn't already exist.
         if ! [[ -e "$backup_subpath" ]]; then
             if ! mkdir -p "$backup_subpath" &>/dev/null; then
-                e_fatal "Could not create backup directory ${backup_subpath}" 1>&2
+                e_fatal "Could not create backup directory ${backup_subpath}"
                 return "$DOTFILES_EX_CANTCREAT"
             fi
         elif ! [[ -d "$backup_subpath" ]]; then
-            e_error "${backup_subpath} exists but is not a directory" 1>&2
+            e_error "${backup_subpath} exists but is not a directory"
             return "$DOTFILES_EX_CANTCREAT"
         fi
 
         cp "$destfile" "$backup_subpath"
-    fi
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-call_conditional () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if declare -F "$1" &>/dev/null; then
-        "$@"
-    else
-        # If a submodule doesn't define a function, we don't want to bomb out.
-        return "$DOTFILES_EX_OK"
     fi
 }
 
@@ -283,7 +320,7 @@ process_prep () {
         srcdir="${prefix_path}${processdir}"
     else
         if [[ -z "$optype" ]]; then
-            e_error "No operation specified" 1>&2
+            e_error "No operation specified"
             return "$DOTFILES_EX_USAGE"
         fi
         srcdir="${DOTFILES_ROOT}/${prefix_path}${optype}"
@@ -293,7 +330,7 @@ process_prep () {
     if (( ${#DOTFILES_INCLUDES[@]} )); then
         for include_pattern in "${DOTFILES_INCLUDES[@]}"; do
             if ! [[ "$optype" =~ $include_pattern ]]; then
-                e_arrow "Operation '${optype}' does not match include filter; skipping..." 1>&2
+                e_arrow "Operation '${optype}' does not match include filter; skipping..."
                 return 1
             fi
         done
@@ -302,7 +339,7 @@ process_prep () {
     if (( ${#DOTFILES_EXCLUDES[@]} )); then
         for exclude_pattern in "${DOTFILES_EXCLUDES[@]}"; do
             if [[ "$optype" =~ $exclude_pattern ]]; then
-                e_arrow "Operation '${optype}' matches exclude filter; skipping..." 1>&2
+                e_arrow "Operation '${optype}' matches exclude filter; skipping"
                 return 1
             fi
         done
@@ -331,15 +368,15 @@ process_check () {
             :
             ;;
         $DOTFILES_EX_TEMPFAIL)
-            e_arrow "Skipping ${srcstem}: ${skip_reason}" 1>&2
+            e_arrow "Skipping ${srcstem}: ${skip_reason}"
             ;;
         *)
             if (( check_exit_code <= DOTFILES_EX__BASE )) \
               || (( check_exit_code >= DOTFILES_EX__MAX )); then
-                e_fatal "Invalid exit status" 1>&2
+                e_fatal "Invalid exit status"
                 check_exit_code="$DOTFILES_EX_PROTOCOL"
             else
-                e_error "Skipping ${srcstem}: ${skip_reason}" 1>&2
+                e_error "Skipping ${srcstem}: ${skip_reason}"
             fi
             ;;
     esac
@@ -364,11 +401,11 @@ process () {
         source "$optype_file" "$@" &>/dev/null
         local -i sourced_exit=$?
         if (( sourced_exit != 0 )); then
-            e_error "Sourcing ${optype_file} exited abnormally" 1>&2
+            e_error "Sourcing ${optype_file} exited abnormally"
             return "$sourced_exit"
         fi
     else
-        e_error "No such file: $optype_file" 1>&2
+        e_error "No such file: $optype_file"
         return "$DOTFILES_EX_NOINPUT"
     fi
 
@@ -383,7 +420,7 @@ process () {
     local requires_source="${requires_source:-true}"
     if ! [[ -d "$srcdir" ]] && truthy "$requires_source"; then
         if ! (( DOTFILES_IGNORE_MISSING )); then
-            e_error "No such directory: $srcdir; unable to complete '$optype' task" 1>&2
+            e_error "No such directory: $srcdir; unable to complete '$optype' task"
         fi
         return "$DOTFILES_EX_NOINPUT"
     fi
@@ -468,123 +505,8 @@ process_all () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-check_repo_url () {
+# Configuration file parsing
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local wanted_url="$1"
-    shift
-    local gitdir="$1"
-    shift
-
-    local git_config_path="${gitdir}/.git/config"
-    local url_from_config=''
-    url_from_config="$(git config --file "$git_config_path" --get remote.origin.url 2>/dev/null)"
-
-    [[ "$wanted_url" == "$url_from_config" ]]
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-init_dotfiles () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    e_header "Performing initial configuration"
-
-    if ! type -P git &>/dev/null; then
-        e_fatal "git should be installed.  It isn't"
-        return "$DOTFILES_EX_FAIL"
-    fi
-
-    if ! check_repo_url "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
-        e_header "Downloading dotfiles configuration repo"
-        mkdir -p "$DOTFILES_ROOT"
-        if ! git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
-            e_fatal "Cannot download dotfiles configuration repo"
-            return "$DOTFILES_EX_FAIL"
-        fi
-    else
-        # Make sure we have the latest files.
-        e_header "Updating dotfiles configuration"
-        pushd "$DOTFILES_ROOT" >/dev/null
-        git --work-tree "$DOTFILES_ROOT" --git-dir "${DOTFILES_ROOT}/.git" pull || :
-    fi
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-usage () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local -i return_code="${1:-$DOTFILES_EX_OK}"
-
-    printf '%s %s\n' "$DOTFILES_NAME" "$DOTFILES_VERSION"
-    printf -- "$(gettext 'Usage: %s [OPTIONS] [-- [PASSTHRU OPTIONS]]')\n" "$0"
-
-    if (( return_code != DOTFILES_EX_OK )); then
-        printf -- "$(gettext "Please run '%s --help' for detailed usage.")\n" "$DOTFILES_NAME"
-        return "$return_code"
-    fi
-
-    gettext -- "$(printf -- '%s' "\
--s, --skip-init         Tell dotfiles to skip certain initialization steps,
-                        like updating the dotfiles git repository and checking
-                        that dependencies are installed.  WARNING: might cause
-                        dotfiles to break in hilarious ways.
-
--c, --clobber           Tell dotfiles to overwrite configuration files that
-                        would otherwise have been preserved.  Under the current
-                        settings, dotfiles doesn't clobber:
-                        ${!DOTFILES_NOCLOBBER_RCS[*]}
-
--i, --ignore-missing    When given, dotfiles won't raise an error when looking
-                        for the source directory specified in a given file in
-                        $DOTFILES_RUNDIR.
-
--I, --include PATTERN   Tell dotfiles to perform only those action types
-                        specified in files in $DOTFILES_RUNDIR that match this
-                        pattern.  Accepts a Bash regular expression; may be
-                        specified multiple times.
-
--E, --exclude PATTERN   Tell dotfiles to ignore those action types given in
-                        file in  $DOTFILES_RUNDIR that match this pattern.
-                        Accepts a Bash regular expression; may be specified
-                        multiple times.
-
--P, --preserve FILE     Tell dotfiles to not overwrite this file.  This option
-                        can be given multiple times.
-
--B, --backup-path PATH  Tell dotfiles where to store backups of existing
-                        configurations (currently: ${DOTFILES_BACKUPDIR}).
-
--R, --rundir PATH       The directory in which dotfiles will search for its
-                        marching orders (currently: ${DOTFILES_RUNDIR}).  If
-                        the path is relative, it's assumed to be relative to
-                        DOTFILES_ROOT. See README.md for details.
-
--X, --bindir PATH       The directory where dotfiles itself will be checked out
-
--v, --verbose           Tell dotfiles to be chatty.
-
--q, --quiet             Tell dotfiles to pipe down, guldarnit!
-
--h, --help              Print this message.
-
-If $DOTFILES_NAME sees a bare '--', it assumes that options processing is
-done and passes any further parameters to the scripts in ${DOTFILES_RUNDIR}.
-")"
-    echo
-
-    return "$return_code"
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-check_bash_version () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if (( BASH_VERSINFO[0] < 3 )); then
-        printf -- "$(gettext '%s: You are using an ancient Bash version (%s).  Please upgrade')" \
-            "$DOTFILES_NAME" "$BASH_VERSION"
-        return "$DOTFILES_EX_FAIL"
-    elif (( BASH_VERSINFO[0] < 4 )); then
-        printf -- "$(gettext '%s: Your Bash version (%s) does not support associative arrays. Please upgrade.')" \
-            "$DOTFILES_NAME" "$BASH_VERSION"
-        return "$DOTFILES_EX_FAIL"
-    fi
-}
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 to_env_var () {
@@ -605,7 +527,7 @@ to_env_var () {
             ;;
     esac
 
-    printf '%s' "${header:+${header}_}${optname}"
+    printf '%s' "${header:+${header}_}${optname^^}"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -652,7 +574,9 @@ parseconf () {
 
     local optname='' optval='' header=''
     while read -r line; do
-        [[ -z "$line" ]] && continue
+        if [[ -z "$line" ]] || [[ "$line" =~ [[:space:]]*'#' ]]; then
+            continue
+        fi
 
         # If we got a header, skip to the next iteration
         maybe_header="$(extract_header "$line")" && {
@@ -663,12 +587,44 @@ parseconf () {
         IFS=$'=' read -r optname optval <<<"$line"
         optname="$(formatter "$optname" "$header")"
 
-        declare -gx "${optname}=${optval}"
+        if ! declare -gx "${optname}=${optval}" 2>/dev/null; then
+            printf '%s: %s\n' "$DOTFILES_NAME" "error declaring ${optname}=${optval}" 1>&2
+            return "$DOTFILES_EX_DATAERR"
+        fi
     done < "$conf_file"
 
     unset -f formatter
 
     (( using_extglob )) || shopt -u extglob
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Environment initialization
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init_dotfiles_config_repo () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    e_header "Performing initial configuration"
+
+    if ! type -P git &>/dev/null; then
+        e_fatal "git should be installed.  It isn't"
+        return "$DOTFILES_EX_FAIL"
+    fi
+
+    if ! check_repo_url "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
+        e_header "Downloading dotfiles configuration repo"
+        mkdir -p "$DOTFILES_ROOT"
+        if ! git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
+            e_fatal "Cannot download dotfiles configuration repo"
+            return "$DOTFILES_EX_FAIL"
+        fi
+    else
+        # Make sure we have the latest files.
+        e_header "Updating dotfiles configuration"
+        pushd "$DOTFILES_ROOT" >/dev/null
+        git --work-tree "$DOTFILES_ROOT" --git-dir "${DOTFILES_ROOT}/.git" pull || :
+    fi
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -723,7 +679,6 @@ init_vars () {
     declare -gx DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
     declare -gx DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
     declare -gx DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
-    declare -gx DOTFILES_CONFIG_REPO="${DOTFILES_CONFIG_REPO:-git://github.com/BaxterStockman/dotfiles-config.git}"
     declare -gx DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
 
     # Values that are false by default
@@ -793,7 +748,7 @@ init_conf () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_opts () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    (( ${#optv[@]} )) || return
+    (( ${#optv[@]} )) || return "$DOTFILES_EX_OK"
 
     set -- "${optv[@]}"
 
@@ -862,6 +817,79 @@ init_opts () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# dotfiles CLI usage
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+usage () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local -i return_code="${1:-$DOTFILES_EX_OK}"
+
+    printf '%s %s\n\n' "$DOTFILES_NAME" "$DOTFILES_VERSION"
+    printf -- "$(gettext 'Usage: %s [OPTIONS] [-- [PASSTHRU OPTIONS]]')\n" "$0"
+
+    if (( return_code != DOTFILES_EX_OK )); then
+        printf -- "$(gettext "Please run '%s --help' for detailed usage.")\n" "$DOTFILES_NAME"
+        return "$return_code"
+    fi
+
+    gettext -- "$(printf -- '\n%s' "\
+-s, --skip-init         Tell dotfiles to skip certain initialization steps,
+                        like updating the dotfiles git repository and checking
+                        that dependencies are installed.  WARNING: might cause
+                        dotfiles to break in hilarious ways.
+
+-c, --clobber           Tell dotfiles to overwrite configuration files that
+                        would otherwise have been preserved.  Under the current
+                        settings, dotfiles doesn't clobber:
+                        ${!DOTFILES_NOCLOBBER_RCS[*]}
+
+-i, --ignore-missing    When given, dotfiles won't raise an error when looking
+                        for the source directory specified in a given file in
+                        $DOTFILES_RUNDIR.
+
+-I, --include PATTERN   Tell dotfiles to perform only those action types
+                        specified in files in $DOTFILES_RUNDIR that match this
+                        pattern.  Accepts a Bash regular expression; may be
+                        specified multiple times.
+
+-E, --exclude PATTERN   Tell dotfiles to ignore those action types given in
+                        file in  $DOTFILES_RUNDIR that match this pattern.
+                        Accepts a Bash regular expression; may be specified
+                        multiple times.
+
+-P, --preserve FILE     Tell dotfiles to not overwrite this file.  This option
+                        can be given multiple times.
+
+-B, --backup-path PATH  Tell dotfiles where to store backups of existing
+                        configurations (currently: ${DOTFILES_BACKUPDIR}).
+
+-R, --rundir PATH       The directory in which dotfiles will search for its
+                        marching orders (currently: ${DOTFILES_RUNDIR}).  If
+                        the path is relative, it's assumed to be relative to
+                        DOTFILES_ROOT. See README.md for details.
+
+-X, --bindir PATH       The directory where dotfiles itself will be checked out
+
+-v, --verbose           Tell dotfiles to be chatty.
+
+-q, --quiet             Tell dotfiles to pipe down, guldarnit!
+
+-h, --help              Print this message.
+
+If $DOTFILES_NAME sees a bare '--', it assumes that options processing is
+done and passes any further parameters to the scripts in ${DOTFILES_RUNDIR}.
+")"
+    echo
+
+    return "$return_code"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Main body of dotfiles
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 main () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     check_bash_version || return $?
@@ -871,13 +899,15 @@ main () {
 
     declare -a optv=("$@")
     init_opts
-    set -- "${optv[@]}"
+    set -- "${optv[@]:-}"
 
     init_logging
 
-    # Don't allow unset variables or uncaught errors
-    set -o nounset
-    set -o errexit
+    # Bomb out here if dotfiles source repo is unset
+    if [[ -z "${DOTFILES_CONFIG_REPO:-}" ]]; then
+        e_fatal "No configuration repository provided"
+        return "$DOTFILES_EX_CONFIG"
+    fi
 
     # Tweak file globbing.
     shopt -s dotglob
@@ -889,7 +919,7 @@ main () {
     if truthy "$DOTFILES_SKIP_INIT"; then
         e_header "Skipping initialization"
     else
-        init_dotfiles
+        init_dotfiles_config_repo
     fi
 
     if truthy "$DOTFILES_NOCLOBBER"; then
@@ -900,7 +930,7 @@ main () {
     if [[ -d "$DOTFILES_RUNDIR" ]]; then
         process_all "$DOTFILES_RUNDIR" "$@" || :
     else
-        e_fatal "No such directory: ${DOTFILES_RUNDIR} ${DOTFILES_NAME} cannot proceed." 1>&2
+        e_fatal "No such directory: ${DOTFILES_RUNDIR}"
         return "$DOTFILES_EX_NOINPUT"
     fi
 
@@ -912,9 +942,5 @@ main () {
     # All done!
     return $__DOTFILES_FAILED
 }
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Main body of dotfiles
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 main "$@"
