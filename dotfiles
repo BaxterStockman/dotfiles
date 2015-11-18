@@ -65,13 +65,13 @@ md5cmp () {
     shift
     local right="$1"
 
-    local leftsumout rightsumout
-
-    leftsumout="$(md5sum "$left")"
-    rightsumout="$(md5sum "$right")"
-
     # md5sum prints two fields; we're only interested in the leftmost
-    [[ "${leftsumout%%[[:space:]]*}" == "${rightsumout%%[[:space:]]*}" ]]
+    local leftsum rightsum
+    read -r leftsum _ < <(md5sum "$left")
+    read -r rightsum _ < <(md5sum "$right")
+
+    [[ "$leftsum" == "$rightsum" ]]
+    return $?
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -231,7 +231,7 @@ init_logging () {
     e_header () { printf -- "${BOLD}${WHITE}:: ${RESET}${BOLD}%b${RESET}\n" "$@" 1>&2; }
     e_prompt () { printf -- "${BOLD}${CYAN} > ${RESET}${BOLD}%b${RESET}: " "$@" 1>&2; }
     e_success () { printf -- "${GREEN}==> ${RESET}${BOLD} %b${RESET}\n" "$@" 1>&2; }
-    e_warning () { printf -- "${YELLOW}==> $(gettext "WARNING")${RESET}:${BOLD} b${RESET}\n" "$@" 1>&2; }
+    e_warning () { printf -- "${YELLOW}==> $(gettext "WARNING")${RESET}:${BOLD} %b${RESET}\n" "$@" 1>&2; }
     e_error () { printf -- "${MAGENTA}==> $(gettext "ERROR")${RESET}:${BOLD} %b${RESET}\n" "$@" 1>&2; }
     e_fatal () { printf -- "${BOLD}${RED}==> $(gettext "FATAL")${RESET}:${BOLD} %b${RESET}\n" "$@" 1>&2; }
     e_arrow () { printf -- "   ${BLUE}->${RESET}${BOLD} %b${RESET}\n" "$@" 1>&2; }
@@ -369,7 +369,8 @@ process_check () {
             e_arrow "Skipping ${srcstem}: ${skip_reason}"
             ;;
         *)
-            if (( check_exit_code <= DOTFILES_EX__BASE )) \
+            if (( check_exit_code != DOTFILES_EX_FAIL )) \
+              && (( check_exit_code <= DOTFILES_EX__BASE )) \
               || (( check_exit_code >= DOTFILES_EX__MAX )); then
                 e_fatal "Invalid exit status"
                 check_exit_code="$DOTFILES_EX_PROTOCOL"
@@ -455,14 +456,15 @@ process () {
             srcstem="${srcfile#$srcdir/}"
             destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
-            process_check "$srcfile" "$destfile" || {
-                (( $? == DOTFILES_EX_TEMPFAIL )) && continue
+            process_check "$srcfile" "$destfile" || continue
+            #process_check "$srcfile" "$destfile" || {
+            #    (( $? == DOTFILES_EX_TEMPFAIL )) && continue
 
-                destfile="$(check_noclobber "$srcfile" \
-                    "${DOTFILES_DESTDIR}/${srcstem}")"
+            #    destfile="$(check_noclobber "$srcfile" \
+            #        "${DOTFILES_DESTDIR}/${srcstem}")"
 
-                process_check "$srcfile" "$destfile" || continue
-            }
+            #    process_check "$srcfile" "$destfile" || continue
+            #}
 
             # Only back up the file if we're going to replace it
             backup "$destfile"
