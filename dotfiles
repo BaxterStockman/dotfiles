@@ -5,8 +5,6 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
-set -x
-
 # Don't allow unset variables or uncaught errors, and don't mask the return
 # value of piped commands.
 set -o nounset
