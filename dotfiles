@@ -71,7 +71,6 @@ md5cmp () {
     read -r rightsum _ < <(md5sum "$right")
 
     [[ "$leftsum" == "$rightsum" ]]
-    return $?
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,7 +125,7 @@ find_hierarchical () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 call_conditional () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if declare -F "$1" &>/dev/null; then
+    if declare -F -- "$1" &>/dev/null; then
         "$@"
     else
         # If a submodule doesn't define a function, we don't want to bomb out.
@@ -587,8 +586,12 @@ parseconf () {
         IFS=$'=' read -r optname optval <<<"$line"
         optname="$(formatter "$optname" "$header")"
 
+        # Strip leading and trailing quotes
+        optval="${optval/#[\'\"]/}"
+        optval="${optval/%[\'\"]/}"
+
         if ! declare -gx "${optname}=${optval}" 2>/dev/null; then
-            printf '%s: %s\n' "$DOTFILES_NAME" "error declaring ${optname}=${optval}" 1>&2
+            printf '%s: error declaring %s=%s\n' "$DOTFILES_NAME" "$optname" "$optval" 1>&2
             return "$DOTFILES_EX_DATAERR"
         fi
     done < "$conf_file"
