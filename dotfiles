@@ -26,7 +26,7 @@ else
 fi
 
 # TODO(mschreiber) See if there is a good way to do logging that won't
-# prohibit colored output to the terminal OR print a bunch of esca[pe
+# prohibit colored output to the terminal OR print a bunch of escape
 # characters to the log file.
 #exec > >(tee -i -a dotfiles.log)
 #exec 2> >(tee -i -a dotfiles.log >&2)
@@ -217,7 +217,7 @@ init_logging () {
         fi
     else
         for color in RESET BOLD "${colors[@]}"; do
-            declare "${color}"=''
+            declare -gx "${color}"=''
         done
     fi
 
