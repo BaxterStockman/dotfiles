@@ -5,26 +5,31 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
-# Don't allow unset variables or uncaught errors, and don't mask the return
-# value of piped commands.
-set -o nounset
-set -o errexit
-set -o pipefail
-
-DOTFILES_VERSION=0.0.1
-
-DOTFILES_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
-DOTFILES_DIRNAME="${DOTFILES_PATH%/*}"
-DOTFILES_BASENAME="${DOTFILES_PATH##*/}"
-DOTFILES_NAME=dotfiles
+declare -gx DOTFILES_VERSION=0.0.1 2>/dev/null
+declare -gx DOTFILES_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}" 2>/dev/null
+declare -gx DOTFILES_DIRNAME="${DOTFILES_PATH%/*}" 2>/dev/null
+declare -gx DOTFILES_BASENAME="${DOTFILES_PATH##*/}" 2>/dev/null
+declare -gx DOTFILES_NAME=dotfiles 2>/dev/null
 
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
-    printf '%s: %s\n' "$DOTFILES_NAME" 'cannot be sourced' 1>&2
-    unset DOTFILES_PATH DOTFILES_DIRNAME DOTFILES_BASENAME DOTFILES_NAME
-    return 1
+    if [[ "${DOTFILES_AUTOMATED_TESTING:-0}" -ne 1 ]]; then
+        printf '%s: %s\n' "$DOTFILES_NAME" 'cannot be sourced' 1>&2
+        unset DOTFILES_VERSION DOTFILES_PATH DOTFILES_DIRNAME DOTFILES_BASENAME DOTFILES_NAME 2>/dev/null
+        return 1
+    fi
 else
-    declare -grx DOTFILES_PATH DOTFILES_DIRNAME DOTFILES_BASENAME DOTFILES_NAME
+    # Don't allow unset variables or uncaught errors, and don't mask the return
+    # value of piped commands.
+    set -o nounset
+    set -o errexit
+    set -o pipefail
 fi
+
+# TODO(mschreiber) See if there is a good way to do logging that won't
+# prohibit colored output to the terminal OR print a bunch of esca[pe
+# characters to the log file.
+#exec > >(tee -i -a dotfiles.log)
+#exec 2> >(tee -i -a dotfiles.log >&2)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Function definitions
@@ -83,9 +88,7 @@ splitfile () {
     local relpath="${file##$prefix}"
 
     local -a path_elements
-    local IFS=$'/'
-    read -ra path_elements <<<"$relpath"
-    unset IFS
+    IFS=$'/' read -ra path_elements <<<"$relpath"
 
     # Necessary in order to get rid of the leading trailing space
     printf '%s\n' "${path_elements[*]:1}"
@@ -188,6 +191,7 @@ init_logging () {
     local -a colors=(RED GREEN BLUE YELLOW MAGENTA CYAN WHITE)
 
     unset RESET BOLD "${colors[@]}" 2>/dev/null
+    declare -gx RESET BOLD "${colors[@]}"
 
     if [[ -t 2 ]] && truthy "${DOTFILES_USE_COLOR:-true}"; then
         if can_run tput && tput setaf 0 &>/dev/null; then
@@ -197,9 +201,9 @@ init_logging () {
             GREEN="$(tput setaf 2)"
             YELLOW="$(tput setaf 3)"
             BLUE="$(tput setaf 4)"
-            MAGENTA=$(tput setaf 5)
-            CYAN=$(tput setaf 6)
-            WHITE=$(tput setaf 7)
+            MAGENTA="$(tput setaf 5)"
+            CYAN="$(tput setaf 6)"
+            WHITE="$(tput setaf 7)"
         else
             RESET="\e[0m"
             BOLD="\e[1m"
@@ -213,11 +217,9 @@ init_logging () {
         fi
     else
         for color in RESET BOLD "${colors[@]}"; do
-            declare -grx "${color}="
+            declare "${color}="
         done
     fi
-
-    declare -grx RESET BOLD "${colors[@]}"
 
     if can_run gettext; then
         export TEXTDOMAIN='dotfiles'
@@ -512,6 +514,8 @@ to_env_var () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local optname="$1"
     shift
+    local optval="$1"
+    shift
     local header="$1"
 
     case "$header" in
@@ -526,7 +530,18 @@ to_env_var () {
             ;;
     esac
 
-    printf '%s' "${header:+${header}_}${optname^^}"
+    env_var="${header:-}${header:+_}${optname^^}"
+
+    # Strip leading and trailing quotes
+    optval="${optval/#[\'\"]/}"
+    optval="${optval/%[\'\"]/}"
+
+    if [[ -z ${!env_var+x} ]]; then
+        if ! declare -gx "${env_var}=${optval}" 2>/dev/null; then
+            printf '%s: error declaring %s=%s\n' "$DOTFILES_NAME" "$env_var" "$optval" 1>&2
+            return "$DOTFILES_EX_DATAERR"
+        fi
+    fi
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -544,7 +559,7 @@ parseconf () {
         }
     else
         formatter () {
-            echo -n "${2:+${2}_}${1}"
+            echo -n "${3:+${3}_}${1}=${2}"
         }
     fi
 
@@ -584,16 +599,7 @@ parseconf () {
         }
 
         IFS=$'=' read -r optname optval <<<"$line"
-        optname="$(formatter "$optname" "$header")"
-
-        # Strip leading and trailing quotes
-        optval="${optval/#[\'\"]/}"
-        optval="${optval/%[\'\"]/}"
-
-        if ! declare -gx "${optname}=${optval}" 2>/dev/null; then
-            printf '%s: error declaring %s=%s\n' "$DOTFILES_NAME" "$optname" "$optval" 1>&2
-            return "$DOTFILES_EX_DATAERR"
-        fi
+        formatter "$optname" "$optval" "$header"
     done < "$conf_file"
 
     unset -f formatter
@@ -638,10 +644,10 @@ init_ex_vars () {
             if [[ "$define" != '#define' ]] || [[ "$ex_type" != EX_* ]]; then
                 continue
             fi
-            declare -girx "DOTFILES_${ex_type}=${ex_code}"
+            declare -gix "DOTFILES_${ex_type}=${ex_code}"
         done < /usr/include/sysexits.h
     else
-        declare -girx \
+        declare -gix \
             DOTFILES_EX_OK=0 \
             DOTFILES_EX__BASE=64 \
             DOTFILES_EX_USAGE=64 \
@@ -662,7 +668,7 @@ init_ex_vars () {
             DOTFILES_EX__MAX=78
     fi
 
-    declare -girx DOTFILES_EX_FAIL=1
+    declare -gix DOTFILES_EX_FAIL=1
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -676,7 +682,7 @@ init_vars () {
     if [[ -z "${DOTFILES_ROOT}" ]]; then
         DOTFILES_ROOT="${HOME}/.dotfiles"
     fi
-    declare -gx DOTFILES_ROOT
+    declare -gx DOTFILES_ROOT 2>/dev/null
 
     # Globals
     declare -gx DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
@@ -707,7 +713,7 @@ init_vars () {
 
     declare -gA DOTFILES_NOCLOBBER_RCS=()
     # RC files to not clobber when linking
-    if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 0 )); then
+    if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 1 )); then
         DOTFILES_NOCLOBBER_RCS=(
             ["${DOTFILES_DESTDIR}/.bashrc"]=1
             ["${DOTFILES_DESTDIR}/.bash_login"]=1
@@ -829,7 +835,7 @@ usage () {
     local -i return_code="${1:-$DOTFILES_EX_OK}"
 
     printf '%s %s\n\n' "$DOTFILES_NAME" "$DOTFILES_VERSION"
-    printf -- "$(gettext 'Usage: %s [OPTIONS] [-- [PASSTHRU OPTIONS]]')\n" "$0"
+    printf -- "$(gettext 'Usage: %s [OPTIONS] [-- [PASSTHRU OPTIONS]]')\n" "$DOTFILES_PATH"
 
     if (( return_code != DOTFILES_EX_OK )); then
         printf -- "$(gettext "Please run '%s --help' for detailed usage.")\n" "$DOTFILES_NAME"
@@ -891,20 +897,21 @@ done and passes any further parameters to the scripts in ${DOTFILES_RUNDIR}.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Main body of dotfiles
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-main () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init_all () {
     check_bash_version || return $?
 
     init_vars
     init_conf
-
-    declare -a optv=("$@")
     init_opts
-    set -- "${optv[@]:-}"
-
     init_logging
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    optv=("$@")
+    init_all
+    (( ${#optv[@]} )) && set -- "${optv[@]}"
 
     # Bomb out here if dotfiles source repo is unset
     if [[ -z "${DOTFILES_CONFIG_REPO:-}" ]]; then
@@ -946,4 +953,11 @@ main () {
     return $__DOTFILES_FAILED
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+else
+    optv=("$@")
+    init_all "$@"
+    (( ${#optv[@]} )) && set -- "${optv[@]}"
+    unset optv
+fi
