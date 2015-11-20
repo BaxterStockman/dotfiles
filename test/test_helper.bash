@@ -4,8 +4,8 @@ declare -gx BATS_LOGFILE
 BATS_LOGFILE="${BATS_DIRNAME:-${PWD}}/bats-$(date +%s).log"
 
 declare -gx DOTFILES_REPO_ROOT=''
-: "${DOTFILES_REPO_ROOT:=${BATS_TEST_DIRNAME}/..}"
 DOTFILES_REPO_ROOT="$(git rev-parse --show-toplevel)"
+: "${DOTFILES_REPO_ROOT:=${BATS_TEST_DIRNAME}/..}"
 
 setup () {
     export PATH="${DOTFILES_REPO_ROOT}:${PATH}"

@@ -217,7 +217,7 @@ init_logging () {
         fi
     else
         for color in RESET BOLD "${colors[@]}"; do
-            declare "${color}="
+            declare "${color}"=''
         done
     fi
 
