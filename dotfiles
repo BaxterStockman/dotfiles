@@ -678,11 +678,7 @@ init_vars () {
 
     # Use readlink's -m option (--canonicalize-missing) since we might be on a
     # bootstrap run where DOTFILES_DIRNAME doesn't actually exist yet.
-    DOTFILES_ROOT="${DOTFILES_ROOT:-$(readlink -m "${DOTFILES_DIRNAME}/..")}"
-    if [[ -z "${DOTFILES_ROOT}" ]]; then
-        DOTFILES_ROOT="${HOME}/.dotfiles"
-    fi
-    declare -gx DOTFILES_ROOT 2>/dev/null
+    declare -gx DOTFILES_ROOT="${DOTFILES_ROOT:-${HOME}/.dotfiles}"
 
     # Globals
     declare -gx DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
