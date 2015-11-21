@@ -269,7 +269,7 @@ backup () {
     if [[ -e "$destfile" ]]; then
         e_arrow "Backing up ${destfile}"
         # Set backup flag, so a nice message can be shown at the end.
-        ((__DOTFILES_BACKUP++))
+        ((__DOTFILES_BACKUP+=1))
 
         backup_subpath="${DOTFILES_BACKUPDIR}/${destfile%/*}"
         # Create backup dir if it doesn't already exist.
@@ -437,7 +437,7 @@ process () {
     if ! truthy "$requires_source"; then
         if ! run; then
             ((failed++))
-            ((__DOTFILES_FAILED++))
+            ((__DOTFILES_FAILED+=1))
         fi
     else
         # Iterate over files.
@@ -473,7 +473,7 @@ process () {
             # Do stuff.
             if ! run "$srcfile" "$destfile"; then
                 ((failed++))
-                ((__DOTFILES_FAILED++))
+                ((__DOTFILES_FAILED+=1))
             fi
         done
     fi
