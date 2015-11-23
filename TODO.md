@@ -18,3 +18,4 @@
   a descriptive 'namespace' -- e.g. `link::run`, `link::test`, etc.
 * Don't try to read input if standard input is not a terminal
 * Options processing is too simpleminded.  Take a look at `makepkg` for ideas.
+* Fix exit code of main() to reflect new DOTFILES_EX_* codes

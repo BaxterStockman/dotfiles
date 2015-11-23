@@ -1,6 +1,5 @@
 #!/usr/bin/env bats
 
-# Order important here!
 load test_helper
 
 @test 'ensure that [_] (global) settings are as expected' {

@@ -16,10 +16,19 @@ setup () {
 
     # shellcheck disable=SC1090
     DOTFILES_AUTOMATED_TESTING=1 source "${DOTFILES_REPO_ROOT}/dotfiles"
+
+    if [[ "$BATS_LOG" -eq 1 ]]; then
+        bats_log () {
+            printf '[%s (%i)]: %s\n' "$BATS_TEST_NAME" "$BATS_TEST_NUMBER" "$*" >> "$BATS_LOGFILE"
+        }
+    else
+        bats_log () { : ; }
+    fi
 }
 
-bats_log () {
-    printf '[%s (%i)]: %s\n' "$BATS_TEST_NAME" "$BATS_TEST_NUMBER" "$*" >> "$BATS_LOGFILE"
+bats_log_status () {
+    bats_log "status: $status"
+    bats_log "output: $output"
 }
 
 teardown () {
