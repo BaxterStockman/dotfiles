@@ -942,7 +942,7 @@ main () {
 
     # Alert if backups were made.
     if (( "$__DOTFILES_BACKUP" > 0 )); then
-        e_arrow "Backups were moved to ${DOTFILES_BACKUPDIR}"
+        e_warning "Backups were moved to ${DOTFILES_BACKUPDIR}"
     fi
 
     # All done!
