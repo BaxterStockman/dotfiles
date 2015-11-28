@@ -178,6 +178,7 @@ exists, otherwise setting sane defaults.  The codes and default values are as
 follows:
 
 - `DOTFILES_EX_OK`: 0
+- `DOTFILES_EX_FAIL`: 1
 - `DOTFILES_EX_USAGE`: 64
 - `DOTFILES_EX_DATAERR`: 65
 - `DOTFILES_EX_NOINPUT`: 66
