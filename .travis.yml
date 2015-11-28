@@ -7,10 +7,9 @@ env:
 
 before_script:
     - git clone https://github.com/sstephenson/bats.git
-    - ./bats/install.sh "$DOTFILES_ROOT"
 
 script:
-    - bats --tap ./test
+    - bin/bats --tap ./test
 
 notifications:
     email:
