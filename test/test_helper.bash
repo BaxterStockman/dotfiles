@@ -1,21 +1,24 @@
 #!/usr/bin/env bash
 
-declare -gx BATS_LOGFILE
-BATS_LOGFILE="${BATS_DIRNAME:-${PWD}}/bats-$(date +%s).log"
+bats_log_status () {
+    bats_log "status: $status"
+    bats_log "output: $output"
+}
 
-declare -gx DOTFILES_REPO_ROOT=''
-DOTFILES_REPO_ROOT="$(git rev-parse --show-toplevel)"
-: "${DOTFILES_REPO_ROOT:=${BATS_TEST_DIRNAME}/..}"
+init () {
+    declare -gx BATS_LOGFILE
+    BATS_LOGFILE="${BATS_DIRNAME:-${PWD}}/bats-$(date +%s).log"
 
-setup () {
+    declare -gx DOTFILES_REPO_ROOT=''
+    DOTFILES_REPO_ROOT="$(git rev-parse --show-toplevel)"
+    : "${DOTFILES_REPO_ROOT:=${BATS_TEST_DIRNAME}/..}"
+
     export PATH="${DOTFILES_REPO_ROOT}:${PATH}"
 
-    declare -gx DOTFILES_CONFIG_PATH="${BATS_TMPDIR}/dotfiles.conf"
+    declare -gx DOTFILES_CONFIG_PATH="${BATS_DIRNAME}/fixtures/etc/dotfiles.conf"
     declare -gx DOTFILES_ENV="$DOTFILES_CONFIG_PATH"
-    write_config
 
-    # shellcheck disable=SC1090
-    DOTFILES_AUTOMATED_TESTING=1 source "${DOTFILES_REPO_ROOT}/dotfiles"
+    { set -- ; DOTFILES_AUTOMATED_TESTING=1 source "${DOTFILES_REPO_ROOT}/dotfiles" ; }
 
     if [[ "$BATS_LOG" -eq 1 ]]; then
         bats_log () {
@@ -26,21 +29,4 @@ setup () {
     fi
 }
 
-bats_log_status () {
-    bats_log "status: $status"
-    bats_log "output: $output"
-}
-
-teardown () {
-    rm -f "$DOTFILES_CONFIG_PATH"
-}
-
-write_config () {
-    [[ -s "$DOTFILES_CONFIG_PATH" ]] || cat << EOF > "$DOTFILES_CONFIG_PATH"
-googoo=gaga
-[env]
-this=that
-[private]
-eyes='are watching you'
-EOF
-}
+init
