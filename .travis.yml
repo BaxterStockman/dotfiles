@@ -3,13 +3,13 @@ language: c
 sudo: false
 
 env:
-    - DOTFILES_ROOT="$(readlink -m "../${PWD}")"
+    - DOTFILES_ROOT="$(readlink -m ..)"
 
 before_script:
     - git clone https://github.com/sstephenson/bats.git
 
 script:
-    - bin/bats --tap ./test
+    - ./bats/bin/bats --tap ./test
 
 notifications:
     email:
