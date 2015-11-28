@@ -5,7 +5,7 @@ env:
 
 before_script:
     - git clone https://github.com/sstephenson/bats.git
-    - ./bats/install.sh "$BASHLIB_PREFIX"
+    - ./bats/install.sh "$DOTFILES_ROOT"
 
 script:
     - bats --tap ./test
