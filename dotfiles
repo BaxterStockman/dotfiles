@@ -405,7 +405,7 @@ process () {
             return "$sourced_exit"
         fi
     else
-        e_error "No such file: $optype_file"
+        e_error "no such file: $optype_file"
         return "$DOTFILES_EX_NOINPUT"
     fi
 
@@ -420,7 +420,7 @@ process () {
     local requires_source="${requires_source:-true}"
     if ! [[ -d "$srcdir" ]] && truthy "$requires_source"; then
         if ! (( DOTFILES_IGNORE_MISSING )); then
-            e_error "No such directory: $srcdir; unable to complete '$optype' task"
+            e_error "no such directory: $srcdir; unable to complete '$optype' task"
         fi
         return "$DOTFILES_EX_NOINPUT"
     fi
@@ -520,7 +520,7 @@ to_env_var () {
 
     case "$header" in
         env)
-            header=''
+            header=
             ;;
         '')
             header=DOTFILES
@@ -582,7 +582,7 @@ parseconf () {
         return "$DOTFILES_EX_FAIL"
     }
 
-    local optname='' optval='' header=''
+    local optname= optval= header=
     while read -r line; do
         if [[ -z "$line" ]] || [[ "$line" =~ [[:space:]]*'#' ]]; then
             continue
@@ -726,10 +726,18 @@ init_conf () {
         "${HOME}/.dotfilesrc"
     )
 
+    local dotfiles_extra_envpath=
     local -a dotfiles_extra_envpaths=()
     IFS=$':' read -ra dotfiles_extra_envpaths <<<"${DOTFILES_ENV:-}"
     for (( i = "${#dotfiles_extra_envpaths[@]}" - 1 ; i >= 0 ; i-- )); do
-        dotfiles_envpaths+=("${dotfiles_extra_envpaths[i]}")
+        dotfiles_extra_envpath="${dotfiles_extra_envpaths[i]}"
+
+        if ! [[ -f "$dotfiles_extra_envpath" ]]; then
+            printf '%s: %s\n' "${DOTFILES_NAME}" "$(gettext "no such file: $dotfiles_extra_envpath")"
+            return "$DOTFILES_EX_NOINPUT"
+        fi
+
+        dotfiles_envpaths+=("${dotfiles_extra_envpath}")
     done
 
     unset dotfiles_extra_envpaths
@@ -798,6 +806,10 @@ init_opts () {
             -h|--help)
                 usage 0
                 exit $?
+                ;;
+            --printenv)
+                (printenv) | sort | grep ^DOT
+                exit 0
                 ;;
             *)
                 echo "Invalid option: $1" 1>&2
@@ -928,7 +940,7 @@ main () {
     if [[ -d "$DOTFILES_RUNDIR" ]]; then
         process_all "$DOTFILES_RUNDIR" "$@" || :
     else
-        e_fatal "No such directory: ${DOTFILES_RUNDIR}"
+        e_fatal "no such directory: ${DOTFILES_RUNDIR}"
         return "$DOTFILES_EX_NOINPUT"
     fi
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env bats
 
 load test_helper
-load parseconf
 
 @test 'ensure that [_] (global) settings are as expected' {
+    bats_log parseconf "$DOTFILES_CONFIG_PATH" to_env_var
+    parseconf "$DOTFILES_CONFIG_PATH" to_env_var
     bats_log "DOTFILES_GOOGOO=$DOTFILES_GOOGOO"
     [[ "$DOTFILES_GOOGOO" == "gaga" ]]
 }
