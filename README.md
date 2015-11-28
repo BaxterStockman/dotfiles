@@ -1,6 +1,8 @@
 dotfiles
 ========
 
+[![Build Status](https://travis-ci.org/BaxterStockman/dotfiles.svg?branch=master)](https://travis-ci.org/BaxterStockman/dotfiles)
+
 A Bash script for managing your GitHub-hosted configuration files.
 
 About this project
