@@ -1,0 +1,15 @@
+language: c
+
+env:
+    - DOTFILES_ROOT="$(readlink -m "../${PWD}")"
+
+before_script:
+    - git clone https://github.com/sstephenson/bats.git
+    - ./bats/install.sh "$BASHLIB_PREFIX"
+
+script:
+    - bats --tap ./test
+
+notifications:
+    email:
+        on_success: never

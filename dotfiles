@@ -49,10 +49,10 @@ can_run () {
 truthy () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     case "${*,,}" in
-        1|yes|true|on|enable)
+        1|y|yes|true|on|enable)
             return "$DOTFILES_EX_OK"
             ;;
-        0|no|false|off|disable)
+        0|n|no|false|off|disable)
             return "$DOTFILES_EX_FAIL"
             ;;
         *)
