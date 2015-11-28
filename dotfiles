@@ -293,11 +293,6 @@ process_prep () {
     local optype_file="$1"
     shift
 
-    # Silently ignore any files that don't define 'run'
-    if ! declare -F run &>/dev/null; then
-        return "$DOTFILES_EX_OK"
-    fi
-
     if [[ -z "${optype-}" ]]; then
         if [[ -n "${processdir-}" ]]; then
             optype="${processdir##*/}"
@@ -309,6 +304,11 @@ process_prep () {
             # [0-9]*_blah
             optype="${optype_file_noext#[[:digit:]]*_}"
         fi
+    fi
+
+    # Silently ignore any files that don't define 'run'
+    if ! declare -F -- run &>/dev/null && ! declare -F -- "${optype}::run"; then
+        return "$DOTFILES_EX_OK"
     fi
 
     # If processdir contains a leading slash, treat it as an absolute path.
@@ -358,7 +358,7 @@ process_check () {
     # If _test function returns a string, skip file and print that
     # message.
     local skip_reason
-    skip_reason="$(call_conditional check "$srcfile" "$destfile")"
+    skip_reason="$(call_conditional "$check_funcname" "$srcfile" "$destfile")"
     check_exit_code=$?
     skip_reason="${skip_reason:-unknown error}"
 
@@ -392,16 +392,18 @@ process () {
 
     # Unset these functions in case the sourced file doesn't define them.
     # Otherwise, some previously-defined function could run.
-    unset processdir header optype
-    unset -f check run pre post
+    local -a varnames=(processdir header optype requires_source)
+    local -a funcnames=(check run pre post)
+    unset "${varnames[@]}"
+    unset -f "${funcnames[@]}"
 
     if [[ -f "$optype_file" ]]; then
         # Silence "Can't follow non-constant source" warning
         # shellcheck disable=SC1090
-        source "$optype_file" "$@" &>/dev/null
+        source "$optype_file" -- "$@" &>/dev/null
         local -i sourced_exit=$?
         if (( sourced_exit != 0 )); then
-            e_error "Sourcing ${optype_file} exited abnormally"
+            e_error "sourcing ${optype_file} exited abnormally"
             return "$sourced_exit"
         fi
     else
@@ -409,13 +411,26 @@ process () {
         return "$DOTFILES_EX_NOINPUT"
     fi
 
-    # Print a pretty header :)
-    local header="${header:-"Running ${optype_file}"}"
-    e_header "$header"
-
     read -r srcdir optype _ < <(process_prep "$optype_file")
     local -i prep_exit=$?
     (( prep_exit != 0 )) && return $prep_exit
+
+    # Initialize variables
+    for varname in "${varnames[@]}"; do
+        [[ -z "$varname" ]] && varname="$(call_conditional "${optype}::${varname}")"
+    done
+
+    # Initialize functions
+    for funcname in check run pre post; do
+        if declare -F -- "$funcname" &>/dev/null; then
+            local "${funcname}_funcname=${funcname}"
+        else
+            local "${funcname}_funcname=${optype}::${funcname}"
+        fi
+    done
+
+    # Print a pretty header :)
+    e_header "${header:-Running ${optype_file}}"
 
     local requires_source="${requires_source:-true}"
     if ! [[ -d "$srcdir" ]] && truthy "$requires_source"; then
@@ -425,17 +440,11 @@ process () {
         return "$DOTFILES_EX_NOINPUT"
     fi
 
-    local skip_reason
-    skip_reason="$(call_conditional skip)"
-    if [[ -n "$skip_reason" ]]; then
-        e_arrow "Skipping ${optype}: ${skip_reason}"
-    fi
-
-    call_conditional pre
+    call_conditional "$pre_funcname" "$@"
 
     local -i failed=0
     if ! truthy "$requires_source"; then
-        if ! run; then
+        if ! "$run_funcname"; then
             ((failed++))
             ((__DOTFILES_FAILED+=1))
         fi
@@ -471,14 +480,14 @@ process () {
             backup "$destfile"
 
             # Do stuff.
-            if ! run "$srcfile" "$destfile"; then
+            if ! "$run_funcname" "$srcfile" "$destfile"; then
                 ((failed++))
                 ((__DOTFILES_FAILED+=1))
             fi
         done
     fi
 
-    call_conditional post
+    call_conditional "$run_funcname" "$@"
 
     (( failed == 0 ))
 }
@@ -582,7 +591,7 @@ parseconf () {
         return "$DOTFILES_EX_FAIL"
     }
 
-    local optname= optval= header=
+    local optname='' optval='' header=''
     while read -r line; do
         if [[ -z "$line" ]] || [[ "$line" =~ [[:space:]]*'#' ]]; then
             continue
@@ -601,6 +610,265 @@ parseconf () {
     unset -f formatter
 
     (( using_extglob )) || shopt -u extglob
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Function/variable library for use in the scripts that dotfiles sources
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# System initialization
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init::header () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    printf '%s' 'Running initialization files'
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init::pre () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init::check () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init::run () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    e_header "Sourcing ${srcfile}"
+    # shellcheck disable=SC1090
+    source "$srcfile"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init::post () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Copying files
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+copy::header () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    printf '%s' "Copying files into ${DOTFILES_DESTDIR}"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+copy::pre () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+copy::check () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Ensures that files in the destination aren't overwritten if either
+#   - The destination file is exactly the same as the source file; or
+#   - The destination file is newer than the source file.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    local destfile="$2"
+
+    if [[ -e "${destfile}" ]]; then
+        md5cmp "${srcfile}" "${destfile}"
+        if md5cmp "${srcfile}" "${destfile}"; then
+            echo "same file"
+            return "$DOTFILES_EX_TEMPFAIL"
+        elif [[ "${srcfile}" -ot "${destfile}" ]]; then
+            echo "destination file newer"
+            return "$DOTFILES_EX_TEMPFAIL"
+        fi
+    fi
+
+    return "$DOTFILES_EX_OK"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+copy::run () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Attempts to copy a file, printing pretty output
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    local destfile="$2"
+    local destdir="${destfile%/*}"
+
+    if ! mkdir -p "$destdir" >/dev/null; then
+        e_error "Can't copy ${srcfile} to ${destfile} - failed to create ${destdir}"
+        return "$DOTFILES_EX_CANTCREAT"
+    fi
+
+    if ! cp "$srcfile" "$destfile"; then
+        e_error "Failed to copy ${srcfile} to ${destfile}"
+        return "$DOTFILES_EX_CANTCREAT"
+    else
+        e_success "Copied ${srcfile} to ${destfile}"
+        return "$DOTFILES_EX_OK"
+    fi
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+copy::post () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Copying skeleton files
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+skel::header () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    printf '%s' "Copying skeleton files into ${DOTFILES_DESTDIR}"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+skel::pre () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+skel::check () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# More restrictive than copy_test: if the destination file exists at all, don't
+# overwrite it.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local destfile="$2"
+
+    if [[ -e "$destfile" ]]; then
+        echo "file exists"
+        return "$DOTFILES_EX_TEMPFAIL"
+    fi
+
+    return "$DOTFILES_EX_OK"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+skel::run () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    copy::run "$@"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+skel::post () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Linking files
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+link::header () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    printf '%s' "Linking files into ${DOTFILES_DESTDIR}"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+link::pre () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+link::check () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    local destfile="$2"
+
+    if [[ -e "${destfile}" ]]; then
+        if [[ "${srcfile}" -ef "${destfile}" ]]; then
+            echo "link already exists"
+            return "$DOTFILES_EX_TEMPFAIL"
+        else
+            echo "${destfile} exists but is not a link"
+            return "$DOTFILES_EX_CANTCREAT"
+        fi
+    fi
+
+    return "$DOTFILES_EX_OK"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+link::run () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local srcfile="$1"
+    local destfile="$2"
+    local destdir="${destfile%/*}"
+
+    if ! mkdir -p "$destdir" >/dev/null; then
+        e_error "Can't link ${destfile} to ${srcfile} - failed to creat ${destdir}"
+        return "$DOTFILES_EX_CANTCREAT"
+    fi
+
+    ln -sf "$srcfile" "$destfile"
+    e_success "Linking ${srcfile} to ${destfile}"
+    return "$DOTFILES_EX_OK"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+link::post () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Optional configuration
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+opt::header () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    printf '%s' 'Processing optional configuration'
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+opt::pre () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    __DOTFILES_ROOT="${DOTFILES_ROOT-}"
+    __DOTFILES_IGNORE_MISSING="${DOTFILES_IGNORE_MISSING:-}"
+    DOTFILES_IGNORE_MISSING=1
+    local dir=''
+    for dir in "$DOTFILES_ROOT/opt"/*; do
+        read -t 10 -n 1 -r -s -p "$(e_prompt "Process files in ${dir}? [y/N]")"
+        if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+            DOTFILES_ROOT="$dir" process_all "$DOTFILES_RUNDIR"
+        else
+            echo "Skipping..."
+        fi
+    done
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+opt::check () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+opt::run () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    :
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+opt::post () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    DOTFILES_ROOT="$__DOTFILES_ROOT"
+    DOTFILES_IGNORE_MISSING="$__DOTFILES_IGNORE_MISSING"
+    unset __DOTFILES_ROOT __DOTFILES_IGNORE_MISSING
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
