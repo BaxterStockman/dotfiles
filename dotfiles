@@ -217,7 +217,7 @@ init_logging () {
         fi
     else
         for color in RESET BOLD "${colors[@]}"; do
-            declare -gx "${color}"=''
+            declare -gx ${color}=
         done
     fi
 
@@ -530,14 +530,10 @@ to_env_var () {
             ;;
     esac
 
+    # Only set the variable if it is not already set
     env_var="${header:-}${header:+_}${optname^^}"
-
-    # Strip leading and trailing quotes
-    optval="${optval/#[\'\"]/}"
-    optval="${optval/%[\'\"]/}"
-
     if [[ -z ${!env_var+x} ]]; then
-        if ! declare -gx "${env_var}=${optval}" 2>/dev/null; then
+        if ! eval "declare -gx ${env_var}=${optval}" 2>/dev/null; then
             printf '%s: error declaring %s=%s\n' "$DOTFILES_NAME" "$env_var" "$optval" 1>&2
             return "$DOTFILES_EX_DATAERR"
         fi
@@ -640,12 +636,9 @@ init_dotfiles_config_repo () {
 init_ex_vars () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if [[ -r /usr/include/sysexits.h ]]; then
-        while read -r define ex_type ex_code _; do
-            if [[ "$define" != '#define' ]] || [[ "$ex_type" != EX_* ]]; then
-                continue
-            fi
-            declare -gix "DOTFILES_${ex_type}=${ex_code}"
-        done < /usr/include/sysexits.h
+        while read -r ex_type ex_code _; do
+            declare -gix "DOTFILES_${ex_type}"=${ex_code}
+        done < <(grep -o 'EX_.*[0-9]\+' /usr/include/sysexits.h)
     else
         declare -gix \
             DOTFILES_EX_OK=0 \
@@ -674,8 +667,6 @@ init_ex_vars () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_vars () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    init_ex_vars
-
     # Use readlink's -m option (--canonicalize-missing) since we might be on a
     # bootstrap run where DOTFILES_DIRNAME doesn't actually exist yet.
     declare -gx DOTFILES_ROOT="${DOTFILES_ROOT:-${HOME}/.dotfiles}"
@@ -688,12 +679,12 @@ init_vars () {
 
     # Values that are false by default
     for varname in DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
-        declare -gx "${varname}=${!varname:-0}"
+        declare -gx ${varname}=${!varname:-0}
     done
 
     # Values that are true by default
     for varname in DOTFILES_NOCLOBBER DOTFILES_VERBOSE; do
-        declare -gx "${varname}=${!varname:-1}"
+        declare -gx ${varname}=${!varname:-1}
     done
 
     if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
@@ -896,9 +887,10 @@ done and passes any further parameters to the scripts in ${DOTFILES_RUNDIR}.
 init_all () {
     check_bash_version || return $?
 
-    init_vars
+    init_ex_vars
     init_conf
     init_opts
+    init_vars
     init_logging
 }
 
