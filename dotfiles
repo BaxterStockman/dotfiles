@@ -5,11 +5,11 @@
 # Licensed under the MIT license.
 # http://benalman.com/about/license/
 
-declare -gx DOTFILES_VERSION=0.0.1 2>/dev/null
-declare -gx DOTFILES_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}" 2>/dev/null
-declare -gx DOTFILES_DIRNAME="${DOTFILES_PATH%/*}" 2>/dev/null
-declare -gx DOTFILES_BASENAME="${DOTFILES_PATH##*/}" 2>/dev/null
-declare -gx DOTFILES_NAME=dotfiles 2>/dev/null
+declare -gx DOTFILES_VERSION=0.0.2
+declare -gx DOTFILES_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
+declare -gx DOTFILES_DIRNAME="${DOTFILES_PATH%/*}"
+declare -gx DOTFILES_BASENAME="${DOTFILES_PATH##*/}"
+declare -gx DOTFILES_NAME=dotfiles
 
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
     if [[ "${DOTFILES_AUTOMATED_TESTING:-0}" -ne 1 ]]; then
@@ -128,12 +128,35 @@ find_hierarchical () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 call_conditional () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if declare -F -- "$1" &>/dev/null; then
-        "$@"
-    else
-        # If a submodule doesn't define a function, we don't want to bomb out.
-        return "$DOTFILES_EX_OK"
-    fi
+    local -a maybe_funcnames=()
+
+    while (( $# )) && [[ "$1" != '--' ]]; do
+        maybe_funcnames+=("$1")
+        shift
+    done
+
+    shift
+
+    for maybe_funcname in "${maybe_funcnames[@]}"; do
+        if declare -F -- "$maybe_funcname" &>/dev/null; then
+            "$maybe_funcname" "$@"
+            return $?
+        fi
+    done
+
+    # If a submodule doesn't define a function, we don't want to bomb out.
+    return "$DOTFILES_EX_OK"
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+call_libfunc () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local funcname="$1"
+    shift
+    local optype="$1"
+    shift
+
+    call_conditional "$funcname" "${optype}::${funcname}" -- "$@"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -269,7 +292,7 @@ backup () {
     if [[ -e "$destfile" ]]; then
         e_arrow "Backing up ${destfile}"
         # Set backup flag, so a nice message can be shown at the end.
-        ((__DOTFILES_BACKUP+=1))
+        (( __DOTFILES_BACKUP += 1 ))
 
         backup_subpath="${DOTFILES_BACKUPDIR}/${destfile%/*}"
         # Create backup dir if it doesn't already exist.
@@ -307,7 +330,7 @@ process_prep () {
     fi
 
     # Silently ignore any files that don't define 'run'
-    if ! declare -F -- run &>/dev/null && ! declare -F -- "${optype}::run"; then
+    if ! { declare -F -- run || declare -F -- "${optype}::run" ; } &>/dev/null; then
         return "$DOTFILES_EX_OK"
     fi
 
@@ -354,11 +377,12 @@ process_check () {
     shift
     local destfile="$1"
     shift
+    local optype="$1"
 
     # If _test function returns a string, skip file and print that
     # message.
     local skip_reason
-    skip_reason="$(call_conditional "$check_funcname" "$srcfile" "$destfile")"
+    skip_reason="$(call_libfunc check "$optype" "$srcfile" "$destfile")"
     check_exit_code=$?
     skip_reason="${skip_reason:-unknown error}"
 
@@ -398,7 +422,6 @@ process () {
     unset -f "${funcnames[@]}"
 
     if [[ -f "$optype_file" ]]; then
-        # Silence "Can't follow non-constant source" warning
         # shellcheck disable=SC1090
         source "$optype_file" -- "$@" &>/dev/null
         local -i sourced_exit=$?
@@ -417,16 +440,7 @@ process () {
 
     # Initialize variables
     for varname in "${varnames[@]}"; do
-        [[ -z "$varname" ]] && varname="$(call_conditional "${optype}::${varname}")"
-    done
-
-    # Initialize functions
-    for funcname in check run pre post; do
-        if declare -F -- "$funcname" &>/dev/null; then
-            local "${funcname}_funcname=${funcname}"
-        else
-            local "${funcname}_funcname=${optype}::${funcname}"
-        fi
+        [[ -z "${!varname:-}" ]] && declare "${varname}=$(call_conditional "${optype}::${varname}")"
     done
 
     # Print a pretty header :)
@@ -440,11 +454,11 @@ process () {
         return "$DOTFILES_EX_NOINPUT"
     fi
 
-    call_conditional "$pre_funcname" "$@"
+    call_libfunc pre "$optype" "$@"
 
     local -i failed=0
     if ! truthy "$requires_source"; then
-        if ! "$run_funcname"; then
+        if ! run; then
             ((failed++))
             ((__DOTFILES_FAILED+=1))
         fi
@@ -466,8 +480,8 @@ process () {
             srcstem="${srcfile#$srcdir/}"
             destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
-            process_check "$srcfile" "$destfile" || continue
-            #process_check "$srcfile" "$destfile" || {
+            process_check "$srcfile" "$destfile" "$optype" || continue
+            #process_check "$srcfile" "$destfile" "$optype" || {
             #    (( $? == DOTFILES_EX_TEMPFAIL )) && continue
 
             #    destfile="$(check_noclobber "$srcfile" \
@@ -480,14 +494,14 @@ process () {
             backup "$destfile"
 
             # Do stuff.
-            if ! "$run_funcname" "$srcfile" "$destfile"; then
+            if ! call_libfunc run "$optype" "$srcfile" "$destfile"; then
                 ((failed++))
                 ((__DOTFILES_FAILED+=1))
             fi
         done
     fi
 
-    call_conditional "$run_funcname" "$@"
+    call_libfunc post "$optype" "$@"
 
     (( failed == 0 ))
 }
@@ -613,7 +627,7 @@ parseconf () {
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Function/variable library for use in the scripts that dotfiles sources
+# Function library for use in the scripts that dotfiles sources
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -703,15 +717,15 @@ copy::run () {
     local destdir="${destfile%/*}"
 
     if ! mkdir -p "$destdir" >/dev/null; then
-        e_error "Can't copy ${srcfile} to ${destfile} - failed to create ${destdir}"
+        e_error "can't copy ${srcfile} to ${destfile} - failed to create ${destdir}"
         return "$DOTFILES_EX_CANTCREAT"
     fi
 
     if ! cp "$srcfile" "$destfile"; then
-        e_error "Failed to copy ${srcfile} to ${destfile}"
+        e_error "failed to copy ${srcfile} to ${destfile}"
         return "$DOTFILES_EX_CANTCREAT"
     else
-        e_success "Copied ${srcfile} to ${destfile}"
+        e_success "copied ${srcfile} to ${destfile}"
         return "$DOTFILES_EX_OK"
     fi
 }
@@ -809,13 +823,16 @@ link::run () {
     local destdir="${destfile%/*}"
 
     if ! mkdir -p "$destdir" >/dev/null; then
-        e_error "Can't link ${destfile} to ${srcfile} - failed to creat ${destdir}"
+        e_error "can't link ${destfile} to ${srcfile} - failed to create ${destdir}"
         return "$DOTFILES_EX_CANTCREAT"
     fi
 
-    ln -sf "$srcfile" "$destfile"
-    e_success "Linking ${srcfile} to ${destfile}"
-    return "$DOTFILES_EX_OK"
+    if ! ln -sf "$srcfile" "$destfile"; then
+        e_error "failed to link ${srcfile} to ${destfile}"
+    else
+        e_success "linked ${srcfile}} to ${destfile}"
+        return "$DOTFILES_EX_OK"
+    fi
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -837,13 +854,12 @@ opt::header () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 opt::pre () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    __DOTFILES_ROOT="${DOTFILES_ROOT-}"
-    __DOTFILES_IGNORE_MISSING="${DOTFILES_IGNORE_MISSING:-}"
     DOTFILES_IGNORE_MISSING=1
     local dir=''
-    for dir in "$DOTFILES_ROOT/opt"/*; do
+    for dir in "$srcdir"/*; do
         read -t 10 -n 1 -r -s -p "$(e_prompt "Process files in ${dir}? [y/N]")"
         if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+            echo
             DOTFILES_ROOT="$dir" process_all "$DOTFILES_RUNDIR"
         else
             echo "Skipping..."
@@ -866,9 +882,7 @@ opt::run () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 opt::post () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    DOTFILES_ROOT="$__DOTFILES_ROOT"
-    DOTFILES_IGNORE_MISSING="$__DOTFILES_IGNORE_MISSING"
-    unset __DOTFILES_ROOT __DOTFILES_IGNORE_MISSING
+    :
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

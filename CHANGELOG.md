@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.2] - 2015-11-29
+### Added
+- Library functions implementing common use cases: symlinking, copying,
+  `skel`-style copying, arbitrary initialization, and optional forms of each of
+  the foregoing.
+- Improved configuration file parsing -- arrays and quoted values are now
+  supported.
+
 ## [0.0.1] - 2015-11-16
 ### Added
 - This very changelog

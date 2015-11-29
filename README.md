@@ -166,9 +166,39 @@ Scripts sourced by `dotfiles` should conform to the following conventions:
   (preferably containing the reason why these inputs should be skipped, since
   `dotfiles` is going to print the echoed message).  `check` should also
   indicate with the return code whether the reason for skipping was exceptional
-  or not -- see the section on (return codes)[#Return codes] below.  This
+  or not -- see the section on [return codes](#return-codes) below.  This
   function is optional.
 - `post`: Like `pre`, but later.
+
+#### Default Implementations
+
+`dotfiles` includes implementations of the above functions for several use
+cases, including symlinking files from the configuration repository root into
+your `DOTFILES_DESTDIR`, copying files, and running arbitrary initialization
+tasks like installing packages.  The functions are prefixed with a 'namespace',
+e.g., `link::check`, `link::run`, and so on.  You can call these functions from
+within the scripts under `DOTFILES_RUNDIR`, or you can simply create empty
+files named as described above -- e.g., `30_link.sh` -- and `dotfiles` will use
+the included functions to handle files located under the corresponding
+subdirectory of `DOTFILES_ROOT`.
+
+- `link`: symlinks files under `$DOTFILES_ROOT/link` into `DOTFILES_DESTDIR`.
+  Does not create a link if the destination file already exists and is not a
+  link.
+- `copy`: copies files under `$DOTFILES_ROOT/copy` into `DOTFILES_DESTDIR`.
+  Does not run if the destination file exists and is newer than the source
+  file.
+- `skel`: exactly the same as `copy`, except that it won't run if the
+  destination file exists, even if the source file is newer.
+- `init`: sources files under `$DOTFILES_ROOT/init`.  I use this to do things
+  like installing packages and Vim plugins.
+- `opt`: a sort of meta-task that runs `dotfiles`'s processing logic on
+  subdirectories of `$DOTFILES_ROOT/opt`, for each such directory prompting the
+  whether to proceed. So, for instance, if you have the files
+  `$DOTFILES_ROOT/opt/foobar/{20_init,30_link,40_copy}.sh`, `dotfiles` will
+  prompt you whether to process the `foobar` directory, and on a positive
+  answer will run the `init`, `link`, and `copy` tasks for files under,
+  respectively, `foobar/init`, `foobar/link`, and `foobar/copy`.
 
 #### Return codes
 
