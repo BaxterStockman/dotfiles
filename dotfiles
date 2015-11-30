@@ -39,6 +39,37 @@ fi
 # General utility functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+if (( BASH_VERSINFO[0] < 4 )) || { (( BASH_VERSINFO[0] >= 4 )) && (( BASH_VERSINFO[1] < 2 )) ; }; then
+    declare () {
+        local -a optv=()
+        local -i global=0
+
+        while getopts ':g' optname "$@"; do
+            case "$optname" in
+                g)
+                    global=1
+                    ;;
+                \?)
+                    optv+=("-${OPTARG}")
+                    ;;
+                *)
+                    optv+=("-${optname}" "${OPTARG}")
+                    ;;
+            esac
+        done
+        shift "$((OPTIND-1))"
+        OPTIND=1
+
+        if (( global )); then
+            for elem in "$@"; do
+                [[ "$elem" == *=* ]] && printf -v "${elem%%=*}" -- '%s' "${elem#*=}"
+            done
+        fi
+
+        builtin declare "${optv[@]}" "$@"
+    }
+fi
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 can_run () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -624,6 +655,31 @@ parseconf () {
     unset -f formatter
 
     (( using_extglob )) || shopt -u extglob
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CLI options parsing
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+parseopts () {
+    local optvname=''
+    local -a optspec=()
+
+    while (( $# > 1 )) && [[ "$1" != '--' ]]; do
+        case "$2" in
+            '--')
+                optvname="$1"
+                shift 2
+                break
+                ;;
+            *)
+                optspec+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    declare -g "$optvname"='' || return $DOTFILES_EX_FAIL
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
