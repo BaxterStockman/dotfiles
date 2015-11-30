@@ -185,6 +185,10 @@ check_bash_version () {
         printf -- "$(gettext '%s: Your Bash version (%s) does not support associative arrays. Please upgrade.')" \
             "$DOTFILES_NAME" "$BASH_VERSION"
         return "$DOTFILES_EX_FAIL"
+    elif (( BASH_VERSINFO[1] < 2 )); then
+        printf -- "$(gettext '%s: Your Bash version (%s) does not support `declare -g`. Please upgrade.')" \
+            "$DOTFILES_NAME" "$BASH_VERSION"
+        return "$DOTFILES_EX_FAIL"
     fi
 }
 
