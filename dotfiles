@@ -21,9 +21,9 @@
 # Alman (https://github.com/cowboy/dotfiles).  The original dotfiles is
 # licensed as follows:
 #
-# Copyright (c) 2012 "Cowboy" Ben Alman
-# Licensed under the MIT license.
-# http://benalman.com/about/license/
+#   Copyright (c) 2012 "Cowboy" Ben Alman
+#   Licensed under the MIT license.
+#   http://benalman.com/about/license/
 #
 
 # The parseopts() function was adapted from the function of the same name in #
@@ -780,6 +780,7 @@ parseopts () {
 
         case "${#matches[@]}" in
             0)
+                eval "${optname}=${opt}"
                 return "${DOTFILES_EX_USAGE}"
                 ;;
             1)
@@ -864,7 +865,7 @@ parseopts () {
             --?*=*|--?*)
                 IFS=$'=' read -r opt optarg <<< "${1#--}"
 
-                matchprefix "$opt" fullopt || ret=$? || ret=$?
+                matchprefix "$opt" fullopt && ret=$? || ret=$?
                 (( ret == DOTFILES_EX_TEMPFAIL )) && return "$ret"
 
                 optaccum+=("--${fullopt}")
