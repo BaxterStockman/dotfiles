@@ -356,7 +356,7 @@ process_prep () {
     if (( ${#DOTFILES_INCLUDES[@]} )); then
         for include_pattern in "${DOTFILES_INCLUDES[@]}"; do
             if ! [[ "$optype" =~ $include_pattern ]]; then
-                e_arrow "Operation '${optype}' does not match include filter; skipping..."
+                e_warning "Operation '${optype}' does not match include filter; skipping..."
                 return 1
             fi
         done
@@ -365,7 +365,7 @@ process_prep () {
     if (( ${#DOTFILES_EXCLUDES[@]} )); then
         for exclude_pattern in "${DOTFILES_EXCLUDES[@]}"; do
             if [[ "$optype" =~ $exclude_pattern ]]; then
-                e_arrow "Operation '${optype}' matches exclude filter; skipping"
+                e_warning "Operation '${optype}' matches exclude filter; skipping"
                 return 1
             fi
         done
@@ -634,25 +634,236 @@ parseconf () {
 # CLI options parsing
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+test_varname () {
+    local varname="$1"
+
+    # `unset` exits cleanly even if one of its arguments is not a valid
+    # identifier.  Since there won't be any output when `unset` was successful,
+    # testing for a non-empty string is a satisfactory indicator of a
+    # problematic $optvname value.
+    local unset_out=''
+    unset_out="$(builtin unset -v "$varname" 2>&1)"
+    if [[ -n "$unset_out" ]]; then
+        printf -- "$(gettext '%s: `%s'"'"': not a valid identifier\n')" \
+            "$DOTFILES_NAME" "$varname"
+        return "$DOTFILES_EX_FAIL"
+    fi
+}
+
 parseopts () {
     local optvname=''
-    local -a optspec=()
+    local -a optspecv=() optaccum=() rest=()
 
-    while (( $# > 1 )) && [[ "$1" != '--' ]]; do
-        case "$2" in
-            '--')
-                optvname="$1"
-                shift 2
-                break
-                ;;
-            *)
-                optspec+=("$1")
-                shift
-                ;;
-        esac
+    # We'll be doing a lot of string processing; make sure that the controlling
+    # environment doesn't muck things up :)
+    local IFS=
+
+    if (( $# < 2 )); then
+        printf -- "$(gettext '%s: usage: %s SPEC1 [SPECS] OPTNAME [-- OPTIONS]')" \
+            "$DOTFILES_NAME" "$FUNCNAME"
+        return "$DOTFILES_EX_USAGE"
+    fi
+
+    # Accumulate all options prior to the last option before '--', which is the
+    # name of the variable that will be 'returned' to the caller.
+    while (( $# > 1 )) && [[ "$2" != '--' ]]; do
+        optspecv+=("$1")
+        shift
     done
 
-    declare -g "$optvname"='' || return $DOTFILES_EX_FAIL
+    # Set 'returned' variable name, empty it out, and remove the '--'
+    # end-of-options signifier
+    optvname="$1"
+
+    test_varname "$optvname" || return $?
+    unset -v "$optvname" || return "$DOTFILES_EX_FAIL"
+    shift 2
+
+    local -A shortoptmap=()
+    local -A longoptmap=()
+
+    local -i hasarg=0
+    for spec in "${optspecv[@]}"; do
+        IFS=$'|' read -ra specv <<<"$spec"
+
+        if [[ "${specv[-1]}" == *: ]]; then
+            hasarg=1
+            specv[-1]="${specv[-1]%:}"
+        fi
+
+        for opt in "${specv[@]}"; do
+            if ! [[ "$opt" =~ ^[[:alnum:]] ]]; then
+                printf -- "$(gettext '%s: option specification `%s'"'"' is not valid\n')" \
+                    "$DOTFILES_NAME" "$opt"
+                return "$DOTFILES_EX_USAGE"
+            fi
+            if (( ${#opt} == 1 )); then
+                shortoptmap[$opt]="$hasarg"
+            else
+                longoptmap[$opt]="$hasarg"
+            fi
+        done
+
+        hasarg=0
+    done
+
+    matchprefix () {
+        local opt="$1"
+        shift
+        local optname="$1"
+
+        test_varname "$optname" || return $?
+        unset -v "$optname" || return "$DOTFILES_EX_SOFTWARE"
+
+        local -a matches=()
+
+        for longopt in "${!longoptmap[@]}"; do
+            if [[ "$longopt" == "$opt" ]]; then
+                matches=("$longopt")
+                break
+            elif [[ "$longopt" == "$opt"* ]]; then
+                matches+=("$longopt")
+            fi
+        done
+
+        case "${#matches[@]}" in
+            0)
+                return "${DOTFILES_EX_USAGE}"
+                ;;
+            1)
+                eval "${optname}=${matches[0]}"
+                return 0
+                ;;
+            *)
+                printf -- "$(gettext '%s: option `%s'"'"' has multiple matches:\n')" \
+                    "$DOTFILES_NAME" "$opt" 1>&2
+                printf ' %s' "${matches[@]}" 1>&2
+                echo 1>&2
+                return "${DOTFILES_EX_TEMPFAIL}"
+                ;;
+        esac
+    }
+
+    validopt () {
+        local opt="$1"
+
+        # N.B. Don't limit to integers, as empty string defaults to 0.
+        local is_mapped=''
+        if (( "${#opt}" > 1 )); then
+            is_mapped="${longoptmap["$opt"]:-}"
+        else
+            is_mapped="${shortoptmap["$opt"]:-}"
+        fi
+
+        case "$is_mapped" in
+            0|1)
+                return "$is_mapped"
+                ;;
+            *)
+                return "$DOTFILES_EX_USAGE"
+                ;;
+        esac
+    }
+
+    local fullopt=''
+    while (( $# )); do
+        case "$1" in
+            --)
+                shift
+                break
+                ;;
+            # Short options.
+            -[!-]*)
+                # Read option one character at a time - bundled options may
+                # come this way
+                for (( i=1 ; i < ${#1} ; i++ )); do
+                    opt="${1:i:1}"
+                    optaccum+=("-${opt}")
+
+                    validopt "$opt" && ret=$? || ret=$?
+                    case $ret in
+                        1)
+                            # Assume that the rest of the option is an argument
+                            if (( i == 1 )) && [[ ${1:2} ]]; then
+                                optaccum+=("${1:i+1}")
+                                break
+                            elif (( i == ${#1} - 1 )) && [[ -n "${2+x}" ]] && [[ "$2" != -* ]]; then
+                                optaccum+=("$2")
+                                shift
+                                break
+                            else
+                                printf -- "$(gettext '%s: option `-%s'"'"' requires an argument\n')" \
+                                    "$DOTFILES_NAME" "$opt" 1>&2
+                                return "$DOTFILES_EX_USAGE"
+                            fi
+                            ;;
+                        0)
+                            :
+                            ;;
+                        *)
+                            printf -- "$(gettext '%s: option `-%s'"'"' is not valid\n')" \
+                                "$DOTFILES_NAME" "$opt" 1>&2
+                            return "$DOTFILES_EX_USAGE"
+                            ;;
+                    esac
+                done
+                ;;
+            # Long options.
+            --?*=*|--?*)
+                IFS=$'=' read -r opt optarg <<< "${1#--}"
+
+                matchprefix "$opt" fullopt || ret=$? || ret=$?
+                (( ret == DOTFILES_EX_TEMPFAIL )) && return "$ret"
+
+                optaccum+=("--${fullopt}")
+
+                validopt "$fullopt" && ret=$? || ret=$?
+                case $ret in
+                    1)
+                        if [[ $optarg ]]; then
+                            optaccum+=("${optarg}")
+                        elif [[ -n "${2+x}" ]] && [[ "$2" != -* ]]; then
+                            optaccum+=("$2")
+                            shift
+                        else
+                            printf -- "$(gettext '%s: option `--%s'"'"' requires an argument\n')" \
+                                "$DOTFILES_NAME" "$opt" 1>&2
+                            return "$DOTFILES_EX_USAGE"
+                        fi
+                        ;;
+                    0)
+                        if [[ $optarg ]]; then
+                            printf -- "$(gettext '%s: option `--%s'"'"' does not accept an argument\n')" \
+                                "$DOTFILES_NAME" "$opt" 1>&2
+                            return "$DOTFILES_EX_USAGE"
+                        fi
+                        ;;
+                    *)
+                        printf -- "$(gettext '%s: option `--%s'"'"' is not valid\n')" \
+                            "$DOTFILES_NAME" "$opt" 1>&2
+                        return "$DOTFILES_EX_USAGE"
+                        ;;
+                esac
+                ;;
+            *) # non-option arg encountered, add it as a parameter
+                rest+=("$1")
+                ;;
+        esac
+        shift
+    done
+
+    optaccum+=(--)
+    (( ${#rest[@]} )) && optaccum+=("${rest[@]}")
+    optaccum+=("$@")
+
+    # Yuck.  All this to avoid using `declare -g`...
+    # Get the declaration for $optaccum, then remove everything before the
+    # opening parenthesis and everything after the closing parenthesis.
+    tmpdeclare=''
+    tmpdeclare="$(declare -p optaccum)"
+    tmpdeclare="${tmpdeclare/#*'('/'('}"
+    tmpdeclare="${tmpdeclare/%')'*/')'}"
+    eval "${optvname}=${tmpdeclare}"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1065,7 +1276,26 @@ init_opts () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     (( ${#optv[@]} )) || return "$DOTFILES_EX_OK"
 
-    set -- "${optv[@]}"
+    local -a optspecv=(
+        's|skip-init'
+        'i|ignore-missing'
+        'c|clobber'
+        'P|preserve:'
+        'I|include:'
+        'E|exlude:'
+        'R|rundir:'
+        'B|backupdir'
+        'v|verbose'
+        'q|quiet'
+        'h|help'
+        'printenv'
+    )
+
+    parseopts "${optspecv[@]}" parsedv -- "${optv[@]}" || return $?
+
+    # shellcheck disable=SC2154
+    set -- "${parsedv[@]}"
+    unset parsedv
 
     # Now process new options.
     while (( $# )); do
@@ -1084,7 +1314,7 @@ init_opts () {
                 DOTFILES_NOCLOBBER=0
                 ;;
             -P|--preserve)
-                DOTFILES_NOCLOBBER_RCS[$2]=1
+                DOTFILES_NOCLOBBER_RCS["$2"]=1
                 shift
                 ;;
             -I|--include)
@@ -1121,11 +1351,6 @@ init_opts () {
             --printenv)
                 (printenv) | sort | grep ^DOT
                 exit 0
-                ;;
-            *)
-                echo "Invalid option: $1" 1>&2
-                usage "$DOTFILES_EX_USAGE"
-                exit $?
                 ;;
         esac
 
@@ -1211,9 +1436,9 @@ init_all () {
     check_bash_version || return $?
 
     init_ex_vars
+    init_vars
     init_conf
     init_opts
-    init_vars
     init_logging
 }
 

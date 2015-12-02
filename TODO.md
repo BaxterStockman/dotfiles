@@ -21,3 +21,6 @@
   which means that stuff like `$DOTFILES_NOCLOBBER_RCS` can't be set in the
   configuration file.
 * `makepkg`-style logging functions
+* Test whether compound [[ ... && ... ]] constructs are faster than the
+  equivalent chained [[ ... ]] && [[ ... ]] versions
+
