@@ -156,14 +156,14 @@ find_hierarchical () {
     while (( $# )); do
         read -r opt_name opt_arg _ <<<"$@"
         case "$opt_name" in
-		-p|--prefix)
-			prefix="$opt_arg"
-			shift 2
-			break
-			;;
-		*)
-			continue
-			;;
+            -p|--prefix)
+                prefix="$opt_arg"
+                shift 2
+                break
+                ;;
+            *)
+                continue
+                ;;
 	esac
     done
 
@@ -404,16 +404,7 @@ process_prep () {
         srcdir="${DOTFILES_ROOT}/${prefix_path}${optype}"
     fi
 
-    local include_pattern exclude_pattern
-    if (( ${#DOTFILES_INCLUDES[@]} )); then
-        for include_pattern in "${DOTFILES_INCLUDES[@]}"; do
-            if ! [[ "$optype" =~ $include_pattern ]]; then
-                e_warning "Operation '${optype}' does not match include filter; skipping..."
-                return 1
-            fi
-        done
-    fi
-
+    local -i exclude=0
     if (( ${#DOTFILES_EXCLUDES[@]} )); then
         for exclude_pattern in "${DOTFILES_EXCLUDES[@]}"; do
             if [[ "$optype" =~ $exclude_pattern ]]; then
@@ -422,6 +413,21 @@ process_prep () {
             fi
         done
     fi
+
+    local include_pattern exclude_pattern
+    # shellcheck disable=SC2043
+    for _ in _; do
+        if (( ${#DOTFILES_INCLUDES[@]} )); then
+            for include_pattern in "${DOTFILES_INCLUDES[@]}"; do
+                if [[ "$optype" =~ $include_pattern ]]; then
+                    break 2
+                fi
+            done
+
+            e_warning "Operation '${optype}' does not match any include filter; skipping..."
+            return 1
+        fi
+    done
 
     echo "$srcdir" "$optype"
 }
@@ -537,14 +543,6 @@ process () {
             destfile="${DOTFILES_DESTDIR}/${srcstem}"
 
             process_check "$srcfile" "$destfile" "$optype" || continue
-            #process_check "$srcfile" "$destfile" "$optype" || {
-            #    (( $? == DOTFILES_EX_TEMPFAIL )) && continue
-
-            #    destfile="$(check_noclobber "$srcfile" \
-            #        "${DOTFILES_DESTDIR}/${srcstem}")"
-
-            #    process_check "$srcfile" "$destfile" || continue
-            #}
 
             # Only back up the file if we're going to replace it
             backup "$destfile"
@@ -735,6 +733,7 @@ parseopts () {
     local -A longoptmap=()
 
     local -i hasarg=0
+    local opt=''
     for spec in "${optspecv[@]}"; do
         IFS=$'|' read -ra specv <<<"$spec"
 
@@ -818,7 +817,7 @@ parseopts () {
         esac
     }
 
-    local fullopt=''
+    local opt='' optarg='' fullopt=''
     while (( $# )); do
         case "$1" in
             --)
@@ -837,7 +836,7 @@ parseopts () {
                     case $ret in
                         1)
                             # Assume that the rest of the option is an argument
-                            if (( i == 1 )) && [[ ${1:2} ]]; then
+                            if (( i == 1 )) && [[ -n "${1:2}" ]]; then
                                 optaccum+=("${1:i+1}")
                                 break
                             elif (( i == ${#1} - 1 )) && [[ -n "${2+x}" ]] && [[ "$2" != -* ]]; then
@@ -873,7 +872,7 @@ parseopts () {
                 validopt "$fullopt" && ret=$? || ret=$?
                 case $ret in
                     1)
-                        if [[ $optarg ]]; then
+                        if [[ -n "${optarg:-}" ]]; then
                             optaccum+=("${optarg}")
                         elif [[ -n "${2+x}" ]] && [[ "$2" != -* ]]; then
                             optaccum+=("$2")
@@ -885,7 +884,7 @@ parseopts () {
                         fi
                         ;;
                     0)
-                        if [[ $optarg ]]; then
+                        if [[ -n "${optarg:+x}" ]]; then
                             printf -- "$(gettext '%s: option `--%s'"'"' does not accept an argument\n')" \
                                 "$DOTFILES_NAME" "$opt" 1>&2
                             return "$DOTFILES_EX_USAGE"
@@ -1335,7 +1334,7 @@ init_opts () {
         'c|clobber'
         'P|preserve:'
         'I|include:'
-        'E|exlude:'
+        'E|exclude:'
         'R|rundir:'
         'B|backupdir'
         'v|verbose'
@@ -1387,7 +1386,7 @@ init_opts () {
 
                 shift
                 ;;
-            -B|--backup-path)
+            -B|--backupdir)
                 DOTFILES_BACKUPDIR="$2"
                 shift
                 ;;
@@ -1447,26 +1446,26 @@ usage () {
 
 -I, --include PATTERN   Tell dotfiles to perform only those action types
                         specified in files in $DOTFILES_RUNDIR that match this
-                        pattern.  Accepts a Bash regular expression; may be
-                        specified multiple times.
+                        pattern, and only if the action type does not match an
+                        --exclude pattern.  Accepts a Bash regular expression;
+                        may be specified multiple times.
 
 -E, --exclude PATTERN   Tell dotfiles to ignore those action types given in
                         file in  $DOTFILES_RUNDIR that match this pattern.
                         Accepts a Bash regular expression; may be specified
-                        multiple times.
+                        multiple times.  Takes precedence over --include
+                        patterns.
 
 -P, --preserve FILE     Tell dotfiles to not overwrite this file.  This option
                         can be given multiple times.
 
--B, --backup-path PATH  Tell dotfiles where to store backups of existing
+-B, --backupdir PATH    Tell dotfiles where to store backups of existing
                         configurations (currently: ${DOTFILES_BACKUPDIR}).
 
 -R, --rundir PATH       The directory in which dotfiles will search for its
                         marching orders (currently: ${DOTFILES_RUNDIR}).  If
                         the path is relative, it's assumed to be relative to
                         DOTFILES_ROOT. See README.md for details.
-
--X, --bindir PATH       The directory where dotfiles itself will be checked out
 
 -v, --verbose           Tell dotfiles to be chatty.
 
@@ -1511,8 +1510,6 @@ main () {
     # Tweak file globbing.
     shopt -s dotglob
     shopt -s nullglob
-
-    truthy "$DOTFILES_NOCLOBBER"
 
     # Initial stuff; do only if we haven't updated to the newest version
     if truthy "$DOTFILES_SKIP_INIT"; then
