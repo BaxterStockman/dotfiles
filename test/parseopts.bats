@@ -45,7 +45,7 @@ load parseopts
     (( status != 0 )) && [[ "$output" == *'not a valid identifier'* ]]
 }
 
-@test "parseopts correctly processes unambiguous partial options" {
+@test "parseopts correctly processes unambiguous partial long options" {
     skip_conditional
     parseopts 'elephant:' 'el-guapo:' OPTV -- --ele mentary \
         && [[ "${OPTV[*]}" == *'--elephant mentary'* ]]
@@ -67,4 +67,28 @@ load parseopts
     skip_conditional
     parseopts 'g' 'r' 'o' 'u' 'p' OPTV -- '-group'
     [[ "${OPTV[*]}" == '-g -r -o -u -p'* ]]
+}
+
+@test "parseopts recognizes more than one short option per spec" {
+    skip_conditional
+    parseopts 'b|r|o' OPTV -- '-bro'
+    [[ "${OPTV[*]}" == '-b -r -o'* ]]
+}
+
+@test "parseopts recognizes more than one long option per spec" {
+    skip_conditional
+    parseopts 'tweedly|dee:' OPTV -- --tweedly deedly --dee dum
+    [[ "${OPTV[*]}" == '--tweedly deedly --dee dum'* ]]
+}
+
+@test "parseopts passes through positional parameters" {
+    skip_conditional
+    parseopts 'n' OPTV -- -n this
+    [[ "${OPTV[*]}" == *"-- this" ]]
+}
+
+@test "parseopts does not require space between short flag and argument" {
+    skip_conditional
+    parseopts 'h:' 'r:' OPTV -- -race -horse
+    [[ "${OPTV[*]}" == "-r ace -h orse"* ]]
 }
