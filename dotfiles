@@ -614,10 +614,7 @@ to_env_var () {
     # Only set the variable if it is not already set
     env_var="${header:-}${header:+_}${optname^^}"
     if [[ -z ${!env_var+x} ]]; then
-        if ! eval "declare -gx ${env_var}=${optval}" 2>/dev/null; then
-            printf '%s: error declaring %s=%s\n' "$DOTFILES_NAME" "$env_var" "$optval" 1>&2
-            return "$DOTFILES_EX_DATAERR"
-        fi
+        echo "${env_var}=${optval}"
     fi
 }
 
