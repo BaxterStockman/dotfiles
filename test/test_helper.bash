@@ -18,7 +18,7 @@ init () {
     declare -gx DOTFILES_CONFIG_PATH="${BATS_TEST_DIRNAME}/fixtures/etc/dotfiles.conf"
     declare -gx DOTFILES_ENV="$DOTFILES_CONFIG_PATH"
 
-    { set -- ; DOTFILES_AUTOMATED_TESTING=1 source "${DOTFILES_REPO_ROOT}/dotfiles" ; }
+    { set -- ; AUTOMATED_TESTING=1 source "${DOTFILES_REPO_ROOT}/dotfiles" ; }
 
     if [[ "$BATS_LOG" -eq 1 ]]; then
         bats_log () {

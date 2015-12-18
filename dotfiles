@@ -57,14 +57,14 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-declare -gx DOTFILES_VERSION=0.0.2
-declare -gx DOTFILES_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
-declare -gx DOTFILES_DIRNAME="${DOTFILES_PATH%/*}"
-declare -gx DOTFILES_BASENAME="${DOTFILES_PATH##*/}"
-declare -gx DOTFILES_NAME=dotfiles
+export DOTFILES_VERSION=0.0.2
+export DOTFILES_PATH="${BASH_SOURCE[0]:-"${HOME}/.dotfiles/bin/dotfiles"}"
+export DOTFILES_DIRNAME="${DOTFILES_PATH%/*}"
+export DOTFILES_BASENAME="${DOTFILES_PATH##*/}"
+export DOTFILES_NAME=dotfiles
 
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
-    if [[ "${DOTFILES_AUTOMATED_TESTING:-0}" -ne 1 ]]; then
+    if [[ "${AUTOMATED_TESTING:-0}" -ne 1 ]]; then
         printf '%s: %s\n' "$DOTFILES_NAME" 'cannot be sourced' 1>&2
         unset DOTFILES_VERSION DOTFILES_PATH DOTFILES_DIRNAME DOTFILES_BASENAME DOTFILES_NAME 2>/dev/null
         return 1
@@ -82,6 +82,19 @@ fi
 # characters to the log file.
 #exec > >(tee -i -a dotfiles.log)
 #exec 2> >(tee -i -a dotfiles.log >&2)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Variable declarations
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# Pattens to match against destination files to not clobber when linking.  This
+# has to be declared at the global scope because, within a function, `declare'
+# == `local' unless you use the `-g' flag, which isn't available before Bash
+# 4.2.
+DOTFILES_NOCLOBBER_RE=()
+
+# Patterns to match against operation types.
+DOTFILES_INCLUDE_RE=() DOTFILES_EXCLUDE_RE=()
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Function definitions
@@ -113,22 +126,24 @@ truthy () {
     esac
 }
 
+if ! can_run cmp; then
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-md5cmp () {
+    cmp () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Minimize dependencies: cmp is in diffutils, md5sum is in coreutils.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local left="$1"
-    shift
-    local right="$1"
+        local left="$1"
+        shift
+        local right="$1"
 
-    # md5sum prints two fields; we're only interested in the leftmost
-    local leftsum rightsum
-    read -r leftsum _ < <(md5sum "$left")
-    read -r rightsum _ < <(md5sum "$right")
+        # md5sum prints two fields; we're only interested in the leftmost
+        local leftsum rightsum
+        read -r leftsum _ < <(md5sum "$left")
+        read -r rightsum _ < <(md5sum "$right")
 
-    [[ "$leftsum" == "$rightsum" ]]
-}
+        [[ "$leftsum" == "$rightsum" ]]
+    }
+fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 splitfile () {
@@ -237,10 +252,6 @@ check_bash_version () {
         printf -- "$(gettext '%s: Your Bash version (%s) does not support associative arrays. Please upgrade.')" \
             "$DOTFILES_NAME" "$BASH_VERSION"
         return "$DOTFILES_EX_FAIL"
-    elif (( BASH_VERSINFO[1] < 2 )); then
-        printf -- "$(gettext '%s: Your Bash version (%s) does not support `declare -g`. Please upgrade.')" \
-            "$DOTFILES_NAME" "$BASH_VERSION"
-        return "$DOTFILES_EX_FAIL"
     fi
 }
 
@@ -282,7 +293,7 @@ init_logging () {
     local -a colors=(RED GREEN BLUE YELLOW MAGENTA CYAN WHITE)
 
     unset RESET BOLD "${colors[@]}" 2>/dev/null
-    declare -gx RESET BOLD "${colors[@]}"
+    export RESET BOLD "${colors[@]}"
 
     if [[ -t 2 ]] && truthy "${DOTFILES_USE_COLOR:-true}"; then
         if can_run tput && tput setaf 0 &>/dev/null; then
@@ -308,9 +319,12 @@ init_logging () {
         fi
     else
         for color in RESET BOLD "${colors[@]}"; do
-            declare -gx ${color}=
+            eval "${color}=''"
         done
     fi
+
+    # shellcheck disable=SC2163
+    export RESET BOLD "${colors[@]}"
 
     title () { printf -- "${BOLD}${WHITE}:: ${RESET}${BOLD}%b${RESET}\n" "$@" 1>&2; }
     prompt () { printf -- "${BOLD}${CYAN} > ${RESET}${BOLD}%b${RESET}: " "$@" 1>&2; }
@@ -318,7 +332,7 @@ init_logging () {
     msg2 () { printf -- "   ${BLUE}->${RESET}${BOLD} %b${RESET}\n" "$@" 1>&2; }
     warning () { printf -- "${YELLOW}==> $(gettext "WARNING")${RESET}:${BOLD} %b${RESET}\n" "$@" 1>&2; }
     error () { printf -- "${MAGENTA}==> $(gettext "ERROR")${RESET}:${BOLD} %b${RESET}\n" "$@" 1>&2; }
-    error () { printf -- "${BOLD}${RED}==> $(gettext "FATAL")${RESET}:${BOLD} %b${RESET}\n" "$@" 1>&2; }
+    fatal () { printf -- "${BOLD}${RED}==> $(gettext "FATAL")${RESET}:${BOLD} %b${RESET}\n" "$@" 1>&2; }
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -329,18 +343,19 @@ check_noclobber () {
     local real_destfile="$destfile"
 
     if truthy "${DOTFILES_NOCLOBBER:-1}" && [[ -e "$destfile" ]]; then
-        local -i noclobber="${DOTFILES_NOCLOBBER_RCS[$destfile]:-0}"
-
-        if (( noclobber )); then
-            local noclobber_message
-            printf -v noclobber_message -- "Not clobbering %s; %s will be appended with '%s'" \
-                "$destfile" "$srcfile"  "$DOTFILES_NOCLOBBER_EXT"
-            msg2 "$noclobber_message"
-            real_destfile="${destfile}${DOTFILES_NOCLOBBER_EXT}"
-        fi
+        local pattern=''
+        for pattern in "${DOTFILES_NOCLOBBER_RE[@]}"; do
+            if [[ "$destfile" =~ $pattern ]]; then
+                local noclobber_message
+                printf -v noclobber_message -- "%s matches preservation filter; filename will be appended with '%s'" \
+                    "$destfile" "$srcfile"  "$DOTFILES_NOCLOBBER_EXT"
+                msg2 "$noclobber_message"
+                real_destfile="${destfile}.${DOTFILES_NOCLOBBER_EXT}"
+            fi
+        done
     fi
 
-    printf '%s\n' "$real_destfile"
+    printf '%s' "$real_destfile"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -409,8 +424,8 @@ process_prep () {
     fi
 
     local -i exclude=0
-    if (( ${#DOTFILES_EXCLUDES[@]} )); then
-        for exclude_pattern in "${DOTFILES_EXCLUDES[@]}"; do
+    if (( ${#DOTFILES_EXCLUDE_RE[@]} )); then
+        for exclude_pattern in "${DOTFILES_EXCLUDE_RE[@]}"; do
             if [[ "$optype" =~ $exclude_pattern ]]; then
                 warning "Operation '${optype}' matches exclude filter; skipping"
                 return 1
@@ -421,8 +436,8 @@ process_prep () {
     local include_pattern exclude_pattern
     # shellcheck disable=SC2043
     for _ in _; do
-        if (( ${#DOTFILES_INCLUDES[@]} )); then
-            for include_pattern in "${DOTFILES_INCLUDES[@]}"; do
+        if (( ${#DOTFILES_INCLUDE_RE[@]} )); then
+            for include_pattern in "${DOTFILES_INCLUDE_RE[@]}"; do
                 if [[ "$optype" =~ $include_pattern ]]; then
                     break 2
                 fi
@@ -515,7 +530,7 @@ process () {
     local requires_source="${requires_source:-true}"
     if ! [[ -d "$srcdir" ]] && truthy "$requires_source"; then
         if ! (( DOTFILES_IGNORE_MISSING )); then
-            error "no such directory: $srcdir; unable to complete '$optype' task"
+            error "no such directory: ${srcdir}; unable to complete '$optype' task"
         fi
         return "$DOTFILES_EX_NOINPUT"
     fi
@@ -544,7 +559,7 @@ process () {
             [[ "$srcfile" =~ ^/ ]] || srcfile="/${srcfile}"
 
             srcstem="${srcfile#$srcdir/}"
-            destfile="${DOTFILES_DESTDIR}/${srcstem}"
+            destfile="$(check_noclobber "$srcfile" "${DOTFILES_DESTDIR}/${srcstem}")"
 
             process_check "$srcfile" "$destfile" "$optype" || continue
 
@@ -557,6 +572,8 @@ process () {
                 ((__DOTFILES_FAILED+=1))
             fi
         done
+
+        exec 3<&-
     fi
 
     call_libfunc post "$optype" "$@"
@@ -601,7 +618,7 @@ to_env_var () {
 
     case "$header" in
         env)
-            header=
+            header=''
             ;;
         '')
             header=DOTFILES
@@ -633,7 +650,7 @@ parseconf () {
         }
     else
         formatter () {
-            echo -n "${3:+${3}_}${1}=${2}"
+            echo "${3:+${3}_}${1}=${2}"
         }
     fi
 
@@ -644,37 +661,25 @@ parseconf () {
         shopt -s extglob
     fi
 
-    extract_header () {
-        local line="$1"
-        shift
-
-        if [[ "$line" == '['*']' ]]; then
-            header="${line#[}"
-            header="${header%]}"
-            if [[ -n $header ]]; then
-                echo "$header"
-                return "$DOTFILES_EX_OK"
-            fi
-        fi
-
-        return "$DOTFILES_EX_FAIL"
-    }
-
     local optname='' optval='' header=''
-    while read -r line; do
+    # shellcheck disable=SC1090
+    source <(while read -r line; do
         if [[ -z "$line" ]] || [[ "$line" =~ [[:space:]]*'#' ]]; then
             continue
         fi
 
         # If we got a header, skip to the next iteration
-        maybheader="$(extract_header "$line")" && {
-            header="$maybheader"
-            continue
-        }
+        if [[ "$line" == '['*']' ]]; then
+            header="${line#[}"
+            header="${header%]}"
+            if [[ -n $header ]]; then
+                continue
+            fi
+        fi
 
         IFS=$'=' read -r optname optval <<<"$line"
         formatter "$optname" "$optval" "$header"
-    done < "$conf_file"
+    done < "$conf_file")
 
     unset -f formatter
 
@@ -729,7 +734,6 @@ parseopts () {
     # Set 'returned' variable name, empty it out, and remove the '--'
     # end-of-options signifier
     optvname="$1"
-
     test_varname "$optvname" || return $?
     unset -v "$optvname" || return "$DOTFILES_EX_FAIL"
     shift 2
@@ -822,6 +826,7 @@ parseopts () {
         esac
     }
 
+    local -i success="$DOTFILES_EX_OK"
     local opt='' optarg='' fullopt=''
     while (( $# )); do
         case "$1" in
@@ -851,7 +856,8 @@ parseopts () {
                             else
                                 printf -- "$(gettext '%s: option `-%s'"'"' requires an argument\n')" \
                                     "$DOTFILES_NAME" "$opt" 1>&2
-                                return "$DOTFILES_EX_USAGE"
+                                success="$DOTFILES_EX_USAGE"
+                                break 2
                             fi
                             ;;
                         0)
@@ -860,7 +866,8 @@ parseopts () {
                         *)
                             printf -- "$(gettext '%s: option `-%s'"'"' is not valid\n')" \
                                 "$DOTFILES_NAME" "$opt" 1>&2
-                            return "$DOTFILES_EX_USAGE"
+                            success="$DOTFILES_EX_USAGE"
+                            break 2
                             ;;
                     esac
                 done
@@ -870,7 +877,10 @@ parseopts () {
                 IFS=$'=' read -r opt optarg <<< "${1#--}"
 
                 matchprefix "$opt" fullopt && ret=$? || ret=$?
-                (( ret == DOTFILES_EX_TEMPFAIL )) && return "$ret"
+                if (( ret == DOTFILES_EX_TEMPFAIL )); then
+                    success="$ret"
+                    break 2
+                fi
 
                 optaccum+=("--${fullopt}")
 
@@ -885,20 +895,23 @@ parseopts () {
                         else
                             printf -- "$(gettext '%s: option `--%s'"'"' requires an argument\n')" \
                                 "$DOTFILES_NAME" "$opt" 1>&2
-                            return "$DOTFILES_EX_USAGE"
+                            success="$DOTFILES_EX_USAGE"
+                            break 2
                         fi
                         ;;
                     0)
                         if [[ -n "${optarg:+x}" ]]; then
                             printf -- "$(gettext '%s: option `--%s'"'"' does not accept an argument\n')" \
                                 "$DOTFILES_NAME" "$opt" 1>&2
-                            return "$DOTFILES_EX_USAGE"
+                            success="$DOTFILES_EX_USAGE"
+                            break 2
                         fi
                         ;;
                     *)
                         printf -- "$(gettext '%s: option `--%s'"'"' is not valid\n')" \
                             "$DOTFILES_NAME" "$opt" 1>&2
-                        return "$DOTFILES_EX_USAGE"
+                        success="$DOTFILES_EX_USAGE"
+                        break 2
                         ;;
                 esac
                 ;;
@@ -909,18 +922,23 @@ parseopts () {
         shift
     done
 
-    optaccum+=(--)
-    (( ${#rest[@]} )) && optaccum+=("${rest[@]}")
-    optaccum+=("$@")
+    if (( success == DOTFILES_EX_OK )); then
+        optaccum+=(--)
+        (( ${#rest[@]} )) && optaccum+=("${rest[@]}")
+        optaccum+=("$@")
 
-    # Yuck.  All this to avoid using `declare -g`...
-    # Get the declaration for $optaccum, then remove everything before the
-    # opening parenthesis and everything after the closing parenthesis.
-    tmpdeclare=''
-    tmpdeclare="$(declare -p optaccum)"
-    tmpdeclare="${tmpdeclare/#*'('/'('}"
-    tmpdeclare="${tmpdeclare/%')'*/')'}"
-    eval "${optvname}=${tmpdeclare}"
+        # Yuck.  All this to avoid using `declare -g`...
+        # Get the declaration for $optaccum, then remove everything before the
+        # opening parenthesis and everything after the closing parenthesis.
+        tmpdeclare=''
+        tmpdeclare="$(declare -p optaccum)"
+        tmpdeclare="${tmpdeclare/#*'('/'('}"
+        tmpdeclare="${tmpdeclare/%')'*/')'}"
+        eval "${optvname}=${tmpdeclare}"
+    fi
+
+    unset -f matchprefix validopt
+    return "$success"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -991,8 +1009,7 @@ copy::check () {
     local destfile="$2"
 
     if [[ -e "${destfile}" ]]; then
-        md5cmp "${srcfile}" "${destfile}"
-        if md5cmp "${srcfile}" "${destfile}"; then
+        if cmp "${srcfile}" "${destfile}"; then
             echo "same file"
             return "$DOTFILES_EX_TEMPFAIL"
         elif [[ "${srcfile}" -ot "${destfile}" ]]; then
@@ -1127,7 +1144,7 @@ link::run () {
     if ! ln -sf "$srcfile" "$destfile"; then
         error "failed to link ${srcfile} to ${destfile}"
     else
-        msg "linked ${srcfile}} to ${destfile}"
+        msg "linked ${srcfile} to ${destfile}"
         return "$DOTFILES_EX_OK"
     fi
 }
@@ -1216,10 +1233,10 @@ init_ex_vars () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if [[ -r /usr/include/sysexits.h ]]; then
         while read -r ex_type ex_code _; do
-            declare -gix "DOTFILES_${ex_type}"=${ex_code}
+            eval "export DOTFILES_${ex_type}=${ex_code}"
         done < <(grep -o 'EX_.*[0-9]\+' /usr/include/sysexits.h)
     else
-        declare -gix \
+        export \
             DOTFILES_EX_OK=0 \
             DOTFILES_EX__BASE=64 \
             DOTFILES_EX_USAGE=64 \
@@ -1240,60 +1257,45 @@ init_ex_vars () {
             DOTFILES_EX__MAX=78
     fi
 
-    declare -gix DOTFILES_EX_FAIL=1
+    export DOTFILES_EX_FAIL=1
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 init_vars () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Use readlink's -m option (--canonicalize-missing) since we might be on a
-    # bootstrap run where DOTFILES_DIRNAME doesn't actually exist yet.
-    declare -gx DOTFILES_ROOT="${DOTFILES_ROOT:-${HOME}/.dotfiles}"
+    export DOTFILES_ROOT="${DOTFILES_ROOT:-${HOME}/.dotfiles}"
 
     # Globals
-    declare -gx DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
-    declare -gx DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
-    declare -gx DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
-    declare -gx DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-.custom}"
+    export DOTFILES_BACKUPDIR="${DOTFILES_BACKUPDIR:-${DOTFILES_ROOT}/backup/$(date "+%Y_%m_%d-%H_%M_%S")}"
+    export DOTFILES_DESTDIR="${DOTFILES_DESTDIR:-$HOME}"
+    export DOTFILES_RUNDIR="${DOTFILES_RUNDIR:-"${DOTFILES_ROOT}/run"}"
+    export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-custom}"
 
     # Values that are false by default
     for varname in DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
-        declare -gx ${varname}=${!varname:-0}
+        export "${varname}=${!varname:-0}"
     done
 
     # Values that are true by default
     for varname in DOTFILES_NOCLOBBER DOTFILES_VERBOSE; do
-        declare -gx ${varname}=${!varname:-1}
+        export "${varname}=${!varname:-1}"
     done
 
-    if [[ "$(< /etc/issue)" =~ ^Arch[[:space:]]+Linux ]]; then
-        declare -gx DOTFILES_OSTYPE='arch'
-    elif [[ "$OSTYPE" =~ ^darwin ]]; then
-        declare -gx DOTFILES_OSTYPE='darwin'
-    else
-        declare -gx DOTFILES_OSTYPE='linux'
-    fi
-
-    declare -gxi __DOTFILES_BACKUP=0
-    declare -gxi __DOTFILES_FAILED=0
-
-    declare -gA DOTFILES_NOCLOBBER_RCS=()
-    # RC files to not clobber when linking
-    if (( ${#DOTFILES_NOCLOBBER_RCS[@]} == 1 )); then
-        DOTFILES_NOCLOBBER_RCS=(
-            ["${DOTFILES_DESTDIR}/.bashrc"]=1
-            ["${DOTFILES_DESTDIR}/.bash_login"]=1
-            ["${DOTFILES_DESTDIR}/.bash_logout"]=1
-            ["${DOTFILES_DESTDIR}/.bash_profile"]=1
-            ["${DOTFILES_DESTDIR}/.muttrc"]=1
-            ["${DOTFILES_DESTDIR}/.subversion"]=1
-            ["${DOTFILES_DESTDIR}/.perlbrew"]=1
-            ["${DOTFILES_DESTDIR}/.ssh"]=1
+    if (( ${#DOTFILES_NOCLOBBER_RE[@]} == 0 )); then
+        DOTFILES_NOCLOBBER_RE=(
+            '\.bashrc$'
+            '\.bash_login$'
+            '\.bash_logout$'
+            '\.bash_profile$'
+            '\.muttrc$'
+            '\.subversion$'
+            '\.perlbrew$'
+            '\.ssh$'
         )
     fi
 
-    declare -ga DOTFILES_INCLUDES=()
-    declare -ga DOTFILES_EXCLUDES=()
+    export __DOTFILES_BACKUP=0
+    export __DOTFILES_FAILED=0
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1371,15 +1373,15 @@ init_opts () {
                 DOTFILES_NOCLOBBER=0
                 ;;
             -P|--preserve)
-                DOTFILES_NOCLOBBER_RCS["$2"]=1
+                DOTFILES_NOCLOBBER_RE+=("$2")
                 shift
                 ;;
             -I|--include)
-                DOTFILES_INCLUDES+=("$2")
+                DOTFILES_INCLUDE_RE+=("$2")
                 shift
                 ;;
             -E|--exclude)
-                DOTFILES_EXCLUDES+=("$2")
+                DOTFILES_EXCLUDE_RE+=("$2")
                 shift
                 ;;
             -R|--rundir)
@@ -1406,7 +1408,18 @@ init_opts () {
                 exit $?
                 ;;
             --printenv)
-                (printenv) | sort | grep ^DOT
+                {
+                    local varname=''
+                    for varname in "${!DOTFILES@}"; do
+                        if [[ "$(declare -p "${varname}" 2>-)" == declare*a*=* ]]; then
+                            echo "${varname}=(${!varname[*]})"
+                        elif [[ "$(declare -p "${varname}" 2>-)" == declare*A*=* ]]; then
+                            :
+                        else
+                            echo "${varname}=${!varname:-}"
+                        fi
+                    done
+                } | sort
                 exit 0
                 ;;
         esac
@@ -1443,7 +1456,7 @@ usage () {
 -c, --clobber           Tell dotfiles to overwrite configuration files that
                         would otherwise have been preserved.  Under the current
                         settings, dotfiles doesn't clobber:
-                        ${!DOTFILES_NOCLOBBER_RCS[*]}
+                        ${!DOTFILES_NOCLOBBER_RE[*]}
 
 -i, --ignore-missing    When given, dotfiles won't raise an error when looking
                         for the source directory specified in a given file in
@@ -1493,8 +1506,8 @@ init_all () {
     check_bash_version || return $?
 
     init_ex_vars
-    init_vars
     init_conf
+    init_vars
     init_opts
     init_logging
 }

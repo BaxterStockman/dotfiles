@@ -3,7 +3,10 @@ language: c
 sudo: false
 
 env:
-    - DOTFILES_ROOT="$(readlink -m ..)"
+    - BASH_COMPAT=31
+    - BASH_COMPAT=41
+    - BASH_COMPAT=43
+    - BASH_COMPAT=
 
 before_script:
     - git clone https://github.com/sstephenson/bats.git

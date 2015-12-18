@@ -23,4 +23,9 @@
 * `makepkg`-style logging functions
 * Test whether compound [[ ... && ... ]] constructs are faster than the
   equivalent chained [[ ... ]] && [[ ... ]] versions
-
+* Replace `find\_hierarchical`'s `--prefix` option by passing an absolute path
+* Make the logging functions more like those in `makepkg` -- in particular, the
+  first argument to the functions should be a format string.
+* `parseconf` should handle array values
+* dangling symlink issue
+* Try to capture the output of failed commands
