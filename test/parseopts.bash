@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-declare -agx TESTOPTS=(
+TESTOPTS=(
     'a|alligator'
     'b|bat:'
     'crayfish'
@@ -9,11 +9,11 @@ declare -agx TESTOPTS=(
     'f:'
 )
 
-declare -agx TESTOPTS_AMBIGUITY=(
+TESTOPTS_AMBIGUITY=(
     'craycray'
 )
 
-declare -agx ARGV=(
+ARGV=(
     -a
     --alligator
     -b aneye
@@ -24,29 +24,29 @@ declare -agx ARGV=(
     -f this
 )
 
-declare -agx ARGV_MISSING_ARGS=(
+ARGV_MISSING_ARGS=(
     -b
     --elephant
 )
 
-declare -agx ARGV_INVALID_ARGS=(
+ARGV_INVALID_ARGS=(
     --grouse
 )
 
-declare -agx ARGV_PARTIAL=(
+ARGV_PARTIAL=(
     --ele mentary
 )
 
-declare -agx ARGV_AMBIGUITY=(
+ARGV_AMBIGUITY=(
     --cray
 )
 
-declare -agx ARGV_EQUALS_SIGN=(
+ARGV_EQUALS_SIGN=(
     --bat=man
     --elephant=itis
 )
 
-declare -agx ARGV_EQUALS_SIGN_SHORT=(
+ARGV_EQUALS_SIGN_SHORT=(
     -b=plus
 )
 
@@ -67,9 +67,9 @@ hasopts () {
 
 can_run_parseopts () {
     if declare -F -- parseopts &>/dev/null; then
-        declare -gix CAN_RUN_PARSEOPTS=1
+        CAN_RUN_PARSEOPTS=1
     else
-        declare -gix CAN_RUN_PARSEOPTS=0
+        CAN_RUN_PARSEOPTS=0
     fi
 
     (( CAN_RUN_PARSEOPTS ))

@@ -741,14 +741,15 @@ parseopts () {
     local -A shortoptmap=()
     local -A longoptmap=()
 
-    local -i hasarg=0
+    local -i hasarg=0 lastind=0
     local opt=''
     for spec in "${optspecv[@]}"; do
         IFS=$'|' read -ra specv <<<"$spec"
 
-        if [[ "${specv[-1]}" == *: ]]; then
+        lastind="$(( ${#specv[@]} - 1 ))"
+        if [[ "${specv[lastind]}" == *: ]]; then
             hasarg=1
-            specv[-1]="${specv[-1]%:}"
+            specv[lastind]="${specv[lastind]%:}"
         fi
 
         for opt in "${specv[@]}"; do
@@ -932,8 +933,8 @@ parseopts () {
         # opening parenthesis and everything after the closing parenthesis.
         tmpdeclare=''
         tmpdeclare="$(declare -p optaccum)"
-        tmpdeclare="${tmpdeclare/#*'('/'('}"
-        tmpdeclare="${tmpdeclare/%')'*/')'}"
+        tmpdeclare="${tmpdeclare#*\'}"
+        tmpdeclare="${tmpdeclare%\'}"
         eval "${optvname}=${tmpdeclare}"
     fi
 
