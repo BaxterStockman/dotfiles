@@ -66,7 +66,7 @@ export DOTFILES_NAME=dotfiles
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
     if [[ "${AUTOMATED_TESTING:-0}" -ne 1 ]]; then
         printf '%s: %s\n' "$DOTFILES_NAME" 'cannot be sourced' 1>&2
-        unset DOTFILES_VERSION DOTFILES_PATH DOTFILES_DIRNAME DOTFILES_BASENAME DOTFILES_NAME 2>/dev/null
+        unset DOTFILES_VERSION DOTFILES_PATH DOTFILES_DIRNAME DOTFILES_BASENAME DOTFILES_NAME 2>-
         return 1
     fi
 else
@@ -107,7 +107,7 @@ DOTFILES_INCLUDE_RE=() DOTFILES_EXCLUDE_RE=()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 can_run () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    type -P -- "$@" &>/dev/null
+    type -P -- "$@" &>-
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -146,7 +146,32 @@ if ! can_run cmp; then
 fi
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test_varname () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    local varname="$1"
+
+    # `unset` exits cleanly even if one of its arguments is not a valid
+    # identifier.  Since there won't be any output when `unset` was successful,
+    # testing for a non-empty string is a satisfactory indicator of a
+    # problematic $optvname value.
+    local unset_out=''
+    unset_out="$(builtin unset -v "$varname" 2>&1)"
+    if [[ -n "$unset_out" ]]; then
+        printf -- "$(gettext '%s: `%s'"'"': not a valid identifier\n')" \
+            "$DOTFILES_NAME" "$varname"
+        return "$DOTFILES_EX_FAIL"
+    fi
+}
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 splitfile () {
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Splits a file path on '/'.  Optionally takes a prefix path; this will be
+# trimmed from the beginning of the path prior to splitting.
+#
+# With: default $IFS
+# Given: splitfile /a/prefix/path/to/somewhere /a/prefix
+# Prints to stdout: path to somewhere
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local file="$1"
     shift
@@ -158,39 +183,9 @@ splitfile () {
     IFS=$'/' read -ra path_elements <<<"$relpath"
 
     # Necessary in order to get rid of the leading trailing space
-    printf '%s\n' "${path_elements[*]:1}"
+    echo "${path_elements[@]:1}"
 }
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-find_hierarchical () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local targetdir="$1"
-    shift
-
-    local prefix opt_name opt_arg
-    while (( $# )); do
-        read -r opt_name opt_arg _ <<<"$@"
-        case "$opt_name" in
-            -p|--prefix)
-                prefix="$opt_arg"
-                shift 2
-                break
-                ;;
-            *)
-                continue
-                ;;
-	esac
-    done
-
-    local IFS
-    while read -ra path_elements; do
-        IFS=$'/'
-        printf '%s\n' "${prefix}${prefix:+/}${path_elements[*]}"
-        unset IFS
-    done < <(sort -n < <(while read -r target; do
-        splitfile "$target" "$prefix"
-    done < <(find "$targetdir" "$@")))
-}
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 call_conditional () {
@@ -205,7 +200,7 @@ call_conditional () {
     shift
 
     for maybe_funcname in "${maybe_funcnames[@]}"; do
-        if declare -F -- "$maybe_funcname" &>/dev/null; then
+        if declare -F -- "$maybe_funcname" &>-; then
             "$maybe_funcname" "$@"
             return $?
         fi
@@ -229,14 +224,19 @@ call_libfunc () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 check_repo_url () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if (( $# < 2 )); then
+        printf 1>&2 -- "$(gettext '%s: usage: %s URL GIT_CONFIG_PATH')" \
+            "$DOTFILES_NAME" "$FUNCNAME"
+        return "$DOTFILES_EX_FAIL"
+    fi
+
     local wanted_url="$1"
     shift
-    local gitdir="$1"
+    local git_config_path="$1"
     shift
 
-    local git_config_path="${gitdir}/.git/config"
     local url_from_config=''
-    url_from_config="$(git config --file "$git_config_path" --get remote.origin.url 2>/dev/null)"
+    url_from_config="$(git config --file "$git_config_path" --get remote.origin.url 2>-)"
 
     [[ "$wanted_url" == "$url_from_config" ]]
 }
@@ -292,11 +292,11 @@ init_logging () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     local -a colors=(RED GREEN BLUE YELLOW MAGENTA CYAN WHITE)
 
-    unset RESET BOLD "${colors[@]}" 2>/dev/null
+    unset RESET BOLD "${colors[@]}" 2>-
     export RESET BOLD "${colors[@]}"
 
     if [[ -t 2 ]] && truthy "${DOTFILES_USE_COLOR:-true}"; then
-        if can_run tput && tput setaf 0 &>/dev/null; then
+        if can_run tput && tput setaf 0 &>-; then
             RESET="$(tput sgr0)"
             BOLD="$(tput bold)"
             RED="$(tput setaf 1)"
@@ -338,8 +338,7 @@ init_logging () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 check_noclobber () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local srcfile="$1"
-    local destfile="$2"
+    local destfile="$1"
     local real_destfile="$destfile"
 
     if truthy "${DOTFILES_NOCLOBBER:-1}" && [[ -e "$destfile" ]]; then
@@ -347,8 +346,8 @@ check_noclobber () {
         for pattern in "${DOTFILES_NOCLOBBER_RE[@]}"; do
             if [[ "$destfile" =~ $pattern ]]; then
                 local noclobber_message
-                printf -v noclobber_message -- "%s matches preservation filter; filename will be appended with '%s'" \
-                    "$destfile" "$srcfile"  "$DOTFILES_NOCLOBBER_EXT"
+                printf -v noclobber_message -- "%s matches preservation filter; filename will be appended with '.%s'" \
+                    "$destfile" "$DOTFILES_NOCLOBBER_EXT"
                 msg2 "$noclobber_message"
                 real_destfile="${destfile}.${DOTFILES_NOCLOBBER_EXT}"
             fi
@@ -372,7 +371,7 @@ backup () {
         backup_subpath="${DOTFILES_BACKUPDIR}/${destfile%/*}"
         # Create backup dir if it doesn't already exist.
         if ! [[ -e "$backup_subpath" ]]; then
-            if ! mkdir -p "$backup_subpath" &>/dev/null; then
+            if ! mkdir -p "$backup_subpath" &>-; then
                 error "Could not create backup directory ${backup_subpath}"
                 return "$DOTFILES_EX_CANTCREAT"
             fi
@@ -405,7 +404,7 @@ process_prep () {
     fi
 
     # Silently ignore any files that don't define 'run'
-    if ! { declare -F -- run || declare -F -- "${optype}::run" ; } &>/dev/null; then
+    if ! { declare -F -- run || declare -F -- "${optype}::run" ; } &>-; then
         return "$DOTFILES_EX_OK"
     fi
 
@@ -504,7 +503,7 @@ process () {
 
     if [[ -f "$optype_file" ]]; then
         # shellcheck disable=SC1090
-        source "$optype_file" -- "$@" &>/dev/null
+        source "$optype_file" -- "$@" &>-
         local -i sourced_exit=$?
         if (( sourced_exit != 0 )); then
             error "sourcing ${optype_file} exited abnormally"
@@ -538,42 +537,45 @@ process () {
     call_libfunc pre "$optype" "$@"
 
     local -i failed=0
-    if ! truthy "$requires_source"; then
-        if ! run; then
-            ((failed++))
-            ((__DOTFILES_FAILED+=1))
-        fi
-    else
-        # Iterate over files.
-        local skip_reason srcfile srcstem destfile backup_subpath
-        local -i check_exit_code
-
-        # Don't clobber standard input, since sourced scripts may want to do
-        # stuff like get user input.
-        exec 3< <(find_hierarchical "$srcdir" --prefix "$DOTFILES_ROOT" -xtype f)
-        while read -u 3 -r srcfile; do
-            # Don't quite know why this is necessary -- 'find' sometimes strips the
-            # leading slash when called using process substitution...  Because find
-            # returns absolute paths, it's probably (?) safe to just append a
-            # leading slash.
-            [[ "$srcfile" =~ ^/ ]] || srcfile="/${srcfile}"
-
-            srcstem="${srcfile#$srcdir/}"
-            destfile="$(check_noclobber "$srcfile" "${DOTFILES_DESTDIR}/${srcstem}")"
-
-            process_check "$srcfile" "$destfile" "$optype" || continue
-
-            # Only back up the file if we're going to replace it
-            backup "$destfile"
-
-            # Do stuff.
-            if ! call_libfunc run "$optype" "$srcfile" "$destfile"; then
+    if ! truthy "$DOTFILES_DRY_RUN"; then
+        if ! truthy "$requires_source"; then
+            if ! truthy "$DRY_RUN" ! run; then
                 ((failed++))
                 ((__DOTFILES_FAILED+=1))
             fi
-        done
+        else
+            # Iterate over files.
+            local skip_reason srcfile srcstem destfile maybe_destfile backup_subpath
+            local -i check_exit_code
 
-        exec 3<&-
+            # Don't clobber standard input, since sourced scripts may want to do
+            # stuff like get user input.
+            exec 3< <(find "$srcdir" -xtype f | sort -n -t $'/')
+            while read -u 3 -r srcfile; do
+                # If the check fails against the destination file path without
+                # $DOTFILES_NOCLOBBER_EXT appended, don't bother continuing.
+                srcstem="${srcfile#$srcdir/}"
+                maybe_destfile="${DOTFILES_DESTDIR}/${srcstem}"
+                process_check "$srcfile" "$maybe_destfile" "$optype" || continue
+
+                # *NOW* append $DOTFILES_NOCLOBBER_EXT and run the check again.
+                destfile="$(check_noclobber "$maybe_destfile")"
+                if [[ "$destfile" != "$maybe_destfile" ]]; then
+                    process_check "$srcfile" "$destfile" "$optype" || continue
+                fi
+
+                # Only back up the file if we're going to replace it
+                backup "$destfile"
+
+                # Do stuff.
+                if call_libfunc run "$optype" "$srcfile" "$destfile"; then
+                    ((failed++))
+                    ((__DOTFILES_FAILED+=1))
+                fi
+            done
+
+            exec 3<&-
+        fi
     fi
 
     call_libfunc post "$optype" "$@"
@@ -655,7 +657,7 @@ parseconf () {
     fi
 
     local -i using_extglob=0
-    if shopt extglob >/dev/null; then
+    if shopt extglob >-; then
         using_extglob=1
     else
         shopt -s extglob
@@ -689,24 +691,6 @@ parseconf () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # CLI options parsing
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test_varname () {
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    local varname="$1"
-
-    # `unset` exits cleanly even if one of its arguments is not a valid
-    # identifier.  Since there won't be any output when `unset` was successful,
-    # testing for a non-empty string is a satisfactory indicator of a
-    # problematic $optvname value.
-    local unset_out=''
-    unset_out="$(builtin unset -v "$varname" 2>&1)"
-    if [[ -n "$unset_out" ]]; then
-        printf -- "$(gettext '%s: `%s'"'"': not a valid identifier\n')" \
-            "$DOTFILES_NAME" "$varname"
-        return "$DOTFILES_EX_FAIL"
-    fi
-}
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 parseopts () {
@@ -1010,7 +994,7 @@ copy::check () {
     local destfile="$2"
 
     if [[ -e "${destfile}" ]]; then
-        if cmp "${srcfile}" "${destfile}"; then
+        if cmp "${srcfile}" "${destfile}" &>-; then
             echo "same file"
             return "$DOTFILES_EX_TEMPFAIL"
         elif [[ "${srcfile}" -ot "${destfile}" ]]; then
@@ -1031,7 +1015,7 @@ copy::run () {
     local destfile="$2"
     local destdir="${destfile%/*}"
 
-    if ! mkdir -p "$destdir" >/dev/null; then
+    if ! mkdir -p "$destdir" &>-; then
         error "can't copy ${srcfile} to ${destfile} - failed to create ${destdir}"
         return "$DOTFILES_EX_CANTCREAT"
     fi
@@ -1137,7 +1121,7 @@ link::run () {
     local destfile="$2"
     local destdir="${destfile%/*}"
 
-    if ! mkdir -p "$destdir" >/dev/null; then
+    if ! mkdir -p "$destdir" &>-; then
         error "can't link ${destfile} to ${srcfile} - failed to create ${destdir}"
         return "$DOTFILES_EX_CANTCREAT"
     fi
@@ -1209,12 +1193,12 @@ init_dotfiles_config_repo () {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     title "Performing initial configuration"
 
-    if ! type -P git &>/dev/null; then
+    if ! type -P git &>-; then
         error "git should be installed.  It isn't"
         return "$DOTFILES_EX_FAIL"
     fi
 
-    if ! check_repo_url "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
+    if ! check_repo_url "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT/.git/config"; then
         title "Downloading dotfiles configuration repo"
         mkdir -p "$DOTFILES_ROOT"
         if ! git clone --recursive "$DOTFILES_CONFIG_REPO" "$DOTFILES_ROOT"; then
@@ -1224,7 +1208,6 @@ init_dotfiles_config_repo () {
     else
         # Make sure we have the latest files.
         title "Updating dotfiles configuration"
-        pushd "$DOTFILES_ROOT" >/dev/null
         git --work-tree "$DOTFILES_ROOT" --git-dir "${DOTFILES_ROOT}/.git" pull || :
     fi
 }
@@ -1273,7 +1256,7 @@ init_vars () {
     export DOTFILES_NOCLOBBER_EXT="${DOTFILES_NOCLOBBER_EXT:-custom}"
 
     # Values that are false by default
-    for varname in DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
+    for varname in DOTFILES_DRY_RUN DOTFILES_SKIP_INIT DOTFILES_IGNORE_MISSING; do
         export "${varname}=${!varname:-0}"
     done
 
@@ -1340,6 +1323,7 @@ init_opts () {
         's|skip-init'
         'i|ignore-missing'
         'c|clobber'
+        'D|dry-run'
         'P|preserve:'
         'I|include:'
         'E|exclude:'
@@ -1372,6 +1356,9 @@ init_opts () {
                 ;;
             -c|--clobber)
                 DOTFILES_NOCLOBBER=0
+                ;;
+            -D|--dry-run)
+                DOTFILES_DRY_RUN=1
                 ;;
             -P|--preserve)
                 DOTFILES_NOCLOBBER_RE+=("$2")
@@ -1462,6 +1449,8 @@ usage () {
 -i, --ignore-missing    When given, dotfiles won't raise an error when looking
                         for the source directory specified in a given file in
                         $DOTFILES_RUNDIR.
+
+-D, --dry-run           When given, dotfiles does not execute the \`run' stage.
 
 -I, --include PATTERN   Tell dotfiles to perform only those action types
                         specified in files in $DOTFILES_RUNDIR that match this
